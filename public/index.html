@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransitLK - Live Bus Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* YOUR EXISTING CSS STYLES REMAIN EXACTLY THE SAME */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scrollbar-width: thin;
+            scrollbar-color: #ffffff44 rgba(0, 0, 0, 0);
+        }
+
+        body {
+            font-family: 'Raleway', sans-serif;
+            color: #1f2937;
+            min-height: 100vh;
+            background-color: #1a1a2e;
+            overflow-x: hidden;
+        }
+
+        /* ALL YOUR EXISTING CSS STYLES... */
+        /* ... (keep all your CSS exactly as it is) ... */
+        
+    </style>
+</head>
+<body>
+    <!-- YOUR EXISTING HTML STRUCTURE REMAINS EXACTLY THE SAME -->
+    <div class="slideshow-container">
+        <div class="slide active"></div>
+        <div class="slide"></div>
+        <div class="slide"></div>
+        <div class="slide"></div>
+        <div class="slide"></div>
+    </div>
+
+    <div class="navbar">
+        <a href="#" class="logo">
+            <img src="images/logo.png" alt="TransitLK Logo" class="logo-image">
+        </a>
+        <div class="nav-right">
+            <a href="#" class="nav-link" id="logoutBtn" style="display: none;" onclick="logout()">Logout</a>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div class="login-container" id="loginScreen">
+        <div class="login-box">
+            <h2 class="login-title">Login</h2>
+            
+            <div id="loginMessage"></div>
+            
+            <div class="role-selector">
+                <button class="role-button active" id="passengerBtn" onclick="selectRole('passenger')">
+                    Passenger
+                </button>
+                <button class="role-button" id="driverBtn" onclick="selectRole('driver')">
+                    Driver
+                </button>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-input" id="username" placeholder="Enter username" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="password" placeholder="Enter password" required>
+                </div>
+
+                <div class="form-group" id="busRouteGroup" style="display: none;">
+                    <label class="form-label">Bus Route</label>
+                    <select class="form-input" id="driverBusRoute">
+                        <option value="">Select your bus route</option>
+                        <option value="177">Route 177 - Colombo → Kaduwela</option>
+                        <option value="138">Route 138 - Colombo → Malabe</option>
+                        <option value="155">Route 155 - Colombo → Kottawa</option>
+                        <option value="176">Route 176 - Colombo → Nugegoda</option>
+                        <option value="120">Route 120 - Colombo → Kelaniya</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="login-button">Login</button>
+            </form>
+
+            <div class="message info" style="margin-top: 20px;">
+                <strong>Demo Credentials</strong><br>
+                Passenger: user / pass<br>
+                Driver: driver / pass
+            </div>
+        </div>
+    </div>
+
+    <!-- App Screen -->
+    <div class="app-container" id="appScreen">
+        <div class="main-content">
+            <div class="control-panel">
+                <h2 class="panel-title" id="panelTitle">TransitLK Tracker</h2>
+                
+                <div class="user-info" id="userInfo"></div>
+                
+                <div id="messageContainer"></div>
+                
+                <!-- Passenger View -->
+                <div id="passengerView" style="display: none;">
+                    <div class="bus-selector">
+                        <div class="selector-title">Select Bus Route</div>
+                        <select class="bus-select" id="busRoute" onchange="selectBus()">
+                            <option value="">Choose your bus route...</option>
+                            <option value="177">Route 177 - Colombo → Kaduwela</option>
+                            <option value="138">Route 138 - Colombo → Malabe</option>
+                            <option value="155">Route 155 - Colombo → Kottawa</option>
+                            <option value="176">Route 176 - Colombo → Nugegoda</option>
+                            <option value="120">Route 120 - Colombo → Kelaniya</option>
+                        </select>
+                    </div>
+
+                    <div class="status-card">
+                        <div class="status-title">Bus Status</div>
+                        <div class="status-value">
+                            <div class="connection-status">
+                                <span class="status-dot disconnected" id="busStatus"></span>
+                                <span id="busStatusText">Select a bus route to start tracking</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="status-card">
+                        <div class="status-title">Current Location</div>
+                        <div class="status-value" id="busLocation">Bus location will appear here</div>
+                    </div>
+
+                    <div class="status-card eta-card" id="etaCard" style="display: none;">
+                        <div class="status-title">Estimated Arrival</div>
+                        <div class="status-value">
+                            <div class="eta-value" id="etaTime">Calculating...</div>
+                            <div class="speed-info" id="speedInfo"></div>
+                        </div>
+                    </div>
+
+                    <div class="status-card">
+                        <div class="status-title">Last Updated</div>
+                        <div class="status-value" id="lastUpdated">Not tracking</div>
+                    </div>
+
+                    <button class="action-button" id="startTrackingBtn" onclick="startPassengerTracking()" disabled>
+                        Start Tracking Bus
+                    </button>
+                    
+                    <button class="action-button" id="refreshBtn" onclick="refreshPassengerView()" disabled>
+                        Refresh Location
+                    </button>
+                    
+                    <button class="action-button stop-button" id="stopTrackingBtn" onclick="stopPassengerTracking()" disabled>
+                        Stop Tracking
+                    </button>
+                </div>
+
+                <!-- Driver View -->
+                <div id="driverView" style="display: none;">
+                    <div class="status-card">
+                        <div class="status-title">Your Bus Route</div>
+                        <div class="status-value" id="driverRoute">Not assigned</div>
+                    </div>
+
+                    <div class="status-card">
+                        <div class="status-title">Location Sharing Status</div>
+                        <div class="status-value">
+                            <div class="connection-status">
+                                <span class="status-dot disconnected" id="driverStatus"></span>
+                                <span id="driverStatusText">Location sharing is OFF</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="status-card">
+                        <div class="status-title">Current Location</div>
+                        <div class="status-value" id="driverLocation">Start sharing to see location</div>
+                    </div>
+
+                    <div class="status-card">
+                        <div class="status-title">Last Shared</div>
+                        <div class="status-value" id="driverLastUpdated">Never</div>
+                    </div>
+
+                    <button class="action-button" id="startSharingBtn" onclick="startLocationSharing()">
+                        Start Sharing Location
+                    </button>
+                    
+                    <button class="action-button stop-button" id="stopSharingBtn" onclick="stopLocationSharing()" disabled>
+                        Stop Sharing Location
+                    </button>
+
+                    <div class="message info" style="margin-top: 15px; font-size: 12px;">
+                        Keep this page open while driving. Your location will be shared with passengers tracking this route.
+                    </div>
+                </div>
+            </div>
+
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="map-overlay">
+                    <div style="font-weight: 600; margin-bottom: 5px;" id="mapTitle">TransitLK Live Tracker</div>
+                    <div style="font-size: 14px; opacity: 0.8;" id="mapStatus">Please login to continue</div>
+                    <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;" id="selectedRoute">No route selected</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Company Footer -->
+    <div class="company-footer" id="companyFooter" style="display: none;">
+        TransitLK by Vaylen
+    </div>
+
+    <script>
+        // ========== VERCEL DEPLOYMENT CHANGES ==========
+        // Removed API_BASE_URL - using relative paths for Vercel
+        // Frontend and backend will be served from the same domain
+
+        // State management
+        let currentUser = null;
+        let userRole = 'passenger';
+        let selectedBusRoute = null;
+        let map = null;
+        let busMarker = null;
+        let watchId = null;
+        let isSharing = false;
+        let isTracking = false;
+        let trackingInterval = null;
+        let previousLocation = null;
+        let previousTime = null;
+        let currentSpeed = 0;
+
+        // Detailed route coordinates for ETA calculation
+        const routeCoordinates = {
+            '177': [
+                {lat: 6.9271, lng: 79.8612, name: 'Colombo Fort'},
+                {lat: 6.9100, lng: 79.8700, name: 'Pettah'},
+                {lat: 6.9000, lng: 79.8800, name: 'Maradana'},
+                {lat: 6.8900, lng: 79.8900, name: 'Borella'},
+                {lat: 6.8800, lng: 79.9000, name: 'Rajagiriya'},
+                {lat: 6.8696, lng: 79.8866, name: 'Nugegoda'},
+                {lat: 6.8700, lng: 79.9100, name: 'Kohuwala'},
+                {lat: 6.8800, lng: 79.9200, name: 'Dehiwala'},
+                {lat: 6.8900, lng: 79.9300, name: 'Mount Lavinia'},
+                {lat: 6.9028, lng: 79.9086, name: 'Kaduwela'}
+            ],
+            '138': [
+                {lat: 6.9271, lng: 79.8612, name: 'Colombo Fort'},
+                {lat: 6.9300, lng: 79.8700, name: 'Union Place'},
+                {lat: 6.9350, lng: 79.8800, name: 'Bambalapitiya'},
+                {lat: 6.9400, lng: 79.8900, name: 'Wellawatta'},
+                {lat: 6.9450, lng: 79.9000, name: 'Dehiwala'},
+                {lat: 6.9500, lng: 79.9100, name: 'Ratmalana'},
+                {lat: 6.9550, lng: 79.9200, name: 'Moratuwa'},
+                {lat: 6.9600, lng: 79.9300, name: 'Panadura'},
+                {lat: 6.9147, lng: 79.9731, name: 'Malabe'}
+            ],
+            '155': [
+                {lat: 6.9271, lng: 79.8612, name: 'Colombo Fort'},
+                {lat: 6.9200, lng: 79.8650, name: 'Armour Street'},
+                {lat: 6.9150, lng: 79.8700, name: 'Dematagoda'},
+                {lat: 6.9100, lng: 79.8750, name: 'Orugodawatta'},
+                {lat: 6.9050, lng: 79.8800, name: 'Wattala'},
+                {lat: 6.9000, lng: 79.8850, name: 'Peliyagoda'},
+                {lat: 6.8950, lng: 79.8900, name: 'Kelaniya'},
+                {lat: 6.8900, lng: 79.8950, name: 'Biyagama'},
+                {lat: 6.8850, lng: 79.9000, name: 'Kadawatha'},
+                {lat: 6.8800, lng: 79.9050, name: 'Kiribathgoda'},
+                {lat: 6.8750, lng: 79.9100, name: 'Kottawa'}
+            ],
+            '176': [
+                {lat: 6.9271, lng: 79.8612, name: 'Colombo Fort'},
+                {lat: 6.9250, lng: 79.8630, name: 'Galle Face'},
+                {lat: 6.9220, lng: 79.8650, name: 'Kollupitiya'},
+                {lat: 6.9190, lng: 79.8670, name: 'Bambalapitiya'},
+                {lat: 6.9160, lng: 79.8690, name: 'Wellawatta'},
+                {lat: 6.9130, lng: 79.8710, name: 'Dehiwala'},
+                {lat: 6.9100, lng: 79.8730, name: 'Mount Lavinia'},
+                {lat: 6.9070, lng: 79.8750, name: 'Ratmalana'},
+                {lat: 6.9040, lng: 79.8770, name: 'Moratuwa'},
+                {lat: 6.9010, lng: 79.8790, name: 'Panadura'},
+                {lat: 6.8696, lng: 79.8866, name: 'Nugegoda'}
+            ],
+            '120': [
+                {lat: 6.9271, lng: 79.8612, name: 'Colombo Fort'},
+                {lat: 6.9350, lng: 79.8550, name: 'Kotahena'},
+                {lat: 6.9400, lng: 79.8500, name: 'Grandpass'},
+                {lat: 6.9450, lng: 79.8450, name: 'Mattakkuliya'},
+                {lat: 6.9500, lng: 79.8400, name: 'Modara'},
+                {lat: 6.9550, lng: 79.8350, name: 'Mutwal'},
+                {lat: 6.9600, lng: 79.8300, name: 'Peliyagoda'},
+                {lat: 6.9650, lng: 79.8250, name: 'Kelaniya'},
+                {lat: 6.9349, lng: 79.9429, name: 'Kelaniya Temple'}
+            ]
+        };
+
+        const busRoutes = {
+            '177': { name: 'Route 177 - Colombo → Kaduwela', color: '#3b82f6' },
+            '138': { name: 'Route 138 - Colombo → Malabe', color: '#ef4444' },
+            '155': { name: 'Route 155 - Colombo → Kottawa', color: '#10b981' },
+            '176': { name: 'Route 176 - Colombo → Nugegoda', color: '#f59e0b' },
+            '120': { name: 'Route 120 - Colombo → Kelaniya', color: '#8b5cf6' }
+        };
+
+        // Demo credentials
+        const users = {
+            'user': { password: 'pass', role: 'passenger', name: 'John Passenger' },
+            'driver': { password: 'pass', role: 'driver', name: 'Driver Bob' }
+        };
+
+        // Initialize slideshow
+        let slideIndex = 0;
+        const slides = document.querySelectorAll('.slide');
+        
+        function showNextSlide() {
+            slides[slideIndex].classList.remove('active');
+            slideIndex = (slideIndex + 1) % slides.length;
+            slides[slideIndex].classList.add('active');
+        }
+        setInterval(showNextSlide, 6000);
+
+        // Initialize Google Map
+        function initMap() {
+            const colombo = { lat: 6.9271, lng: 79.8612 };
+            
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 13,
+                center: colombo,
+                styles: [
+                    { featureType: "all", elementType: "geometry", stylers: [{color: "#242f3e"}] },
+                    { featureType: "all", elementType: "labels.text.stroke", stylers: [{lightness: -80}] },
+                    { featureType: "administrative", elementType: "labels.text.fill", stylers: [{color: "#746855"}] },
+                    { featureType: "road", elementType: "geometry.fill", stylers: [{color: "#2b3544"}] },
+                    { featureType: "water", elementType: "geometry", stylers: [{color: "#17263c"}] }
+                ],
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: true,
+                zoomControl: true
+            });
+        }
+
+        // Calculate distance between two coordinates (Haversine formula)
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; // Distance in km
+        }
+
+        // Calculate current speed based on location changes
+        function calculateSpeed(currentLocation, currentTime) {
+            if (!previousLocation || !previousTime) {
+                previousLocation = currentLocation;
+                previousTime = currentTime;
+                return 0;
+            }
+            
+            const distance = calculateDistance(
+                previousLocation.lat, previousLocation.lng,
+                currentLocation.lat, currentLocation.lng
+            );
+            
+            const timeDiff = (currentTime - previousTime) / 1000 / 3600; // Convert to hours
+            const speed = timeDiff > 0 ? Math.abs(distance / timeDiff) : 0;
+            
+            previousLocation = currentLocation;
+            previousTime = currentTime;
+            
+            return speed;
+        }
+
+        // Calculate ETA based on current position and destination
+        function calculateETA(currentLocation, route) {
+            if (!routeCoordinates[route]) {
+                return { eta: null, distanceRemaining: null, currentSpeed: 0, nextStop: 'Unknown' };
+            }
+            
+            const routeStops = routeCoordinates[route];
+            let minDistance = Infinity;
+            let closestStopIndex = -1;
+            
+            // Find the closest stop
+            for (let i = 0; i < routeStops.length; i++) {
+                const distance = calculateDistance(
+                    currentLocation.lat, currentLocation.lng,
+                    routeStops[i].lat, routeStops[i].lng
+                );
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestStopIndex = i;
+                }
+            }
+            
+            if (closestStopIndex === -1 || closestStopIndex === routeStops.length - 1) {
+                return { eta: 0, distanceRemaining: 0, currentSpeed: currentSpeed, nextStop: 'Final Destination' };
+            }
+            
+            // Calculate remaining distance to final destination
+            let remainingDistance = 0;
+            for (let i = closestStopIndex; i < routeStops.length - 1; i++) {
+                remainingDistance += calculateDistance(
+                    routeStops[i].lat, routeStops[i].lng,
+                    routeStops[i + 1].lat, routeStops[i + 1].lng
+                );
+            }
+            
+            // Calculate ETA (in minutes)
+            const averageSpeed = currentSpeed > 5 ? currentSpeed : 25; // Default to 25 km/h if stationary or slow
+            const etaHours = remainingDistance / averageSpeed;
+            const etaMinutes = Math.max(1, Math.round(etaHours * 60));
+            
+            return {
+                eta: etaMinutes,
+                distanceRemaining: remainingDistance,
+                currentSpeed: currentSpeed,
+                nextStop: routeStops[closestStopIndex + 1]?.name || 'Final Destination'
+            };
+        }
+
+        function selectRole(role) {
+            userRole = role;
+            document.querySelectorAll('.role-button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(role + 'Btn').classList.add('active');
+            
+            if (role === 'driver') {
+                document.getElementById('busRouteGroup').style.display = 'block';
+                document.getElementById('driverBusRoute').required = true;
+            } else {
+                document.getElementById('busRouteGroup').style.display = 'none';
+                document.getElementById('driverBusRoute').required = false;
+            }
+        }
+
+        function showMessage(message, type = 'info', container = 'messageContainer') {
+            const messageContainer = document.getElementById(container);
+            messageContainer.innerHTML = `<div class="message ${type}">${message}</div>`;
+            
+            setTimeout(() => {
+                messageContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const driverRoute = document.getElementById('driverBusRoute').value;
+            
+            const user = users[username];
+            
+            if (!user || user.password !== password) {
+                showMessage('Invalid username or password', 'error', 'loginMessage');
+                return;
+            }
+            
+            if (user.role !== userRole) {
+                showMessage(`This account is registered as ${user.role}`, 'error', 'loginMessage');
+                return;
+            }
+            
+            if (userRole === 'driver' && !driverRoute) {
+                showMessage('Please select your bus route', 'error', 'loginMessage');
+                return;
+            }
+            
+            currentUser = {
+                username: username,
+                name: user.name,
+                role: user.role,
+                busRoute: driverRoute || null
+            };
+            
+            showLoginSuccess();
+        }
+
+        function showLoginSuccess() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appScreen').style.display = 'block';
+            document.getElementById('logoutBtn').style.display = 'block';
+            document.getElementById('companyFooter').style.display = 'block';
+            
+            document.getElementById('userInfo').innerHTML = `
+                <strong>${currentUser.name}</strong><br>
+                Role: ${currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}
+                ${currentUser.busRoute ? `<br>Route: ${currentUser.busRoute}` : ''}
+            `;
+            
+            if (currentUser.role === 'passenger') {
+                showPassengerView();
+            } else {
+                showDriverView();
+            }
+        }
+
+        function showPassengerView() {
+            document.getElementById('panelTitle').textContent = 'TransitLK Tracker';
+            document.getElementById('passengerView').style.display = 'block';
+            document.getElementById('driverView').style.display = 'none';
+            document.getElementById('mapTitle').textContent = 'TransitLK Live Tracker';
+            document.getElementById('mapStatus').textContent = 'Select a bus route to begin tracking';
+        }
+
+        function showDriverView() {
+            document.getElementById('panelTitle').textContent = 'Driver Panel';
+            document.getElementById('passengerView').style.display = 'none';
+            document.getElementById('driverView').style.display = 'block';
+            document.getElementById('mapTitle').textContent = 'Your Location';
+            document.getElementById('mapStatus').textContent = 'Start sharing to show your location';
+            
+            if (currentUser.busRoute) {
+                const route = busRoutes[currentUser.busRoute];
+                document.getElementById('driverRoute').textContent = route.name;
+            }
+        }
+
+        function logout() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            
+            if (trackingInterval) {
+                clearInterval(trackingInterval);
+                trackingInterval = null;
+            }
+            
+            if (busMarker) {
+                busMarker.setMap(null);
+                busMarker = null;
+            }
+            
+            currentUser = null;
+            selectedBusRoute = null;
+            isSharing = false;
+            isTracking = false;
+            previousLocation = null;
+            previousTime = null;
+            currentSpeed = 0;
+            
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('appScreen').style.display = 'none';
+            document.getElementById('logoutBtn').style.display = 'none';
+            document.getElementById('companyFooter').style.display = 'none';
+            
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('driverBusRoute').value = '';
+            
+            const colombo = { lat: 6.9271, lng: 79.8612 };
+            if (map) {
+                map.setCenter(colombo);
+                map.setZoom(13);
+            }
+        }
+
+        // Passenger Functions
+        function selectBus() {
+            const routeSelect = document.getElementById('busRoute');
+            selectedBusRoute = routeSelect.value;
+            
+            if (selectedBusRoute) {
+                const route = busRoutes[selectedBusRoute];
+                document.getElementById('selectedRoute').textContent = route.name;
+                document.getElementById('startTrackingBtn').disabled = false;
+                document.getElementById('mapStatus').textContent = `Ready to track ${route.name}`;
+                showMessage(`Selected ${route.name}. Click "Start Tracking" to begin.`, 'info');
+            } else {
+                document.getElementById('selectedRoute').textContent = 'No route selected';
+                document.getElementById('startTrackingBtn').disabled = true;
+                document.getElementById('mapStatus').textContent = 'Select a bus route to begin tracking';
+            }
+        }
+
+        async function startPassengerTracking() {
+            if (!selectedBusRoute) {
+                showMessage('Please select a bus route first!', 'error');
+                return;
+            }
+            
+            isTracking = true;
+            document.getElementById('startTrackingBtn').disabled = true;
+            document.getElementById('refreshBtn').disabled = false;
+            document.getElementById('stopTrackingBtn').disabled = false;
+            document.getElementById('busRoute').disabled = true;
+            
+            updateBusStatus('warning', 'Searching for bus...');
+            showMessage('Searching for active bus on this route...', 'info');
+            
+            // Start checking for bus location from backend
+            trackBusLocation();
+        }
+
+        async function trackBusLocation() {
+            trackingInterval = setInterval(async () => {
+                if (!isTracking) {
+                    clearInterval(trackingInterval);
+                    return;
+                }
+                
+                try {
+                    // VERCEL CHANGE: Using relative URL instead of API_BASE_URL
+                    const response = await fetch(`/api/passenger/location/${selectedBusRoute}`);
+                    
+                    if (response.ok) {
+                        const location = await response.json();
+                        
+                        if (location && location.lat && location.lng) {
+                            // Calculate speed based on location changes
+                            currentSpeed = calculateSpeed(
+                                { lat: location.lat, lng: location.lng },
+                                Date.now()
+                            );
+                            
+                            // Calculate real ETA
+                            const etaData = calculateETA(
+                                { lat: location.lat, lng: location.lng },
+                                selectedBusRoute
+                            );
+                            
+                            updatePassengerMap(location);
+                            updateBusStatus('', `Bus ${selectedBusRoute} is active`);
+                            
+                            document.getElementById('busLocation').textContent = 
+                                `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`;
+                            document.getElementById('lastUpdated').textContent = 
+                                new Date(location.timestamp).toLocaleString();
+                            
+                            // Update ETA display with real data
+                            if (etaData.eta !== null) {
+                                document.getElementById('etaTime').textContent = 
+                                    `${etaData.eta} min (${etaData.distanceRemaining.toFixed(1)} km)`;
+                                document.getElementById('speedInfo').textContent = 
+                                    `Speed: ${etaData.currentSpeed.toFixed(1)} km/h | Next: ${etaData.nextStop}`;
+                                document.getElementById('etaCard').style.display = 'block';
+                            } else {
+                                document.getElementById('etaCard').style.display = 'none';
+                            }
+                        } else {
+                            updateBusStatus('disconnected', 'No active bus found on this route');
+                            document.getElementById('busLocation').textContent = 
+                                'Waiting for bus to start sharing location...';
+                            document.getElementById('etaCard').style.display = 'none';
+                        }
+                    } else {
+                        updateBusStatus('disconnected', 'Error connecting to server');
+                    }
+                } catch (error) {
+                    console.error('Error fetching bus location:', error);
+                    updateBusStatus('disconnected', 'Connection error');
+                }
+            }, 3000); // Update every 3 seconds for better accuracy
+        }
+
+        function updatePassengerMap(location) {
+            const position = { lat: location.lat, lng: location.lng };
+            
+            if (!busMarker) {
+                const route = busRoutes[selectedBusRoute];
+                busMarker = new google.maps.Marker({
+                    position: position,
+                    map: map,
+                    title: `Bus ${selectedBusRoute}`,
+                    icon: {
+                        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                            <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="25" cy="25" r="22" fill="${route.color}" stroke="#ffffff" stroke-width="3"/>
+                                <text x="25" y="32" text-anchor="middle" fill="#ffffff" font-size="20">🚌</text>
+                            </svg>
+                        `),
+                        scaledSize: new google.maps.Size(50, 50),
+                        anchor: new google.maps.Point(25, 25)
+                    }
+                });
+            } else {
+                busMarker.setPosition(position);
+            }
+            
+            map.setCenter(position);
+            map.setZoom(15);
+        }
+
+        function refreshPassengerView() {
+            showMessage('Refreshing bus location...', 'info');
+            // The interval will handle the refresh
+        }
+
+        function stopPassengerTracking() {
+            isTracking = false;
+            
+            if (trackingInterval) {
+                clearInterval(trackingInterval);
+                trackingInterval = null;
+            }
+            
+            if (busMarker) {
+                busMarker.setMap(null);
+                busMarker = null;
+            }
+            
+            document.getElementById('startTrackingBtn').disabled = false;
+            document.getElementById('refreshBtn').disabled = true;
+            document.getElementById('stopTrackingBtn').disabled = true;
+            document.getElementById('busRoute').disabled = false;
+            document.getElementById('etaCard').style.display = 'none';
+            
+            document.getElementById('busLocation').textContent = 'Bus location will appear here';
+            document.getElementById('lastUpdated').textContent = 'Not tracking';
+            
+            updateBusStatus('disconnected', 'Tracking stopped');
+            
+            const colombo = { lat: 6.9271, lng: 79.8612 };
+            if (map) {
+                map.setCenter(colombo);
+                map.setZoom(13);
+            }
+            
+            showMessage('Stopped tracking bus.', 'info');
+        }
+
+        function updateBusStatus(status, message) {
+            const statusDot = document.getElementById('busStatus');
+            const statusText = document.getElementById('busStatusText');
+            const mapStatus = document.getElementById('mapStatus');
+            
+            if (statusDot) statusDot.className = `status-dot ${status}`;
+            if (statusText) statusText.textContent = message;
+            if (mapStatus) mapStatus.textContent = message;
+        }
+
+        // Driver Functions
+        async function startLocationSharing() {
+            if (!navigator.geolocation) {
+                showMessage('Geolocation is not supported by this browser.', 'error');
+                return;
+            }
+            
+            if (!currentUser.busRoute) {
+                showMessage('No bus route assigned. Please logout and login again.', 'error');
+                return;
+            }
+            
+            isSharing = true;
+            document.getElementById('startSharingBtn').disabled = true;
+            document.getElementById('stopSharingBtn').disabled = false;
+            
+            updateDriverStatus('warning', 'Starting GPS...');
+            showMessage('Starting location sharing...', 'info');
+            
+            watchId = navigator.geolocation.watchPosition(
+                async (position) => {
+                    const location = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                        accuracy: position.coords.accuracy,
+                        timestamp: Date.now(),
+                        driver: currentUser.name,
+                        route: currentUser.busRoute,
+                        speed: position.coords.speed || 0 // Use device speed if available
+                    };
+                    
+                    // Calculate speed if device doesn't provide it
+                    if (!location.speed || location.speed === 0) {
+                        location.speed = calculateSpeed(
+                            { lat: location.lat, lng: location.lng },
+                            location.timestamp
+                        );
+                    }
+                    
+                    // Send to backend - VERCEL CHANGE: Using relative URL
+                    try {
+                        const response = await fetch('/api/driver/location', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(location)
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('Failed to send location to server');
+                        }
+                    } catch (error) {
+                        console.error('Error sending location:', error);
+                        showMessage('Failed to send location to server', 'error');
+                    }
+                    
+                    updateDriverLocation(location);
+                    updateDriverStatus('', 'Location sharing active');
+                    
+                    document.getElementById('driverLocation').textContent = 
+                        `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`;
+                    document.getElementById('driverLastUpdated').textContent = 
+                        new Date().toLocaleString();
+                },
+                (error) => {
+                    showMessage('GPS error: ' + error.message, 'error');
+                    updateDriverStatus('disconnected', 'GPS error');
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 2000 // More frequent updates for better speed calculation
+                }
+            );
+        }
+
+        function updateDriverLocation(location) {
+            const position = { lat: location.lat, lng: location.lng };
+            
+            if (!busMarker) {
+                const route = busRoutes[currentUser.busRoute];
+                busMarker = new google.maps.Marker({
+                    position: position,
+                    map: map,
+                    title: 'Your Location',
+                    icon: {
+                        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                            <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="25" cy="25" r="22" fill="${route.color}" stroke="#ffffff" stroke-width="3"/>
+                                <text x="25" y="32" text-anchor="middle" fill="#ffffff" font-size="20">🚌</text>
+                            </svg>
+                        `),
+                        scaledSize: new google.maps.Size(50, 50),
+                        anchor: new google.maps.Point(25, 25)
+                    }
+                });
+            } else {
+                busMarker.setPosition(position);
+            }
+            
+            map.setCenter(position);
+            map.setZoom(15);
+        }
+
+        async function stopLocationSharing() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            
+            // Notify backend that sharing stopped - VERCEL CHANGE: Using relative URL
+            try {
+                await fetch('/api/driver/location/stop', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        route: currentUser.busRoute,
+                        driver: currentUser.name
+                    })
+                });
+            } catch (error) {
+                console.error('Error stopping location sharing:', error);
+            }
+            
+            if (busMarker) {
+                busMarker.setMap(null);
+                busMarker = null;
+            }
+            
+            isSharing = false;
+            document.getElementById('startSharingBtn').disabled = false;
+            document.getElementById('stopSharingBtn').disabled = true;
+            
+            document.getElementById('driverLocation').textContent = 'Start sharing to see location';
+            document.getElementById('driverLastUpdated').textContent = 'Never';
+            
+            updateDriverStatus('disconnected', 'Location sharing stopped');
+            
+            const colombo = { lat: 6.9271, lng: 79.8612 };
+            if (map) {
+                map.setCenter(colombo);
+                map.setZoom(13);
+            }
+            
+            showMessage('Location sharing stopped.', 'info');
+        }
+
+        function updateDriverStatus(status, message) {
+            const statusDot = document.getElementById('driverStatus');
+            const statusText = document.getElementById('driverStatusText');
+            const mapStatus = document.getElementById('mapStatus');
+            
+            if (statusDot) statusDot.className = `status-dot ${status}`;
+            if (statusText) statusText.textContent = message;
+            if (mapStatus) mapStatus.textContent = message;
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+            }
+            if (trackingInterval) {
+                clearInterval(trackingInterval);
+            }
+        });
+    </script>
+
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBsn_ppHH2PQYoIY5L5M75Vb7zgqpVaRU4&callback=initMap"></script>
+</body>
+</html>

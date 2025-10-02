@@ -1,0 +1,12 @@
+{
+  "name": "vaylen-transitlk",
+  "version": "1.0.0",
+  "description": "TransitLK - Real-time bus tracking by Vaylen",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@vercel/node": "^2.0.0"
+  }
+}
