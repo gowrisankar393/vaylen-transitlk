@@ -6,7 +6,6 @@
     <title>TransitLK - Live Bus Tracker</title>
     <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* YOUR EXISTING CSS STYLES REMAIN EXACTLY THE SAME */
         * {
             margin: 0;
             padding: 0;
@@ -26,13 +25,522 @@
             overflow-x: hidden;
         }
 
-        /* ALL YOUR EXISTING CSS STYLES... */
-        /* ... (keep all your CSS exactly as it is) ... */
-        
+        /* Background Slideshow */
+        .slideshow-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -10;
+            pointer-events: none;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+        }
+
+        .slide.active {
+            opacity: 1;
+        }
+
+        .slide:nth-child(1) { background-image: url('images/bg1.png'); }
+        .slide:nth-child(2) { background-image: url('images/bg2.png'); }
+        .slide:nth-child(3) { background-image: url('images/bg3.png'); }
+        .slide:nth-child(4) { background-image: url('images/bg4.png'); }
+        .slide:nth-child(5) { background-image: url('images/bg5.png'); }
+
+        /* Navigation Bar */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 70px;
+            background: linear-gradient(135deg, 
+                rgba(0, 0, 0, 0.7),
+                rgba(0, 0, 0, 0.6)
+            );
+            backdrop-filter: blur(13px) saturate(140%) contrast(120%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%) contrast(120%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: none;
+            border-right: none;
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100000;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-image {
+            height: 50px;
+            width: auto;
+            transition: all 0.4s ease;
+        }
+
+        .nav-right {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .nav-link {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-link:hover {
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.2),
+                rgba(255, 255, 255, 0.1)
+            );
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: scale(1.03);
+        }
+
+        /* Login Container */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 90px 20px 20px;
+        }
+
+        .login-box {
+            background: linear-gradient(135deg, 
+                rgba(0, 0, 0, 0.6),
+                rgba(0, 0, 0, 0.5)
+            );
+            backdrop-filter: blur(13px) saturate(140%) contrast(120%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .login-title {
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .role-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .role-button {
+            flex: 1;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .role-button:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .role-button.active {
+            background: linear-gradient(135deg, 
+                rgba(59, 130, 246, 0.8),
+                rgba(37, 99, 235, 0.8)
+            );
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+            font-family: 'Raleway', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.5);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .form-input option {
+            background: #1a1a2e;
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, 
+                rgba(59, 130, 246, 0.8),
+                rgba(37, 99, 235, 0.8)
+            );
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 25px;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .login-button:hover {
+            background: linear-gradient(135deg, 
+                rgba(59, 130, 246, 1),
+                rgba(37, 99, 235, 1)
+            );
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+
+        .message.success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #86efac;
+        }
+
+        .message.info {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #93c5fd;
+        }
+
+        /* App Container */
+        .app-container {
+            display: none;
+        }
+
+        .main-content {
+            margin-top: 70px;
+            height: calc(100vh - 70px);
+            display: flex;
+        }
+
+        .control-panel {
+            width: 380px;
+            background: linear-gradient(135deg, 
+                rgba(0, 0, 0, 0.5),
+                rgba(0, 0, 0, 0.4)
+            );
+            backdrop-filter: blur(13px) saturate(140%) contrast(120%);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 8px 0 32px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        .panel-title {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .user-info {
+            background: linear-gradient(135deg, 
+                rgba(59, 130, 246, 0.2),
+                rgba(37, 99, 235, 0.1)
+            );
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #93c5fd;
+            text-align: center;
+        }
+
+        .bus-selector {
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.1),
+                rgba(255, 255, 255, 0.05)
+            );
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .selector-title {
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .bus-select {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Raleway', sans-serif;
+        }
+
+        .bus-select option {
+            background: #1a1a2e;
+        }
+
+        .status-card {
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.1),
+                rgba(255, 255, 255, 0.05)
+            );
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .status-title {
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .status-value {
+            color: #e5e5e5;
+            font-size: 14px;
+            word-break: break-word;
+        }
+
+        .action-button {
+            width: 100%;
+            background: linear-gradient(135deg, 
+                rgba(59, 130, 246, 0.8),
+                rgba(37, 99, 235, 0.8)
+            );
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 12px 20px;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .action-button:hover:not(:disabled) {
+            background: linear-gradient(135deg, 
+                rgba(59, 130, 246, 1),
+                rgba(37, 99, 235, 1)
+            );
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .action-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .stop-button {
+            background: linear-gradient(135deg, 
+                rgba(239, 68, 68, 0.8),
+                rgba(220, 38, 38, 0.8)
+            );
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .stop-button:hover:not(:disabled) {
+            background: linear-gradient(135deg, 
+                rgba(239, 68, 68, 1),
+                rgba(220, 38, 38, 1)
+            );
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .map-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, 
+                rgba(0, 0, 0, 0.3),
+                rgba(0, 0, 0, 0.2)
+            );
+            backdrop-filter: blur(13px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 15px 20px;
+            color: #ffffff;
+            z-index: 100;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .connection-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.disconnected {
+            background-color: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+
+        .status-dot.warning {
+            background-color: #f59e0b;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.8); }
+        }
+
+        .eta-card {
+            background: linear-gradient(135deg, 
+                rgba(16, 185, 129, 0.2),
+                rgba(5, 150, 105, 0.1)
+            );
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .eta-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #86efac;
+        }
+
+        .speed-info {
+            font-size: 12px;
+            color: #d1d5db;
+            margin-top: 5px;
+        }
+
+        .company-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(135deg, 
+                rgba(0, 0, 0, 0.7),
+                rgba(0, 0, 0, 0.6)
+            );
+            backdrop-filter: blur(13px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            text-align: center;
+            color: #93c5fd;
+            font-size: 14px;
+            z-index: 100000;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .control-panel {
+                width: 100%;
+                max-height: 400px;
+            }
+            
+            .map-container {
+                height: 60vh;
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- YOUR EXISTING HTML STRUCTURE REMAINS EXACTLY THE SAME -->
     <div class="slideshow-container">
         <div class="slide active"></div>
         <div class="slide"></div>
@@ -223,11 +731,9 @@
     </div>
 
     <script>
-        // ========== VERCEL DEPLOYMENT CHANGES ==========
-        // Removed API_BASE_URL - using relative paths for Vercel
-        // Frontend and backend will be served from the same domain
-
-        // State management
+        // All JavaScript code remains the same as in your first document
+        // (Copy the entire script section from your first HTML file)
+        
         let currentUser = null;
         let userRole = 'passenger';
         let selectedBusRoute = null;
@@ -241,7 +747,6 @@
         let previousTime = null;
         let currentSpeed = 0;
 
-        // Detailed route coordinates for ETA calculation
         const routeCoordinates = {
             '177': [
                 {lat: 6.9271, lng: 79.8612, name: 'Colombo Fort'},
@@ -313,13 +818,11 @@
             '120': { name: 'Route 120 - Colombo → Kelaniya', color: '#8b5cf6' }
         };
 
-        // Demo credentials
         const users = {
             'user': { password: 'pass', role: 'passenger', name: 'John Passenger' },
             'driver': { password: 'pass', role: 'driver', name: 'Driver Bob' }
         };
 
-        // Initialize slideshow
         let slideIndex = 0;
         const slides = document.querySelectorAll('.slide');
         
@@ -330,7 +833,6 @@
         }
         setInterval(showNextSlide, 6000);
 
-        // Initialize Google Map
         function initMap() {
             const colombo = { lat: 6.9271, lng: 79.8612 };
             
@@ -351,9 +853,8 @@
             });
         }
 
-        // Calculate distance between two coordinates (Haversine formula)
         function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Earth's radius in km
+            const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = 
@@ -361,10 +862,9 @@
                 Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
                 Math.sin(dLon/2) * Math.sin(dLon/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c; // Distance in km
+            return R * c;
         }
 
-        // Calculate current speed based on location changes
         function calculateSpeed(currentLocation, currentTime) {
             if (!previousLocation || !previousTime) {
                 previousLocation = currentLocation;
@@ -377,7 +877,7 @@
                 currentLocation.lat, currentLocation.lng
             );
             
-            const timeDiff = (currentTime - previousTime) / 1000 / 3600; // Convert to hours
+            const timeDiff = (currentTime - previousTime) / 1000 / 3600;
             const speed = timeDiff > 0 ? Math.abs(distance / timeDiff) : 0;
             
             previousLocation = currentLocation;
@@ -386,7 +886,6 @@
             return speed;
         }
 
-        // Calculate ETA based on current position and destination
         function calculateETA(currentLocation, route) {
             if (!routeCoordinates[route]) {
                 return { eta: null, distanceRemaining: null, currentSpeed: 0, nextStop: 'Unknown' };
@@ -396,7 +895,6 @@
             let minDistance = Infinity;
             let closestStopIndex = -1;
             
-            // Find the closest stop
             for (let i = 0; i < routeStops.length; i++) {
                 const distance = calculateDistance(
                     currentLocation.lat, currentLocation.lng,
@@ -413,7 +911,6 @@
                 return { eta: 0, distanceRemaining: 0, currentSpeed: currentSpeed, nextStop: 'Final Destination' };
             }
             
-            // Calculate remaining distance to final destination
             let remainingDistance = 0;
             for (let i = closestStopIndex; i < routeStops.length - 1; i++) {
                 remainingDistance += calculateDistance(
@@ -422,8 +919,7 @@
                 );
             }
             
-            // Calculate ETA (in minutes)
-            const averageSpeed = currentSpeed > 5 ? currentSpeed : 25; // Default to 25 km/h if stationary or slow
+            const averageSpeed = currentSpeed > 5 ? currentSpeed : 25;
             const etaHours = remainingDistance / averageSpeed;
             const etaMinutes = Math.max(1, Math.round(etaHours * 60));
             
@@ -572,7 +1068,6 @@
             }
         }
 
-        // Passenger Functions
         function selectBus() {
             const routeSelect = document.getElementById('busRoute');
             selectedBusRoute = routeSelect.value;
@@ -605,7 +1100,6 @@
             updateBusStatus('warning', 'Searching for bus...');
             showMessage('Searching for active bus on this route...', 'info');
             
-            // Start checking for bus location from backend
             trackBusLocation();
         }
 
@@ -617,20 +1111,17 @@
                 }
                 
                 try {
-                    // VERCEL CHANGE: Using relative URL instead of API_BASE_URL
                     const response = await fetch(`/api/passenger/location/${selectedBusRoute}`);
                     
                     if (response.ok) {
                         const location = await response.json();
                         
                         if (location && location.lat && location.lng) {
-                            // Calculate speed based on location changes
                             currentSpeed = calculateSpeed(
                                 { lat: location.lat, lng: location.lng },
                                 Date.now()
                             );
                             
-                            // Calculate real ETA
                             const etaData = calculateETA(
                                 { lat: location.lat, lng: location.lng },
                                 selectedBusRoute
@@ -644,7 +1135,6 @@
                             document.getElementById('lastUpdated').textContent = 
                                 new Date(location.timestamp).toLocaleString();
                             
-                            // Update ETA display with real data
                             if (etaData.eta !== null) {
                                 document.getElementById('etaTime').textContent = 
                                     `${etaData.eta} min (${etaData.distanceRemaining.toFixed(1)} km)`;
@@ -667,7 +1157,7 @@
                     console.error('Error fetching bus location:', error);
                     updateBusStatus('disconnected', 'Connection error');
                 }
-            }, 3000); // Update every 3 seconds for better accuracy
+            }, 3000);
         }
 
         function updatePassengerMap(location) {
@@ -700,7 +1190,6 @@
 
         function refreshPassengerView() {
             showMessage('Refreshing bus location...', 'info');
-            // The interval will handle the refresh
         }
 
         function stopPassengerTracking() {
@@ -746,7 +1235,6 @@
             if (mapStatus) mapStatus.textContent = message;
         }
 
-        // Driver Functions
         async function startLocationSharing() {
             if (!navigator.geolocation) {
                 showMessage('Geolocation is not supported by this browser.', 'error');
@@ -774,10 +1262,9 @@
                         timestamp: Date.now(),
                         driver: currentUser.name,
                         route: currentUser.busRoute,
-                        speed: position.coords.speed || 0 // Use device speed if available
+                        speed: position.coords.speed || 0
                     };
                     
-                    // Calculate speed if device doesn't provide it
                     if (!location.speed || location.speed === 0) {
                         location.speed = calculateSpeed(
                             { lat: location.lat, lng: location.lng },
@@ -785,7 +1272,6 @@
                         );
                     }
                     
-                    // Send to backend - VERCEL CHANGE: Using relative URL
                     try {
                         const response = await fetch('/api/driver/location', {
                             method: 'POST',
@@ -818,7 +1304,7 @@
                 {
                     enableHighAccuracy: true,
                     timeout: 10000,
-                    maximumAge: 2000 // More frequent updates for better speed calculation
+                    maximumAge: 2000
                 }
             );
         }
@@ -857,7 +1343,6 @@
                 watchId = null;
             }
             
-            // Notify backend that sharing stopped - VERCEL CHANGE: Using relative URL
             try {
                 await fetch('/api/driver/location/stop', {
                     method: 'POST',
@@ -906,7 +1391,6 @@
             if (mapStatus) mapStatus.textContent = message;
         }
 
-        // Cleanup on page unload
         window.addEventListener('beforeunload', () => {
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
