@@ -25,7 +25,6 @@
             overflow-x: hidden;
         }
 
-        /* Background Slideshow */
         .slideshow-container {
             position: fixed;
             top: 0;
@@ -59,7 +58,6 @@
         .slide:nth-child(4) { background-image: url('images/bg4.png'); }
         .slide:nth-child(5) { background-image: url('images/bg5.png'); }
 
-        /* Navigation Bar */
         .navbar {
             position: fixed;
             top: 0;
@@ -125,7 +123,6 @@
             transform: scale(1.03);
         }
 
-        /* Login Container */
         .login-container {
             display: flex;
             justify-content: center;
@@ -275,6 +272,116 @@
             color: #93c5fd;
         }
 
+        /* Home Screen */
+        .home-container {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 90px 20px 20px;
+        }
+
+        .home-box {
+            background: linear-gradient(135deg, 
+                rgba(0, 0, 0, 0.6),
+                rgba(0, 0, 0, 0.5)
+            );
+            backdrop-filter: blur(13px) saturate(140%) contrast(120%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 550px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .home-title {
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .search-button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, 
+                rgba(16, 185, 129, 0.8),
+                rgba(5, 150, 105, 0.8)
+            );
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 25px;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .search-button:hover {
+            background: linear-gradient(135deg, 
+                rgba(16, 185, 129, 1),
+                rgba(5, 150, 105, 1)
+            );
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .bus-list {
+            margin-top: 30px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .bus-card {
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.1),
+                rgba(255, 255, 255, 0.05)
+            );
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .bus-card:hover {
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.15),
+                rgba(255, 255, 255, 0.1)
+            );
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: translateX(5px);
+        }
+
+        .bus-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .bus-number {
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .bus-time {
+            color: #86efac;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .bus-details {
+            color: #d1d5db;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
         /* App Container */
         .app-container {
             display: none;
@@ -284,6 +391,7 @@
             margin-top: 70px;
             height: calc(100vh - 70px);
             display: flex;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .control-panel {
@@ -298,6 +406,11 @@
             padding: 30px;
             overflow-y: auto;
             z-index: 10;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .control-panel.tracking-mode {
+            width: 320px;
         }
 
         .panel-title {
@@ -319,41 +432,6 @@
             margin-bottom: 20px;
             color: #93c5fd;
             text-align: center;
-        }
-
-        .bus-selector {
-            background: linear-gradient(135deg, 
-                rgba(255, 255, 255, 0.1),
-                rgba(255, 255, 255, 0.05)
-            );
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 25px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-        }
-
-        .selector-title {
-            color: #ffffff;
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 12px;
-        }
-
-        .bus-select {
-            width: 100%;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #ffffff;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: 'Raleway', sans-serif;
-        }
-
-        .bus-select option {
-            background: #1a1a2e;
         }
 
         .status-card {
@@ -432,6 +510,14 @@
         .map-container {
             flex: 1;
             position: relative;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .map-container.visible {
+            opacity: 1;
+            transform: translateX(0);
         }
 
         #map {
@@ -530,7 +616,7 @@
             }
             
             .control-panel {
-                width: 100%;
+                width: 100% !important;
                 max-height: 400px;
             }
             
@@ -608,10 +694,75 @@
         </div>
     </div>
 
+    <!-- Home Screen (Passenger Route Search) -->
+    <div class="home-container" id="homeScreen">
+        <div class="home-box">
+            <h2 class="home-title">Plan Your Journey</h2>
+            
+            <div id="homeMessage"></div>
+            
+            <form id="searchForm" onsubmit="searchBuses(event)">
+                <div class="form-group">
+                    <label class="form-label">From</label>
+                    <select class="form-input" id="startPoint" required>
+                        <option value="">Select starting point</option>
+                        <option value="Colombo Fort">Colombo Fort</option>
+                        <option value="Pettah">Pettah</option>
+                        <option value="Maradana">Maradana</option>
+                        <option value="Borella">Borella</option>
+                        <option value="Rajagiriya">Rajagiriya</option>
+                        <option value="Nugegoda">Nugegoda</option>
+                        <option value="Kohuwala">Kohuwala</option>
+                        <option value="Dehiwala">Dehiwala</option>
+                        <option value="Mount Lavinia">Mount Lavinia</option>
+                        <option value="Kaduwela">Kaduwela</option>
+                        <option value="Malabe">Malabe</option>
+                        <option value="Kottawa">Kottawa</option>
+                        <option value="Kelaniya">Kelaniya</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">To</label>
+                    <select class="form-input" id="endPoint" required>
+                        <option value="">Select destination</option>
+                        <option value="Colombo Fort">Colombo Fort</option>
+                        <option value="Pettah">Pettah</option>
+                        <option value="Maradana">Maradana</option>
+                        <option value="Borella">Borella</option>
+                        <option value="Rajagiriya">Rajagiriya</option>
+                        <option value="Nugegoda">Nugegoda</option>
+                        <option value="Kohuwala">Kohuwala</option>
+                        <option value="Dehiwala">Dehiwala</option>
+                        <option value="Mount Lavinia">Mount Lavinia</option>
+                        <option value="Kaduwela">Kaduwela</option>
+                        <option value="Malabe">Malabe</option>
+                        <option value="Kottawa">Kottawa</option>
+                        <option value="Kelaniya">Kelaniya</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-input" id="travelDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Time</label>
+                    <input type="time" class="form-input" id="travelTime" required>
+                </div>
+
+                <button type="submit" class="search-button">Search Buses</button>
+            </form>
+
+            <div class="bus-list" id="busList"></div>
+        </div>
+    </div>
+
     <!-- App Screen -->
     <div class="app-container" id="appScreen">
-        <div class="main-content">
-            <div class="control-panel">
+        <div class="main-content" id="mainContent">
+            <div class="control-panel" id="controlPanel">
                 <h2 class="panel-title" id="panelTitle">TransitLK Tracker</h2>
                 
                 <div class="user-info" id="userInfo"></div>
@@ -620,16 +771,9 @@
                 
                 <!-- Passenger View -->
                 <div id="passengerView" style="display: none;">
-                    <div class="bus-selector">
-                        <div class="selector-title">Select Bus Route</div>
-                        <select class="bus-select" id="busRoute" onchange="selectBus()">
-                            <option value="">Choose your bus route...</option>
-                            <option value="177">Route 177 - Colombo → Kaduwela</option>
-                            <option value="138">Route 138 - Colombo → Malabe</option>
-                            <option value="155">Route 155 - Colombo → Kottawa</option>
-                            <option value="176">Route 176 - Colombo → Nugegoda</option>
-                            <option value="120">Route 120 - Colombo → Kelaniya</option>
-                        </select>
+                    <div class="status-card">
+                        <div class="status-title">Selected Bus</div>
+                        <div class="status-value" id="selectedBusInfo">No bus selected</div>
                     </div>
 
                     <div class="status-card">
@@ -637,14 +781,14 @@
                         <div class="status-value">
                             <div class="connection-status">
                                 <span class="status-dot disconnected" id="busStatus"></span>
-                                <span id="busStatusText">Select a bus route to start tracking</span>
+                                <span id="busStatusText">Ready to track</span>
                             </div>
                         </div>
                     </div>
 
                     <div class="status-card">
                         <div class="status-title">Current Location</div>
-                        <div class="status-value" id="busLocation">Bus location will appear here</div>
+                        <div class="status-value" id="busLocation">Start tracking to see location</div>
                     </div>
 
                     <div class="status-card eta-card" id="etaCard" style="display: none;">
@@ -660,7 +804,7 @@
                         <div class="status-value" id="lastUpdated">Not tracking</div>
                     </div>
 
-                    <button class="action-button" id="startTrackingBtn" onclick="startPassengerTracking()" disabled>
+                    <button class="action-button" id="startTrackingBtn" onclick="startPassengerTracking()">
                         Start Tracking Bus
                     </button>
                     
@@ -670,6 +814,10 @@
                     
                     <button class="action-button stop-button" id="stopTrackingBtn" onclick="stopPassengerTracking()" disabled>
                         Stop Tracking
+                    </button>
+                    
+                    <button class="action-button" onclick="backToSearch()" style="background: linear-gradient(135deg, rgba(156, 163, 175, 0.8), rgba(107, 114, 128, 0.8)); border-color: rgba(156, 163, 175, 0.3);">
+                        Back to Search
                     </button>
                 </div>
 
@@ -714,7 +862,7 @@
                 </div>
             </div>
 
-            <div class="map-container">
+            <div class="map-container" id="mapContainer">
                 <div id="map"></div>
                 <div class="map-overlay">
                     <div style="font-weight: 600; margin-bottom: 5px;" id="mapTitle">TransitLK Live Tracker</div>
@@ -731,14 +879,14 @@
     </div>
 
     <script>
-        // All JavaScript code remains the same as in your first document
-        // (Copy the entire script section from your first HTML file)
-        
         let currentUser = null;
         let userRole = 'passenger';
         let selectedBusRoute = null;
+        let selectedBusData = null;
         let map = null;
         let busMarker = null;
+        let userMarker = null;
+        let routeLine = null;
         let watchId = null;
         let isSharing = false;
         let isTracking = false;
@@ -818,6 +966,55 @@
             '120': { name: 'Route 120 - Colombo → Kelaniya', color: '#8b5cf6' }
         };
 
+        const sltbTimetable = {
+            '177': [
+                { time: '06:00', regNo: 'NB-1234', depot: 'Kaduwela Depot', seats: 45 },
+                { time: '07:30', regNo: 'NB-1235', depot: 'Kaduwela Depot', seats: 50 },
+                { time: '09:00', regNo: 'NB-1236', depot: 'Colombo Central', seats: 45 },
+                { time: '11:00', regNo: 'NB-1237', depot: 'Kaduwela Depot', seats: 50 },
+                { time: '13:00', regNo: 'NB-1238', depot: 'Colombo Central', seats: 45 },
+                { time: '15:30', regNo: 'NB-1239', depot: 'Kaduwela Depot', seats: 50 },
+                { time: '17:00', regNo: 'NB-1240', depot: 'Colombo Central', seats: 45 },
+                { time: '19:00', regNo: 'NB-1241', depot: 'Kaduwela Depot', seats: 50 }
+            ],
+            '138': [
+                { time: '06:30', regNo: 'NB-2234', depot: 'Malabe Depot', seats: 48 },
+                { time: '08:00', regNo: 'NB-2235', depot: 'Colombo Central', seats: 48 },
+                { time: '10:00', regNo: 'NB-2236', depot: 'Malabe Depot', seats: 48 },
+                { time: '12:00', regNo: 'NB-2237', depot: 'Colombo Central', seats: 48 },
+                { time: '14:00', regNo: 'NB-2238', depot: 'Malabe Depot', seats: 48 },
+                { time: '16:00', regNo: 'NB-2239', depot: 'Colombo Central', seats: 48 },
+                { time: '18:00', regNo: 'NB-2240', depot: 'Malabe Depot', seats: 48 }
+            ],
+            '155': [
+                { time: '05:45', regNo: 'NB-3334', depot: 'Kottawa Depot', seats: 52 },
+                { time: '07:15', regNo: 'NB-3335', depot: 'Colombo Central', seats: 52 },
+                { time: '09:30', regNo: 'NB-3336', depot: 'Kottawa Depot', seats: 52 },
+                { time: '11:30', regNo: 'NB-3337', depot: 'Colombo Central', seats: 52 },
+                { time: '14:00', regNo: 'NB-3338', depot: 'Kottawa Depot', seats: 52 },
+                { time: '16:30', regNo: 'NB-3339', depot: 'Colombo Central', seats: 52 },
+                { time: '18:30', regNo: 'NB-3340', depot: 'Kottawa Depot', seats: 52 }
+            ],
+            '176': [
+                { time: '06:15', regNo: 'NB-4434', depot: 'Nugegoda Depot', seats: 46 },
+                { time: '08:15', regNo: 'NB-4435', depot: 'Colombo Central', seats: 46 },
+                { time: '10:15', regNo: 'NB-4436', depot: 'Nugegoda Depot', seats: 46 },
+                { time: '12:15', regNo: 'NB-4437', depot: 'Colombo Central', seats: 46 },
+                { time: '14:15', regNo: 'NB-4438', depot: 'Nugegoda Depot', seats: 46 },
+                { time: '16:15', regNo: 'NB-4439', depot: 'Colombo Central', seats: 46 },
+                { time: '18:15', regNo: 'NB-4440', depot: 'Nugegoda Depot', seats: 46 }
+            ],
+            '120': [
+                { time: '06:45', regNo: 'NB-5534', depot: 'Kelaniya Depot', seats: 44 },
+                { time: '08:45', regNo: 'NB-5535', depot: 'Colombo Central', seats: 44 },
+                { time: '10:45', regNo: 'NB-5536', depot: 'Kelaniya Depot', seats: 44 },
+                { time: '12:45', regNo: 'NB-5537', depot: 'Colombo Central', seats: 44 },
+                { time: '15:00', regNo: 'NB-5538', depot: 'Kelaniya Depot', seats: 44 },
+                { time: '17:00', regNo: 'NB-5539', depot: 'Colombo Central', seats: 44 },
+                { time: '19:00', regNo: 'NB-5540', depot: 'Kelaniya Depot', seats: 44 }
+            ]
+        };
+
         const users = {
             'user': { password: 'pass', role: 'passenger', name: 'John Passenger' },
             'driver': { password: 'pass', role: 'driver', name: 'Driver Bob' }
@@ -852,6 +1049,55 @@
                 zoomControl: true
             });
         }
+
+        // Session Management
+        function saveSession() {
+            if (currentUser) {
+                localStorage.setItem('transitlk_session', JSON.stringify({
+                    user: currentUser,
+                    timestamp: Date.now()
+                }));
+            }
+        }
+
+        function loadSession() {
+            const session = localStorage.getItem('transitlk_session');
+            if (session) {
+                const data = JSON.parse(session);
+                const hoursSinceLogin = (Date.now() - data.timestamp) / (1000 * 60 * 60);
+                
+                if (hoursSinceLogin < 24) {
+                    currentUser = data.user;
+                    userRole = currentUser.role;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function clearSession() {
+            localStorage.removeItem('transitlk_session');
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('travelDate').value = today;
+            document.getElementById('travelDate').min = today;
+            
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('travelTime').value = `${hours}:${minutes}`;
+            
+            if (loadSession()) {
+                if (currentUser.role === 'driver') {
+                    showLoginSuccess();
+                } else {
+                    showHomeScreen();
+                }
+            }
+        });
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371;
@@ -985,7 +1231,160 @@
                 busRoute: driverRoute || null
             };
             
-            showLoginSuccess();
+            saveSession();
+            
+            if (currentUser.role === 'driver') {
+                showLoginSuccess();
+            } else {
+                showHomeScreen();
+            }
+        }
+
+        function showHomeScreen() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('homeScreen').style.display = 'flex';
+            document.getElementById('logoutBtn').style.display = 'block';
+            document.getElementById('companyFooter').style.display = 'block';
+        }
+
+        function searchBuses(event) {
+            event.preventDefault();
+            
+            const startPoint = document.getElementById('startPoint').value;
+            const endPoint = document.getElementById('endPoint').value;
+            const travelDate = document.getElementById('travelDate').value;
+            const travelTime = document.getElementById('travelTime').value;
+            
+            if (startPoint === endPoint) {
+                showMessage('Start and end points cannot be the same!', 'error', 'homeMessage');
+                return;
+            }
+            
+            const availableBuses = findAvailableBuses(startPoint, endPoint, travelTime);
+            displayBusList(availableBuses, startPoint, endPoint, travelTime);
+        }
+
+        function findAvailableBuses(start, end, time) {
+            const results = [];
+            
+            Object.keys(routeCoordinates).forEach(routeNum => {
+                const stops = routeCoordinates[routeNum];
+                const startIndex = stops.findIndex(stop => stop.name === start);
+                const endIndex = stops.findIndex(stop => stop.name === end);
+                
+                if (startIndex !== -1 && endIndex !== -1 && startIndex < endIndex) {
+                    const timetable = sltbTimetable[routeNum] || [];
+                    timetable.forEach(bus => {
+                        if (bus.time >= time) {
+                            results.push({
+                                route: routeNum,
+                                routeName: busRoutes[routeNum].name,
+                                time: bus.time,
+                                regNo: bus.regNo,
+                                depot: bus.depot,
+                                seats: bus.seats,
+                                start: start,
+                                end: end
+                            });
+                        }
+                    });
+                }
+            });
+            
+            return results.sort((a, b) => a.time.localeCompare(b.time));
+        }
+
+        function displayBusList(buses, start, end, time) {
+            const busList = document.getElementById('busList');
+            
+            if (buses.length === 0) {
+                busList.innerHTML = '<div class="message info">No buses found for this route and time.</div>';
+                return;
+            }
+            
+            let html = '<h3 style="color: #ffffff; margin-bottom: 15px;">Available Buses</h3>';
+            buses.forEach(bus => {
+                html += `
+                    <div class="bus-card" onclick='selectBusFromList(${JSON.stringify(bus)})'>
+                        <div class="bus-card-header">
+                            <div class="bus-number">Route ${bus.route}</div>
+                            <div class="bus-time">${bus.time}</div>
+                        </div>
+                        <div class="bus-details">
+                            <strong>Registration:</strong> ${bus.regNo}<br>
+                            <strong>Depot:</strong> ${bus.depot}<br>
+                            <strong>Seats Available:</strong> ${bus.seats}<br>
+                            <strong>From:</strong> ${bus.start} → <strong>To:</strong> ${bus.end}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            busList.innerHTML = html;
+        }
+
+        function selectBusFromList(bus) {
+            selectedBusRoute = bus.route;
+            selectedBusData = bus;
+            showAppScreen();
+        }
+
+        function showAppScreen() {
+            document.getElementById('homeScreen').style.display = 'none';
+            document.getElementById('appScreen').style.display = 'block';
+            
+            document.getElementById('userInfo').innerHTML = `
+                <strong>${currentUser.name}</strong><br>
+                Role: ${currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}
+            `;
+            
+            showPassengerView();
+            
+            setTimeout(() => {
+                document.getElementById('mapContainer').classList.add('visible');
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(position => {
+                        const userPos = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        map.setCenter(userPos);
+                        userMarker = new google.maps.Marker({
+                            position: userPos,
+                            map: map,
+                            title: 'Your Location',
+                            icon: {
+                                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                                    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="20" cy="20" r="18" fill="#3b82f6" stroke="#ffffff" stroke-width="3"/>
+                                        <circle cx="20" cy="20" r="6" fill="#ffffff"/>
+                                    </svg>
+                                `),
+                                scaledSize: new google.maps.Size(40, 40),
+                                anchor: new google.maps.Point(20, 20)
+                            }
+                        });
+                    });
+                }
+            }, 100);
+        }
+
+        function showPassengerView() {
+            document.getElementById('panelTitle').textContent = 'TransitLK Tracker';
+            document.getElementById('passengerView').style.display = 'block';
+            document.getElementById('driverView').style.display = 'none';
+            document.getElementById('mapTitle').textContent = 'TransitLK Live Tracker';
+            document.getElementById('mapStatus').textContent = 'Ready to track your bus';
+            
+            if (selectedBusData) {
+                document.getElementById('selectedBusInfo').innerHTML = `
+                    <strong>Route ${selectedBusData.route}</strong><br>
+                    Registration: ${selectedBusData.regNo}<br>
+                    Departure: ${selectedBusData.time}<br>
+                    Depot: ${selectedBusData.depot}
+                `;
+                document.getElementById('selectedRoute').textContent = busRoutes[selectedBusData.route].name;
+            }
         }
 
         function showLoginSuccess() {
@@ -1000,19 +1399,11 @@
                 ${currentUser.busRoute ? `<br>Route: ${currentUser.busRoute}` : ''}
             `;
             
-            if (currentUser.role === 'passenger') {
-                showPassengerView();
-            } else {
-                showDriverView();
-            }
-        }
-
-        function showPassengerView() {
-            document.getElementById('panelTitle').textContent = 'TransitLK Tracker';
-            document.getElementById('passengerView').style.display = 'block';
-            document.getElementById('driverView').style.display = 'none';
-            document.getElementById('mapTitle').textContent = 'TransitLK Live Tracker';
-            document.getElementById('mapStatus').textContent = 'Select a bus route to begin tracking';
+            showDriverView();
+            
+            setTimeout(() => {
+                document.getElementById('mapContainer').classList.add('visible');
+            }, 100);
         }
 
         function showDriverView() {
@@ -1026,6 +1417,31 @@
                 const route = busRoutes[currentUser.busRoute];
                 document.getElementById('driverRoute').textContent = route.name;
             }
+        }
+
+        function backToSearch() {
+            if (isTracking) {
+                stopPassengerTracking();
+            }
+            
+            if (busMarker) {
+                busMarker.setMap(null);
+                busMarker = null;
+            }
+            
+            if (routeLine) {
+                routeLine.setMap(null);
+                routeLine = null;
+            }
+            
+            selectedBusRoute = null;
+            selectedBusData = null;
+            
+            document.getElementById('appScreen').style.display = 'none';
+            document.getElementById('homeScreen').style.display = 'flex';
+            document.getElementById('mapContainer').classList.remove('visible');
+            
+            document.getElementById('busList').innerHTML = '';
         }
 
         function logout() {
@@ -1044,8 +1460,20 @@
                 busMarker = null;
             }
             
+            if (userMarker) {
+                userMarker.setMap(null);
+                userMarker = null;
+            }
+            
+            if (routeLine) {
+                routeLine.setMap(null);
+                routeLine = null;
+            }
+            
+            clearSession();
             currentUser = null;
             selectedBusRoute = null;
+            selectedBusData = null;
             isSharing = false;
             isTracking = false;
             previousLocation = null;
@@ -1053,6 +1481,7 @@
             currentSpeed = 0;
             
             document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('homeScreen').style.display = 'none';
             document.getElementById('appScreen').style.display = 'none';
             document.getElementById('logoutBtn').style.display = 'none';
             document.getElementById('companyFooter').style.display = 'none';
@@ -1060,6 +1489,7 @@
             document.getElementById('username').value = '';
             document.getElementById('password').value = '';
             document.getElementById('driverBusRoute').value = '';
+            document.getElementById('busList').innerHTML = '';
             
             const colombo = { lat: 6.9271, lng: 79.8612 };
             if (map) {
@@ -1068,21 +1498,42 @@
             }
         }
 
-        function selectBus() {
-            const routeSelect = document.getElementById('busRoute');
-            selectedBusRoute = routeSelect.value;
-            
-            if (selectedBusRoute) {
-                const route = busRoutes[selectedBusRoute];
-                document.getElementById('selectedRoute').textContent = route.name;
-                document.getElementById('startTrackingBtn').disabled = false;
-                document.getElementById('mapStatus').textContent = `Ready to track ${route.name}`;
-                showMessage(`Selected ${route.name}. Click "Start Tracking" to begin.`, 'info');
-            } else {
-                document.getElementById('selectedRoute').textContent = 'No route selected';
-                document.getElementById('startTrackingBtn').disabled = true;
-                document.getElementById('mapStatus').textContent = 'Select a bus route to begin tracking';
+        function drawRouteOnMap(routeNum) {
+            if (routeLine) {
+                routeLine.setMap(null);
             }
+            
+            const route = routeCoordinates[routeNum];
+            if (!route) return;
+            
+            const routePath = route.map(stop => ({ lat: stop.lat, lng: stop.lng }));
+            const routeColor = busRoutes[routeNum].color;
+            
+            routeLine = new google.maps.Polyline({
+                path: routePath,
+                geodesic: true,
+                strokeColor: routeColor,
+                strokeOpacity: 0.8,
+                strokeWeight: 4,
+                map: map
+            });
+            
+            route.forEach(stop => {
+                new google.maps.Marker({
+                    position: { lat: stop.lat, lng: stop.lng },
+                    map: map,
+                    title: stop.name,
+                    icon: {
+                        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                            <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="10" cy="10" r="8" fill="${routeColor}" stroke="#ffffff" stroke-width="2"/>
+                            </svg>
+                        `),
+                        scaledSize: new google.maps.Size(20, 20),
+                        anchor: new google.maps.Point(10, 10)
+                    }
+                });
+            });
         }
 
         async function startPassengerTracking() {
@@ -1095,10 +1546,12 @@
             document.getElementById('startTrackingBtn').disabled = true;
             document.getElementById('refreshBtn').disabled = false;
             document.getElementById('stopTrackingBtn').disabled = false;
-            document.getElementById('busRoute').disabled = true;
+            document.getElementById('controlPanel').classList.add('tracking-mode');
             
             updateBusStatus('warning', 'Searching for bus...');
             showMessage('Searching for active bus on this route...', 'info');
+            
+            drawRouteOnMap(selectedBusRoute);
             
             trackBusLocation();
         }
@@ -1205,19 +1658,27 @@
                 busMarker = null;
             }
             
+            if (routeLine) {
+                routeLine.setMap(null);
+                routeLine = null;
+            }
+            
             document.getElementById('startTrackingBtn').disabled = false;
             document.getElementById('refreshBtn').disabled = true;
             document.getElementById('stopTrackingBtn').disabled = true;
-            document.getElementById('busRoute').disabled = false;
+            document.getElementById('controlPanel').classList.remove('tracking-mode');
             document.getElementById('etaCard').style.display = 'none';
             
-            document.getElementById('busLocation').textContent = 'Bus location will appear here';
+            document.getElementById('busLocation').textContent = 'Start tracking to see location';
             document.getElementById('lastUpdated').textContent = 'Not tracking';
             
             updateBusStatus('disconnected', 'Tracking stopped');
             
-            const colombo = { lat: 6.9271, lng: 79.8612 };
-            if (map) {
+            if (userMarker) {
+                map.setCenter(userMarker.getPosition());
+                map.setZoom(13);
+            } else {
+                const colombo = { lat: 6.9271, lng: 79.8612 };
                 map.setCenter(colombo);
                 map.setZoom(13);
             }
@@ -1252,6 +1713,8 @@
             
             updateDriverStatus('warning', 'Starting GPS...');
             showMessage('Starting location sharing...', 'info');
+            
+            drawRouteOnMap(currentUser.busRoute);
             
             watchId = navigator.geolocation.watchPosition(
                 async (position) => {
@@ -1361,6 +1824,11 @@
             if (busMarker) {
                 busMarker.setMap(null);
                 busMarker = null;
+            }
+            
+            if (routeLine) {
+                routeLine.setMap(null);
+                routeLine = null;
             }
             
             isSharing = false;
