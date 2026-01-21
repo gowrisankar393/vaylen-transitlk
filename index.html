@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- (Keep all existing <meta> tags, styles, and head content the same) -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>TransitLK Beta</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -12,534 +11,758 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
-
-        :root {
-            --app-bg: #000000;
-            --glass-bg: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --accent-primary: #96d46c; /* TransitLK Green */
-            --accent-glow: rgba(150, 212, 108, 0.3);
-            --text-color: #ffffff;
-        }
-
-        .dashboard-night {
-            --accent-primary: #f97316;
-            --accent-glow: rgba(249, 115, 22, 0.5);
-            --glass-border: rgba(249, 115, 22, 0.2);
-        }
-
-        * {
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            overflow: hidden;
-            background-color: var(--app-bg);
-            color: var(--text-color);
-            height: 100dvh; 
-            width: 100vw;
-        }
-
-        .glass {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 32px;
-        }
-
-        .btn-flex {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-        }
-
-        .btn-hollow {
-            background: transparent;
-            border: 1.5px solid var(--glass-border);
-            color: var(--text-color);
-        }
-        .btn-hollow-accent {
-            background: transparent;
-            border: 1.5px solid var(--accent-primary);
-            color: var(--accent-primary);
-        }
-        .btn-hollow-red {
-            background: transparent;
-            border: 1.5px solid #ef4444;
-            color: #ef4444;
-            opacity: 0.7;
-        }
-
+        :root { --app-bg: #000000; --glass-bg: rgba(255, 255, 255, 0.03); --glass-border: rgba(255, 255, 255, 0.1); --accent-primary: #96d46c; --accent-glow: rgba(150, 212, 108, 0.5); --text-color: #ffffff; }
+        body.tracking-active { --accent-primary: #f97316; --accent-glow: rgba(249, 115, 22, 0.5); }
+        * { -webkit-tap-highlight-color: transparent; user-select: none; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        body { font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; background-color: var(--app-bg); color: var(--text-color); height: 100dvh; width: 100vw; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+        .glass { background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 32px; }
+        .btn-flex { display: flex; align-items: center; justify-content: center; text-align: center; }
+        .btn-hollow-accent { background: transparent; border: 1.5px solid var(--accent-primary); color: var(--accent-primary); }
         .dynamic-accent-text { color: var(--accent-primary); }
         .dynamic-accent-bg { background-color: var(--accent-primary); }
-        
-        .dash-val {
-            text-shadow: 0 0 20px var(--accent-glow);
-            letter-spacing: -0.05em;
-        }
-
-        #splash-screen {
-            position: fixed;
-            inset: 0;
-            z-index: 100;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.8s ease-out;
-        }
-
-        .logo-img-splash {
-            max-width: auto;
-            height: 180px;
-        }
-
-        .logo-img-header {
-            height: 50px;
-            width: auto;
-        }
-
-        .content-scroll {
-            flex: 1;
-            overflow-y: auto;
-            padding-bottom: 160px;
-            scrollbar-width: none;
-        }
+        .dash-val { letter-spacing: -0.05em; }
+        #splash-screen { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.8s ease-out; }
+        .logo-img-splash { height: 180px; width: auto; }
+        .logo-img-header { height: 50px; width: auto; }
+        .content-scroll { flex: 1; overflow-y: auto; padding-bottom: 160px; scrollbar-width: none; }
         .content-scroll::-webkit-scrollbar { display: none; }
-
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-
         .is-tracking .hide-on-trip { display: none !important; }
         .is-tracking .show-on-trip { display: flex !important; }
+        .is-tracking header .logo-img-header { display: none !important; }
+        .is-tracking header .btn-flex { display: none !important; }
         .show-on-trip { display: none; }
-
-        .safe-top { padding-top: env(safe-area-inset-top); }
-        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-
-        #map {
-            height: 280px;
-            width: 100%;
-            border-radius: 24px;
-        }
+        .btn-disabled { opacity: 0.3; pointer-events: none; cursor: not-allowed; }
+        .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 16px; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; }
+        .status-ready { background: rgba(150, 212, 108, 0.15); color: #96d46c; border: 1px solid rgba(150, 212, 108, 0.3); }
+        .status-waiting { background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); }
+        .status-error { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+        #map { height: 70vh; width: 100%; border-radius: 24px; }
+        #settings-menu { position: fixed; top: 0; left: -100%; width: 80%; max-width: 320px; height: 100%; background: rgba(0, 0, 0, 0.98); border-right: 1px solid var(--glass-border); transition: left 0.3s ease; z-index: 90; }
+        #settings-menu.open { left: 0; }
+        #menu-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 89; }
+        #menu-overlay.visible { opacity: 1; pointer-events: all; }
+        .location-name { font-size: 11px; font-weight: 600; opacity: 0.7; max-width: 150px; text-align: left; line-height: 1.2; }
+        .accel-value { font-size: 26px; font-weight: 900; letter-spacing: -0.05em; }
+        .decelerating { color: #ef4444; }
+        .accelerating { color: #96d46c; }
+        .stat-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .stat-item:last-child { border-bottom: none; }
+        .stat-label { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.4; }
+        .stat-value { font-size: 14px; font-weight: 700; }
     </style>
 </head>
 <body class="flex flex-col" id="app-body">
 
-    <!-- SPLASH SCREEN -->
-    <div id="splash-screen">
-        <img src="logo.png" alt="Logo" class="logo-img-splash">
+<div id="splash-screen"><img src="logo.png" alt="Logo" class="logo-img-splash"></div>
+<div id="menu-overlay" onclick="toggleMenu()"></div>
+
+<div id="settings-menu" class="flex flex-col p-6">
+    <div class="flex justify-between items-center mb-8 mt-4">
+        <h2 class="text-lg font-black uppercase tracking-widest">Settings</h2>
+        <button onclick="toggleMenu()" class="w-10 h-10 glass btn-flex rounded-xl"><i data-lucide="x" size="20"></i></button>
+    </div>
+    <div class="space-y-6">
+        <div class="glass p-5">
+            <p class="text-[10px] font-black uppercase opacity-40 mb-3">GPS Status</p>
+            <div class="flex items-center gap-3">
+                <div id="menu-gps-status" class="w-3 h-3 rounded-full bg-red-500"></div>
+                <p id="menu-gps-text" class="text-sm font-bold">Initializing...</p>
+            </div>
+            <p id="menu-sat-count" class="text-[9px] opacity-40 uppercase font-black tracking-widest mt-2">Satellites: --</p>
+        </div>
+        <button onclick="calibrateSensors()" class="w-full glass p-5 text-left active:scale-[0.98]">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm font-black uppercase dynamic-accent-text">Calibrate Sensors</p>
+                    <p class="text-[10px] opacity-40 mt-1">Reset to current phone angle</p>
+                </div>
+                <i data-lucide="target" size="24" class="dynamic-accent-text"></i>
+            </div>
+        </button>
+    </div>
+    <div class="mt-auto">
+        <div class="glass p-4 text-center">
+            <p class="text-[9px] opacity-30 uppercase tracking-wider">TransitLK Beta v1.0</p>
+            <p class="text-[9px] opacity-20 mt-1">Green standby • Amber tracking</p>
+        </div>
+    </div>
+</div>
+
+<div class="flex-1 flex flex-col px-6 pt-4 max-w-lg mx-auto w-full overflow-hidden">
+    <header class="flex justify-between items-center mb-6">
+        <div class="flex items-center gap-3">
+            <button onclick="toggleMenu()" class="w-10 h-10 glass btn-flex rounded-xl hide-on-trip">
+                <i data-lucide="menu" size="20"></i>
+            </button>
+            <img src="logo2.png" alt="Logo" class="logo-img-header">
+            <!-- Location name display during tracking -->
+            <div id="location-name" class="location-name show-on-trip"></div>
+        </div>
+        <div class="show-on-trip flex flex-col items-end">
+            <p id="live-time" class="text-lg font-black tracking-tighter leading-none dynamic-accent-text">00:00:00</p>
+            <p id="live-date" class="text-[9px] font-bold opacity-40 uppercase tracking-widest">Jan 01, 2025</p>
+        </div>
+    </header>
+
+    <div class="glass p-1.5 flex gap-1 mb-6 hide-on-trip">
+        <button onclick="switchTab('tracker')" id="btn-tracker" class="flex-1 py-3 rounded-[22px] font-black text-xs uppercase tracking-widest bg-white/10 dynamic-accent-text btn-flex">Tracker</button>
+        <button onclick="switchTab('trips')" id="btn-trips" class="flex-1 py-3 rounded-[22px] font-black text-xs uppercase tracking-widest opacity-30 btn-flex">Trips</button>
     </div>
 
-    <!-- Layout Wrapper -->
-    <div class="flex-1 flex flex-col px-6 pt-4 safe-top max-w-lg mx-auto w-full overflow-hidden">
-        
-        <!-- HEADER -->
-        <header class="flex justify-between items-center mb-6">
-            <div class="flex items-center">
-                <img src="logo2.png" alt="Logo" class="logo-img-header">
-            </div>
-            
-            <div class="flex gap-2 hide-on-trip">
-                <button onclick="requestPermissions()" id="sensor-btn" class="glass h-10 px-4 btn-flex text-[10px] font-black uppercase tracking-widest dynamic-accent-text">
-                    CONNECT
-                </button>
-            </div>
-
-            <!-- Dashboard Clock (Visible only during trip) -->
-            <div class="show-on-trip flex flex-col items-end">
-                <p id="live-time" class="text-lg font-black tracking-tighter leading-none dynamic-accent-text">00:00:00</p>
-                <p id="live-date" class="text-[9px] font-bold opacity-40 uppercase tracking-widest">Jan 01, 2024</p>
-            </div>
-        </header>
-
-        <!-- Navigation Tabs -->
-        <div class="glass p-1.5 flex gap-1 mb-6 hide-on-trip">
-            <button onclick="switchTab('tracker')" id="btn-tracker" class="flex-1 py-3 rounded-[22px] font-black text-xs uppercase tracking-widest bg-white/10 dynamic-accent-text btn-flex">Tracker</button>
-            <button onclick="switchTab('trips')" id="btn-trips" class="flex-1 py-3 rounded-[22px] font-black text-xs uppercase tracking-widest opacity-30 btn-flex">Trips</button>
-        </div>
-
-        <div class="content-scroll">
-            <!-- TRACKER TAB -->
-            <div id="tab-tracker" class="tab-content active space-y-6">
-                
-                <!-- ACTIVE TRIP MODE (Driver Dashboard) -->
-                <div class="show-on-trip flex flex-col space-y-8">
-                    <div class="text-center py-6">
-                        <p class="text-8xl font-black tracking-tighter dash-val dynamic-accent-text leading-none" id="speed-trip">0.0</p>
-                        <p class="text-[12px] font-black opacity-30 uppercase tracking-[0.4em] mt-4 text-center">Kilometers Per Hour</p>
-                    </div>
-
-                    <div class="glass p-6 space-y-6">
-                        <div class="flex justify-between items-center">
-                            <div class="space-y-1 w-full text-center">
-                                <p class="text-[10px] font-black opacity-30 uppercase tracking-widest">Current Coordinates</p>
-                                <p id="coords-trip" class="font-mono text-sm font-bold tracking-tight">--° --' --" N, --° --' --" E</p>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4 border-t border-white/5 pt-6">
-                            <div class="text-center border-r border-white/5">
-                                <p class="text-[10px] font-black opacity-30 uppercase tracking-widest">Altitude</p>
-                                <p class="text-xl font-black"><span id="alt-trip">0</span> <span class="text-[10px] opacity-40">m</span></p>
-                            </div>
-                            <div class="text-center">
-                                <p class="text-[10px] font-black opacity-30 uppercase tracking-widest">Direction</p>
-                                <p id="dir-trip" class="text-xl font-black dynamic-accent-text uppercase">--</p>
-                            </div>
-                        </div>
-                    </div>
+    <div class="content-scroll">
+        <div id="tab-tracker" class="tab-content active space-y-6">
+            <div class="show-on-trip flex flex-col space-y-8">
+                <div class="text-center py-8">
+                    <p class="text-9xl font-black tracking-tighter dash-val dynamic-accent-text leading-none" id="speed-trip">0.0</p>
+                    <p class="text-[14px] font-black opacity-30 uppercase tracking-[0.4em] mt-6">KM/H</p>
                 </div>
 
-                <!-- STANDBY MODE -->
                 <div class="hide-on-trip space-y-6">
-                    <div class="glass p-6">
-                        <div class="flex justify-between items-center mb-8">
-                            <span class="text-[10px] font-black uppercase tracking-widest dynamic-accent-text">Telemetry Engine</span>
-                            <div id="gps-status" class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_10px_#ef4444]"></div>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between gap-3">
+                        <span id="gps-status-badge" class="status-badge status-error flex-1 justify-center">
+                            <div class="w-2 h-2 rounded-full bg-current"></div>
+                            <span id="gps-status-text">GPS Initializing</span>
+                        </span>
+                            <button onclick="calibrateSensors()" id="calibrate-btn" class="glass px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest dynamic-accent-text active:scale-95 flex items-center gap-2">
+                                <i data-lucide="target" size="16"></i>
+                                Calibrate
+                            </button>
                         </div>
-                        <div class="flex items-end justify-between mb-8">
-                            <div>
-                                <p class="text-6xl font-black tracking-tighter" id="speed">0.0</p>
-                                <p class="text-[10px] font-black opacity-30 uppercase tracking-widest">Speed</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-xl font-black" id="heading-text">--</p>
-                                <p class="text-[10px] font-black opacity-30 uppercase tracking-widest">Heading</p>
-                            </div>
-                        </div>
-                        <div class="space-y-4 border-t border-white/5 pt-6">
-                            <div class="flex justify-between font-mono text-sm">
-                                <span class="opacity-40 uppercase">Lat</span> <span id="lat-dms">--° --' --"</span>
-                            </div>
-                            <div class="flex justify-between font-mono text-sm">
-                                <span class="opacity-40 uppercase">Lng</span> <span id="lng-dms">--° --' --"</span>
-                            </div>
-                        </div>
-                        <div class="mt-4 p-3 rounded-2xl bg-white/5 border border-white/5 text-center btn-flex">
-                            <p id="overall-direction" class="text-[11px] font-black dynamic-accent-text uppercase tracking-wider">Awaiting movement...</p>
-                        </div>
-                    </div>
-
-                    <div class="glass p-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <span class="text-[10px] font-black uppercase tracking-widest opacity-30">Calibration</span>
-                            <button onclick="calibrateSensors()" class="btn-hollow px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest active:bg-white/10 btn-flex">Calibrate</button>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4 text-xs font-mono opacity-50">
-                            <div class="text-center">ACCEL X: <span id="accel-x">0.00</span></div>
-                            <div class="text-center">GYRO R: <span id="gyro-r">0.0</span></div>
+                        <div class="glass p-4 text-center">
+                            <p id="sat-count" class="text-[10px] opacity-40 uppercase font-black tracking-widest">Satellites: --</p>
                         </div>
                     </div>
                 </div>
+
+                <div class="glass p-6 space-y-5">
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="text-center">
+                            <p class="text-[10px] font-black opacity-30 uppercase tracking-widest">Avg Speed</p>
+                            <p class="text-2xl font-black dynamic-accent-text mt-2" id="avg-speed-trip">0.0</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-[10px] font-black opacity-30 uppercase tracking-widest">Heading</p>
+                            <p class="text-2xl font-black dynamic-accent-text mt-2" id="heading-trip">--</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-[10px] font-black opacity-30 uppercase tracking-widest">Direction</p>
+                            <p class="text-xl font-black mt-2" id="direction-trip">--</p>
+                        </div>
+                    </div>
+                    <div class="border-t border-white/5 pt-5">
+                        <p class="text-[10px] font-black opacity-30 uppercase tracking-widest text-center mb-2">Coordinates</p>
+                        <p id="coords-trip" class="font-mono text-sm font-bold tracking-tight text-center">--° --' --" N, --° --' --" E</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 border-t border-white/5 pt-5">
+                        <div class="text-center">
+                            <p class="text-[10px] font-black opacity-30 uppercase tracking-widest">Duration</p>
+                            <p class="text-2xl font-black dynamic-accent-text mt-2" id="trip-duration">00:00:00</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-[10px] font-black opacity-30 uppercase tracking-widest">Distance</p>
+                            <p class="text-2xl font-black dynamic-accent-text mt-2" id="trip-distance">0.00 km</p>
+                        </div>
+                    </div>
+                    <!-- Acceleration and Max Speed -->
+                    <div class="grid grid-cols-2 gap-4 border-t border-white/5 pt-5">
+                        <div class="text-center">
+                            <p class="text-[10px] font-black opacity-30 uppercase tracking-widest">Acceleration</p>
+                            <p class="accel-value dynamic-accent-text mt-2" id="acceleration">0.00</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-[10px] font-black opacity-30 uppercase tracking-widest">Max Speed</p>
+                            <p class="text-2xl font-black dynamic-accent-text mt-2" id="max-speed-trip">0.0</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- TRIPS TAB -->
-            <div id="tab-trips" class="tab-content space-y-4">
-                <div id="trip-list" class="space-y-4"></div>
+            <div class="hide-on-trip space-y-6">
+
+
+                <div class="glass p-6">
+                    <div class="flex justify-between items-center mb-8">
+                        <span class="text-[10px] font-black uppercase tracking-widest dynamic-accent-text">Telemetry Engine</span>
+                    </div>
+                    <div class="flex items-end justify-between mb-8">
+                        <div>
+                            <p class="text-6xl font-black tracking-tighter" id="speed">0.0</p>
+                            <p class="text-[10px] font-black opacity-30 uppercase tracking-widest">Speed (km/h)</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xl font-black" id="heading-text">--</p>
+                            <p class="text-[10px] font-black opacity-30 uppercase tracking-widest">Heading</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4 border-t border-white/5 pt-6">
+                        <div class="flex justify-between font-mono text-sm">
+                            <span class="opacity-40 uppercase">Lat</span> <span id="lat-dms">--° --' --"</span>
+                        </div>
+                        <div class="flex justify-between font-mono text-sm">
+                            <span class="opacity-40 uppercase">Lng</span> <span id="lng-dms">--° --' --"</span>
+                        </div>
+                        <div class="flex justify-between font-mono text-sm">
+                            <span class="opacity-40 uppercase">Accuracy</span> <span id="accuracy">-- m</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass p-6">
+                    <p class="text-[10px] font-black uppercase tracking-widest opacity-30 mb-6">Motion Sensors</p>
+                    <div class="grid grid-cols-2 gap-4 text-xs font-mono">
+                        <div class="space-y-3">
+                            <div class="p-3 rounded-2xl bg-white/5">
+                                <p class="text-[9px] opacity-40 uppercase mb-1">Accel X</p>
+                                <p class="dynamic-accent-text font-black"><span id="accel-x">0.00</span> m/s²</p>
+                            </div>
+                            <div class="p-3 rounded-2xl bg-white/5">
+                                <p class="text-[9px] opacity-40 uppercase mb-1">Accel Y</p>
+                                <p class="dynamic-accent-text font-black"><span id="accel-y">0.00</span> m/s²</p>
+                            </div>
+                            <div class="p-3 rounded-2xl bg-white/5">
+                                <p class="text-[9px] opacity-40 uppercase mb-1">Accel Z</p>
+                                <p class="dynamic-accent-text font-black"><span id="accel-z">0.00</span> m/s²</p>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="p-3 rounded-2xl bg-white/5">
+                                <p class="text-[9px] opacity-40 uppercase mb-1">Gyro X</p>
+                                <p class="dynamic-accent-text font-black"><span id="gyro-x">0.0</span> °/s</p>
+                            </div>
+                            <div class="p-3 rounded-2xl bg-white/5">
+                                <p class="text-[9px] opacity-40 uppercase mb-1">Gyro Y</p>
+                                <p class="dynamic-accent-text font-black"><span id="gyro-y">0.0</span> °/s</p>
+                            </div>
+                            <div class="p-3 rounded-2xl bg-white/5">
+                                <p class="text-[9px] opacity-40 uppercase mb-1">Gyro Z</p>
+                                <p class="dynamic-accent-text font-black"><span id="gyro-z">0.0</span> °/s</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Sticky Bottom Controls -->
-        <div class="fixed bottom-0 left-0 right-0 p-8 safe-bottom pointer-events-none">
-            <div class="max-w-md mx-auto pointer-events-auto flex flex-col gap-3">
-                <button id="start-btn" onclick="startTrip()" class="hide-on-trip w-full py-6 dynamic-accent-bg text-black rounded-[28px] font-black uppercase tracking-[0.3em] shadow-2xl active:scale-[0.96] btn-flex">
-                    Start Tracking
-                </button>
-                <button id="stop-btn" onclick="stopTrip()" class="show-on-trip w-full py-5 btn-hollow-accent rounded-[24px] font-black uppercase tracking-[0.2em] active:bg-white/5 hidden btn-flex">
-                    Finish Trip
-                </button>
-                <button id="emergency-btn" class="show-on-trip w-full py-5 btn-hollow-red rounded-[24px] font-black uppercase tracking-[0.2em] active:bg-red-500/10 hidden btn-flex">
-                    Report Emergency
-                </button>
-            </div>
-        </div>
-
-        <!-- Modal -->
-        <div id="trip-modal" class="fixed inset-0 z-[100] bg-black hidden flex flex-col p-6 safe-top safe-bottom">
-            <div class="flex justify-between items-center mb-6">
-                <h2 id="modal-title" class="text-xs font-black uppercase tracking-widest dynamic-accent-text">Trip Telemetry</h2>
-                <button onclick="closeModal()" class="w-12 h-12 glass btn-flex rounded-2xl"><i data-lucide="x"></i></button>
-            </div>
-            <div class="flex-1 flex flex-col gap-6 overflow-hidden">
-                <div id="map" class="border border-white/10"></div>
-                <div class="flex gap-3">
-                    <button onclick="downloadCSV()" class="flex-1 glass py-5 text-xs font-black uppercase tracking-widest dynamic-accent-text btn-flex">Export CSV</button>
-                    <button onclick="deleteTrip()" class="w-16 glass py-5 btn-flex text-red-500"><i data-lucide="trash-2" size="18"></i></button>
-                </div>
-                <div class="flex-1 glass p-5 overflow-auto">
-                    <pre id="csv-preview" class="text-[10px] font-mono opacity-50"></pre>
-                </div>
+        <div id="tab-trips" class="tab-content space-y-4">
+            <div id="trip-list" class="space-y-4">
+                <div class="glass p-16 text-center opacity-30 text-[10px] font-black uppercase tracking-widest">Loading trips...</div>
             </div>
         </div>
     </div>
 
-    <script>
+    <div class="fixed bottom-0 left-0 right-0 p-8 pointer-events-none">
+        <div class="max-w-md mx-auto pointer-events-auto flex flex-col gap-3">
+            <button id="start-btn" onclick="startTrip()" class="hide-on-trip w-full py-6 dynamic-accent-bg text-black rounded-[28px] font-black uppercase tracking-[0.3em] shadow-2xl active:scale-[0.96] btn-flex">
+                Start Tracking
+            </button>
+            <button id="stop-btn" onclick="stopTrip()" class="show-on-trip w-full py-5 btn-hollow-accent rounded-[24px] font-black uppercase tracking-[0.2em] active:bg-white/5 hidden btn-flex">
+                Finish Trip
+            </button>
+        </div>
+    </div>
+
+    <!-- ✅ ENHANCED: Trip modal with stats -->
+    <div id="trip-modal" class="fixed inset-0 z-[100] bg-black hidden flex flex-col p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 id="modal-title" class="text-xs font-black uppercase tracking-widest dynamic-accent-text">Trip Telemetry</h2>
+            <button onclick="closeModal()" class="w-12 h-12 glass btn-flex rounded-2xl"><i data-lucide="x"></i></button>
+        </div>
+        <div class="flex-1 flex flex-col gap-6 overflow-hidden">
+            <div id="map" class="border border-white/10"></div>
+            <div class="flex gap-3">
+                <button onclick="downloadCSV()" class="flex-1 glass py-5 text-xs font-black uppercase tracking-widest dynamic-accent-text btn-flex">Export CSV</button>
+                <button onclick="deleteTrip()" class="w-16 glass py-5 btn-flex text-red-500"><i data-lucide="trash-2" size="18"></i></button>
+            </div>
+            <!-- ✅ NEW: Trip Stats Section -->
+            <div class="glass p-5">
+                <h3 class="text-[10px] font-black uppercase tracking-widest opacity-40 mb-4">Trip Statistics</h3>
+                <div class="space-y-2" id="trip-stats">
+                    <!-- Stats will be populated here -->
+                </div>
+            </div>
+            <div class="flex-1 glass p-5 overflow-auto">
+                <pre id="csv-preview" class="text-[10px] font-mono opacity-50"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    lucide.createIcons();
+
+    const isAndroid = typeof Android !== 'undefined';
+    let activeTripId = null;
+    let tripsHistory = [];
+    let map;
+    let isGPSReady = false;
+    let isSensorsCalibrated = false;
+    let tripStartTime = null;
+    let totalDistance = 0;
+    let lastLat = null;
+    let lastLng = null;
+    let lastValidTime = null;
+    let lastSpeed = 0; // ✅ For acceleration calculation
+    let maxSpeed = 0;  // ✅ Track max speed
+    let locationUpdateCounter = 0; // ✅ Throttle location name updates
+
+    // ✅ IMPROVED PARAMETERS
+    let speedHistory = [];
+    const SPEED_HISTORY_SIZE = 4;
+    const MIN_ACCURACY_FOR_SPEED = 50;
+    const MIN_ACCURACY_FOR_DISTANCE = 35;
+    const STATIONARY_THRESHOLD = 0.1;
+    const MIN_MOVEMENT_SPEED = 0.2;
+    const MIN_TIME_BETWEEN_DISTANCE = 500;
+    const MAX_DISTANCE_PER_UPDATE = 0.15;
+    const MIN_SATS_FOR_QUALITY = 4;
+
+    // Update live time
+    setInterval(() => {
+        const now = new Date();
+        const liveTime = document.getElementById('live-time');
+        const liveDate = document.getElementById('live-date');
+        if (liveTime) liveTime.innerText = now.toLocaleTimeString('en-US', { hour12: false });
+        if (liveDate) liveDate.innerText = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }, 1000);
+
+    // ✅ CORRECT: Update trip stats including average speed
+    setInterval(() => {
+        if (tripStartTime) {
+            const elapsed = Date.now() - tripStartTime;
+            const hours = Math.floor(elapsed / 3600000);
+            const minutes = Math.floor((elapsed % 3600000) / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            const duration = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            document.getElementById('trip-duration').innerText = duration;
+            document.getElementById('trip-distance').innerText = `${totalDistance.toFixed(2)} km`;
+
+            // ✅ CORRECT: Calculate average speed for ENTIRE trip
+            const elapsedHours = elapsed / 3600000;
+            const avgSpeed = elapsedHours > 0 ? (totalDistance / elapsedHours) : 0;
+            document.getElementById('avg-speed-trip').innerText = avgSpeed.toFixed(1);
+        }
+    }, 1000);
+
+    function updateStartButtonState() {
+        const btn = document.getElementById('start-btn');
+        if (isGPSReady && isSensorsCalibrated) {
+            btn.classList.remove('btn-disabled');
+        } else {
+            btn.classList.add('btn-disabled');
+        }
+    }
+
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            const splash = document.getElementById('splash-screen');
+            if (splash) {
+                splash.style.opacity = '0';
+                setTimeout(() => splash.style.display = 'none', 800);
+            }
+        }, 2500);
+        loadTrips();
+        updateStartButtonState();
+    });
+
+    function toggleMenu() {
+        const menu = document.getElementById('settings-menu');
+        const overlay = document.getElementById('menu-overlay');
+        menu.classList.toggle('open');
+        overlay.classList.toggle('visible');
         lucide.createIcons();
+    }
 
-        let isRecording = false;
-        let tripData = [];
-        let tripsHistory = JSON.parse(localStorage.getItem('transitlk_trips') || '[]');
-        let startPoint = null, currentPoint = null, activeTripId = null;
-        let offsets = { accel: { x: 0, y: 0, z: 0 }, gyro: { alpha: 0, beta: 0, gamma: 0 } };
-        let rawSensors = { accel: { x: 0, y: 0, z: 0 }, gyro: { alpha: 0, beta: 0, gamma: 0 } };
-
-        setInterval(() => {
-            const now = new Date();
-            const liveTime = document.getElementById('live-time');
-            const liveDate = document.getElementById('live-date');
-            if (liveTime) liveTime.innerText = now.toLocaleTimeString('en-US', { hour12: false });
-            if (liveDate) liveDate.innerText = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        }, 1000);
-
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                const splash = document.getElementById('splash-screen');
-                if (splash) {
-                    splash.style.opacity = '0';
-                    setTimeout(() => splash.style.display = 'none', 800);
-                }
-            }, 2500);
-            updateTripList();
-        });
-
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            const targetTab = document.getElementById('tab-' + tab);
-            if (targetTab) targetTab.classList.add('active');
-            
-            const btns = ['btn-tracker', 'btn-trips'];
-            btns.forEach(b => {
-                const el = document.getElementById(b);
-                if (el) {
-                    if (b === 'btn-' + tab) {
-                        el.classList.add('bg-white/10', 'dynamic-accent-text');
-                        el.style.opacity = "1";
-                    } else {
-                        el.classList.remove('bg-white/10', 'dynamic-accent-text');
-                        el.style.opacity = "0.3";
-                    }
-                }
-            });
-            if (tab === 'trips') updateTripList();
+    function calibrateSensors() {
+        if (isAndroid) {
+            Android.calibrateSensors();
+            isSensorsCalibrated = true;
+            updateStartButtonState();
         }
+    }
 
-        function toDMS(decimal, isLat) {
-            const absolute = Math.abs(decimal);
-            const degrees = Math.floor(absolute);
-            const minutes = Math.floor((absolute - degrees) * 60);
-            const seconds = (((absolute - degrees) * 60 - minutes) * 60).toFixed(6);
-            const dir = isLat ? (decimal >= 0 ? "N" : "S") : (decimal >= 0 ? "E" : "W");
-            return `${degrees}° ${minutes}' ${seconds}" ${dir}`;
-        }
-
-        function calculateBearing(lat1, lon1, lat2, lon2) {
-            const φ1 = lat1 * Math.PI/180, φ2 = lat2 * Math.PI/180;
-            const Δλ = (lon2 - lon1) * Math.PI/180;
-            const y = Math.sin(Δλ) * Math.cos(φ2);
-            const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-            let θ = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-            const dirs = ['North', 'N-East', 'East', 'S-East', 'South', 'S-West', 'West', 'N-West'];
-            return dirs[Math.round(θ / 45) % 8];
-        }
-
-        async function requestPermissions() {
-            try {
-                if (typeof DeviceOrientationEvent.requestPermission === 'function') await DeviceOrientationEvent.requestPermission();
-                window.addEventListener('devicemotion', (e) => {
-                    rawSensors.accel = { x: e.acceleration.x || 0, y: e.acceleration.y || 0, z: e.acceleration.z || 0 };
-                    const el = document.getElementById('accel-x');
-                    if (el) el.innerText = (rawSensors.accel.x - offsets.accel.x).toFixed(2);
-                });
-                window.addEventListener('deviceorientation', (e) => {
-                    rawSensors.gyro = { alpha: e.alpha || 0, beta: e.beta || 0, gamma: e.gamma || 0 };
-                    const el = document.getElementById('gyro-r');
-                    if (el) el.innerText = (rawSensors.gyro.alpha - offsets.gyro.alpha).toFixed(1);
-                });
-                startGPSTracking();
-                const btn = document.getElementById('sensor-btn');
-                if (btn) {
-                    btn.innerText = 'CONNECTED';
-                    btn.classList.add('bg-[#96d46c]/10');
-                }
-            } catch (e) { console.error(e); }
-        }
-
-        function startGPSTracking() {
-            if ("geolocation" in navigator) {
-                navigator.geolocation.watchPosition((pos) => {
-                    const { latitude, longitude, speed, heading, altitude } = pos.coords;
-                    currentPoint = { lat: latitude, lng: longitude };
-                    
-                    const dmsLat = toDMS(latitude, true);
-                    const dmsLng = toDMS(longitude, false);
-                    const spdKmh = ((speed || 0) * 3.6).toFixed(1);
-                    const altVal = altitude ? altitude.toFixed(0) : 0;
-
-                    const statusEl = document.getElementById('gps-status');
-                    if (statusEl) statusEl.className = 'w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]';
-                    
-                    const latEl = document.getElementById('lat-dms');
-                    if (latEl) latEl.innerText = dmsLat;
-                    
-                    const lngEl = document.getElementById('lng-dms');
-                    if (lngEl) lngEl.innerText = dmsLng;
-                    
-                    const spdEl = document.getElementById('speed');
-                    if (spdEl) spdEl.innerText = spdKmh;
-                    
-                    const spdTripEl = document.getElementById('speed-trip');
-                    if (spdTripEl) spdTripEl.innerText = spdKmh;
-                    
-                    const coordsTripEl = document.getElementById('coords-trip');
-                    if (coordsTripEl) coordsTripEl.innerText = `${dmsLat}, ${dmsLng}`;
-                    
-                    const altTripEl = document.getElementById('alt-trip');
-                    if (altTripEl) altTripEl.innerText = altVal;
-                    
-                    const headEl = document.getElementById('heading-text');
-                    if (headEl) headEl.innerText = heading ? `${heading.toFixed(0)}°` : '--';
-
-                    if (isRecording) {
-                        if (!startPoint) startPoint = currentPoint;
-                        const overall = calculateBearing(startPoint.lat, startPoint.lng, latitude, longitude);
-                        
-                        const overallDirEl = document.getElementById('overall-direction');
-                        if (overallDirEl) overallDirEl.innerText = `Heading ${overall} Overall`;
-                        
-                        const dirTripEl = document.getElementById('dir-trip');
-                        if (dirTripEl) dirTripEl.innerText = overall;
-
-                        tripData.push({
-                            ts: new Date().toISOString(),
-                            lat: latitude, lng: longitude, alt: altVal,
-                            spd: (speed || 0).toFixed(3),
-                            ax: (rawSensors.accel.x - offsets.accel.x).toFixed(4),
-                            ay: (rawSensors.accel.y - offsets.accel.y).toFixed(4),
-                            az: (rawSensors.accel.z - offsets.accel.z).toFixed(4),
-                            gr: (rawSensors.gyro.alpha - offsets.gyro.alpha).toFixed(2),
-                            gp: (rawSensors.gyro.beta - offsets.gyro.beta).toFixed(2),
-                            gy: (rawSensors.gyro.gamma - offsets.gyro.gamma).toFixed(2)
-                        });
-                    }
-                }, null, { enableHighAccuracy: true });
-            }
-        }
-
-        function calibrateSensors() {
-            offsets.accel = { ...rawSensors.accel };
-            offsets.gyro = { ...rawSensors.gyro };
-        }
-
-        function startTrip() {
-            const currentHour = new Date().getHours();
-            if (currentHour >= 18 || currentHour < 6) document.body.classList.add('dashboard-night');
-            
-            isRecording = true;
-            tripData = [];
-            startPoint = currentPoint;
-            
-            const appBody = document.getElementById('app-body');
-            if (appBody) appBody.classList.add('is-tracking');
-            
-            const overallDirEl = document.getElementById('overall-direction');
-            if (overallDirEl) overallDirEl.innerText = "CALIBRATING JOURNEY...";
-        }
-
-        function stopTrip() {
-            isRecording = false;
-            document.body.classList.remove('dashboard-night');
-            
-            const appBody = document.getElementById('app-body');
-            if (appBody) appBody.classList.remove('is-tracking');
-            
-            const overallDirEl = document.getElementById('overall-direction');
-            if (overallDirEl) overallDirEl.innerText = "Trip Data Secured.";
-            
-            if (tripData.length > 0) {
-                const trip = { id: Date.now(), date: new Date().toLocaleString(), data: tripData, start: startPoint };
-                tripsHistory.unshift(trip);
-                localStorage.setItem('transitlk_trips', JSON.stringify(tripsHistory));
-            }
-            updateTripList();
-        }
-
-        function updateTripList() {
-            const list = document.getElementById('trip-list');
-            if (!list) return;
-            
-            if (tripsHistory.length === 0) {
-                list.innerHTML = `<div class="glass p-16 text-center opacity-30 text-[10px] font-black uppercase tracking-widest">No Trips Saved</div>`;
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-' + tab).classList.add('active');
+        ['btn-tracker', 'btn-trips'].forEach(b => {
+            const el = document.getElementById(b);
+            if (b === 'btn-' + tab) {
+                el.classList.add('bg-white/10', 'dynamic-accent-text');
+                el.style.opacity = "1";
             } else {
-                list.innerHTML = tripsHistory.map(t => `
-                    <div onclick="viewTrip(${t.id})" class="glass p-5 flex justify-between items-center active:scale-[0.98]">
-                        <div class="flex items-center gap-5">
-                            <div class="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center dynamic-accent-text"><i data-lucide="file-text" size="20"></i></div>
-                            <div><p class="text-[11px] font-black uppercase">${t.date}</p><p class="text-[9px] opacity-40 uppercase font-black tracking-widest mt-0.5">${t.data.length} frames</p></div>
-                        </div>
-                        <i data-lucide="chevron-right" size="16" class="opacity-20"></i>
+                el.classList.remove('bg-white/10', 'dynamic-accent-text');
+                el.style.opacity = "0.3";
+            }
+        });
+        if (tab === 'trips') loadTrips();
+    }
+
+    function toDMS(decimal, isLat) {
+        const absolute = Math.abs(decimal);
+        const degrees = Math.floor(absolute);
+        const minutes = Math.floor((absolute - degrees) * 60);
+        const seconds = (((absolute - degrees) * 60 - minutes) * 60).toFixed(2);
+        const dir = isLat ? (decimal >= 0 ? "N" : "S") : (decimal >= 0 ? "E" : "W");
+        return `${degrees}° ${minutes}' ${seconds}" ${dir}`;
+    }
+
+    function calculateDistance(lat1, lng1, lat2, lng2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
+    function getFilteredSpeed(rawSpeedKmh, accuracy, satellites) {
+        if (accuracy > 100 || satellites < 3) {
+            return speedHistory.length > 0 ? speedHistory[speedHistory.length - 1] : 0.0;
+        }
+        const cleanSpeed = rawSpeedKmh < STATIONARY_THRESHOLD ? 0.0 : rawSpeedKmh;
+        speedHistory.push(cleanSpeed);
+        if (speedHistory.length > SPEED_HISTORY_SIZE) speedHistory.shift();
+        if (speedHistory.length < 2) return cleanSpeed;
+        const avg = speedHistory.reduce((a, b) => a + b, 0) / speedHistory.length;
+        return avg;
+    }
+
+    function isValidForDistanceCalculation(speed, accuracy, satellites, timeSinceLastUpdate) {
+        if (accuracy > 50) return false;
+        if (satellites < 3) return false;
+        if (speed < MIN_MOVEMENT_SPEED) return false;
+        if (timeSinceLastUpdate < MIN_TIME_BETWEEN_DISTANCE) return false;
+        return true;
+    }
+
+    function startTrip() {
+        if (!isGPSReady || !isSensorsCalibrated) return;
+        document.getElementById('app-body').classList.add('is-tracking', 'tracking-active');
+        tripStartTime = Date.now();
+        totalDistance = 0;
+        lastLat = null;
+        lastLng = null;
+        lastValidTime = null;
+        lastSpeed = 0;
+        maxSpeed = 0;
+        locationUpdateCounter = 0;
+        speedHistory = [];
+        if (isAndroid) Android.startTracking();
+    }
+
+    function stopTrip() {
+        document.getElementById('app-body').classList.remove('is-tracking', 'tracking-active');
+        tripStartTime = null;
+        totalDistance = 0;
+        lastLat = null;
+        lastLng = null;
+        lastValidTime = null;
+        lastSpeed = 0;
+        maxSpeed = 0;
+        speedHistory = [];
+        if (isAndroid) Android.stopTracking();
+    }
+
+    function updateGPS(data) {
+        try {
+            const rawSpeedKmh = data.speed * 3.6;
+            const satCount = data.satellites || 0;
+            const filteredSpeed = getFilteredSpeed(rawSpeedKmh, data.accuracy, satCount);
+            const spdKmh = filteredSpeed.toFixed(1);
+            const dmsLat = toDMS(data.lat, true);
+            const dmsLng = toDMS(data.lng, false);
+
+            const satCountEl = document.getElementById('sat-count');
+            const menuSatEl = document.getElementById('menu-sat-count');
+            if (satCountEl) satCountEl.innerText = `Satellites: ${satCount}`;
+            if (menuSatEl) menuSatEl.innerText = `Satellites: ${satCount}`;
+
+            const statusBadge = document.getElementById('gps-status-badge');
+            const statusText = document.getElementById('gps-status-text');
+            const menuStatusEl = document.getElementById('menu-gps-status');
+            const menuTextEl = document.getElementById('menu-gps-text');
+
+            if (data.accuracy < 35 && satCount >= 4) {
+                isGPSReady = true;
+                if (statusBadge) statusBadge.className = 'status-badge status-ready flex-1 justify-center';
+                if (statusText) statusText.innerText = 'GPS Ready';
+                if (menuStatusEl) menuStatusEl.className = 'w-3 h-3 rounded-full bg-[#96d46c]';
+                if (menuTextEl) menuTextEl.innerText = `Ready • ${satCount} sats`;
+            } else if (satCount >= 3 && data.accuracy < 60) {
+                isGPSReady = false;
+                if (statusBadge) statusBadge.className = 'status-badge status-waiting flex-1 justify-center';
+                if (statusText) statusText.innerText = 'Fair Fix';
+                if (menuStatusEl) menuStatusEl.className = 'w-3 h-3 rounded-full bg-yellow-500';
+                if (menuTextEl) menuTextEl.innerText = `Fair • ${satCount} sats`;
+            } else {
+                isGPSReady = false;
+                if (statusBadge) statusBadge.className = 'status-badge status-waiting flex-1 justify-center';
+                if (statusText) statusText.innerText = 'Acquiring Satellites';
+                if (menuStatusEl) menuStatusEl.className = 'w-3 h-3 rounded-full bg-yellow-500';
+                if (menuTextEl) menuTextEl.innerText = `Searching • ${satCount} sats`;
+            }
+
+            updateStartButtonState();
+
+            document.getElementById('lat-dms').innerText = dmsLat;
+            document.getElementById('lng-dms').innerText = dmsLng;
+            document.getElementById('speed').innerText = spdKmh;
+            document.getElementById('heading-text').innerText = data.heading ? `${Math.round(data.heading)}°` : '--';
+            document.getElementById('accuracy').innerText = `${data.accuracy.toFixed(1)} m`;
+
+            document.getElementById('speed-trip').innerText = spdKmh;
+            document.getElementById('coords-trip').innerText = `${dmsLat}, ${dmsLng}`;
+            document.getElementById('heading-trip').innerText = data.heading ? `${Math.round(data.heading)}°` : '--';
+
+            // ✅ Update acceleration
+            if (tripStartTime && lastValidTime) {
+                const timeDelta = (Date.now() - lastValidTime) / 1000; // seconds
+                const speedDelta = filteredSpeed - lastSpeed;
+                const acceleration = timeDelta > 0 ? (speedDelta / timeDelta) : 0;
+                const accelElement = document.getElementById('acceleration');
+                accelElement.innerText = acceleration.toFixed(2);
+                accelElement.className = acceleration >= 0 ? 'accel-value dynamic-accent-text accelerating' : 'accel-value decelerating';
+                lastSpeed = filteredSpeed;
+            }
+
+            // ✅ Update max speed
+            if (filteredSpeed > maxSpeed) {
+                maxSpeed = filteredSpeed;
+                document.getElementById('max-speed-trip').innerText = maxSpeed.toFixed(1);
+            }
+
+            // ✅ Get location name (throttled to every 10th update)
+            if (tripStartTime && locationUpdateCounter++ % 10 === 0 && isAndroid) {
+                try {
+                    Android.getLocationName(data.lat, data.lng);
+                } catch (e) {
+                    console.log('Location name fetch error:', e);
+                }
+            }
+
+            if (tripStartTime && lastLat !== null && lastLng !== null) {
+                const now = Date.now();
+                const timeSinceLastUpdate = lastValidTime ? (now - lastValidTime) : 0;
+                if (isValidForDistanceCalculation(filteredSpeed, data.accuracy, satCount, timeSinceLastUpdate)) {
+                    const dist = calculateDistance(lastLat, lastLng, data.lat, data.lng);
+                    if (dist > 0 && dist < MAX_DISTANCE_PER_UPDATE) {
+                        const timeInHours = timeSinceLastUpdate / 3600000;
+                        const expectedDist = filteredSpeed * timeInHours;
+                        const distanceRatio = expectedDist > 0 ? (dist / expectedDist) : 0;
+                        if (distanceRatio > 0.1 && distanceRatio < 10.0) {
+                            totalDistance += dist;
+                            lastLat = data.lat;
+                            lastLng = data.lng;
+                            lastValidTime = now;
+                        } else if (dist < 0.01) {
+                            totalDistance += dist;
+                            lastLat = data.lat;
+                            lastLng = data.lng;
+                            lastValidTime = now;
+                        }
+                    }
+                } else if (lastValidTime === null || timeSinceLastUpdate > 3000) {
+                    lastLat = data.lat;
+                    lastLng = data.lng;
+                    lastValidTime = now;
+                }
+            } else if (tripStartTime && filteredSpeed > 0.1 && data.accuracy < 60) {
+                lastLat = data.lat;
+                lastLng = data.lng;
+                lastValidTime = Date.now();
+            }
+
+            const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+            const index = Math.round(data.heading / 22.5) % 16;
+            document.getElementById('direction-trip').innerText = data.heading ? directions[index] : '--';
+        } catch (e) {
+            console.error('updateGPS error:', e);
+        }
+    }
+
+    function updateAccel(data) {
+        try {
+            document.getElementById('accel-x').innerText = data.x.toFixed(2);
+            document.getElementById('accel-y').innerText = data.y.toFixed(2);
+            document.getElementById('accel-z').innerText = data.z.toFixed(2);
+        } catch (e) {
+            console.error('updateAccel error:', e);
+        }
+    }
+
+    function updateGyro(data) {
+        try {
+            document.getElementById('gyro-x').innerText = data.x.toFixed(1);
+            document.getElementById('gyro-y').innerText = data.y.toFixed(1);
+            document.getElementById('gyro-z').innerText = data.z.toFixed(1);
+        } catch (e) {
+            console.error('updateGyro error:', e);
+        }
+    }
+
+    // ✅ NEW: Update location name from Android
+    function updateLocationName(locationName) {
+        const el = document.getElementById('location-name');
+        if (el) el.innerText = locationName;
+    }
+
+    function onPermissionsGranted() {
+        const statusBadge = document.getElementById('gps-status-badge');
+        const statusText = document.getElementById('gps-status-text');
+        const menuStatusEl = document.getElementById('menu-gps-status');
+        const menuTextEl = document.getElementById('menu-gps-text');
+        if (statusBadge) statusBadge.className = 'status-badge status-waiting flex-1 justify-center';
+        if (statusText) statusText.innerText = 'Acquiring Satellites';
+        if (menuStatusEl) menuStatusEl.className = 'w-3 h-3 rounded-full bg-yellow-500';
+        if (menuTextEl) menuTextEl.innerText = 'Acquiring satellites...';
+        updateStartButtonState();
+    }
+
+    function onTripSaved() {
+        loadTrips();
+    }
+
+    function loadTrips() {
+        if (!isAndroid) return;
+        try {
+            const tripsJson = Android.getTripsHistory();
+            tripsHistory = JSON.parse(tripsJson);
+            updateTripList();
+        } catch (e) {
+            console.error('Load trips error:', e);
+        }
+    }
+
+    function updateTripList() {
+        const list = document.getElementById('trip-list');
+        if (!list) return;
+        if (tripsHistory.length === 0) {
+            list.innerHTML = `<div class="glass p-16 text-center opacity-30 text-[10px] font-black uppercase tracking-widest">No Trips Saved</div>`;
+        } else {
+            list.innerHTML = tripsHistory.map(t => `
+                <div onclick="viewTrip(${t.id})" class="glass p-5 flex justify-between items-center active:scale-[0.98]">
+                    <div class="flex items-center gap-5">
+                        <div class="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center dynamic-accent-text"><i data-lucide="map" size="20"></i></div>
+                        <div><p class="text-[11px] font-black uppercase">${t.date}</p><p class="text-[9px] opacity-40 uppercase font-black tracking-widest mt-0.5">${t.frameCount} frames</p></div>
                     </div>
-                `).join('');
-            }
-            lucide.createIcons();
+                    <i data-lucide="chevron-right" size="16" class="opacity-20"></i>
+                </div>
+            `).join('');
         }
+        lucide.createIcons();
+    }
 
-        let map;
-        function viewTrip(id) {
-            const trip = tripsHistory.find(t => t.id === id);
+    function viewTrip(id) {
+        if (!isAndroid) return;
+        try {
+            const tripJson = Android.getTripData(id);
+            const trip = JSON.parse(tripJson);
             activeTripId = id;
-            
-            const modal = document.getElementById('trip-modal');
-            if (modal) modal.classList.remove('hidden');
-            
-            const modalTitle = document.getElementById('modal-title');
-            if (modalTitle) modalTitle.innerText = `Trip: ${trip.date}`;
 
-            const headers = "time,lat,lng,alt,spd,ax,ay,az,gr,gp,gy";
-            const rows = trip.data.map(d => Object.values(d).join(",")).join("\n");
-            
-            const previewEl = document.getElementById('csv-preview');
-            if (previewEl) previewEl.innerText = headers + "\n" + rows;
-            
+            document.getElementById('trip-modal').classList.remove('hidden');
+            document.getElementById('modal-title').innerText = `Trip: ${trip.date}`;
+
+            const headers = "timestamp,lat,lng,altitude,speed,accuracy,satellites,ax,ay,az,gx,gy,gz";
+            const rows = trip.data.map(d =>
+                `${d.ts},${d.lat},${d.lng},${d.alt},${d.spd},${d.acc},${d.sats || 0},${d.ax},${d.ay},${d.az},${d.gx},${d.gy},${d.gz}`
+            ).join("\n");
+
+            document.getElementById('csv-preview').innerText = headers + "\n" + rows;
+
+            // ✅ NEW: Calculate and display trip stats
+            const stats = calculateTripStats(trip.data);
+            document.getElementById('trip-stats').innerHTML = `
+                <div class="stat-item"><span class="stat-label">Distance</span><span class="stat-value dynamic-accent-text">${stats.distance.toFixed(2)} km</span></div>
+                <div class="stat-item"><span class="stat-label">Duration</span><span class="stat-value">${stats.duration}</span></div>
+                <div class="stat-item"><span class="stat-label">Avg Speed</span><span class="stat-value dynamic-accent-text">${stats.avgSpeed.toFixed(1)} km/h</span></div>
+                <div class="stat-item"><span class="stat-label">Max Speed</span><span class="stat-value dynamic-accent-text">${stats.maxSpeed.toFixed(1)} km/h</span></div>
+                <div class="stat-item"><span class="stat-label">Max Altitude</span><span class="stat-value">${stats.maxAltitude.toFixed(0)} m</span></div>
+                <div class="stat-item"><span class="stat-label">Avg Altitude</span><span class="stat-value">${stats.avgAltitude.toFixed(0)} m</span></div>
+            `;
+
             if (map) map.remove();
-            map = L.map('map', { zoomControl: false }).setView([trip.start.lat, trip.start.lng], 16);
+            map = L.map('map', { zoomControl: false }).setView([trip.startLat, trip.startLng], 16);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+
             const latlngs = trip.data.map(d => [d.lat, d.lng]);
-            L.polyline(latlngs, {color: '#96d46c', weight: 5}).addTo(map);
+            L.polyline(latlngs, {color: '#96d46c', weight: 5, opacity: 0.9}).addTo(map);
             map.fitBounds(L.polyline(latlngs).getBounds(), { padding: [30, 30] });
+
             lucide.createIcons();
+        } catch (e) {
+            console.error('View trip error:', e);
+        }
+    }
+
+    // ✅ NEW: Calculate trip statistics
+    function calculateTripStats(data) {
+        if (!data || data.length === 0) return { distance: 0, duration: '00:00:00', avgSpeed: 0, maxSpeed: 0, maxAltitude: 0, avgAltitude: 0 };
+
+        const speeds = data.map(d => d.spd).filter(s => s > 0);
+        const altitudes = data.map(d => d.alt);
+        const timestamps = data.map(d => new Date(d.ts).getTime());
+
+        const maxSpeed = speeds.length > 0 ? Math.max(...speeds) * 3.6 : 0; // Convert m/s to km/h
+        const avgSpeed = speeds.length > 0 ? (speeds.reduce((a, b) => a + b, 0) / speeds.length) * 3.6 : 0;
+        const maxAltitude = altitudes.length > 0 ? Math.max(...altitudes) : 0;
+        const avgAltitude = altitudes.length > 0 ? (altitudes.reduce((a, b) => a + b, 0) / altitudes.length) : 0;
+
+        const durationMs = timestamps.length > 1 ? Math.max(...timestamps) - Math.min(...timestamps) : 0;
+        const hours = Math.floor(durationMs / 3600000);
+        const minutes = Math.floor((durationMs % 3600000) / 60000);
+        const seconds = Math.floor((durationMs % 60000) / 1000);
+        const duration = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+        // Calculate distance from coordinates
+        let distance = 0;
+        for (let i = 1; i < data.length; i++) {
+            distance += calculateDistance(data[i-1].lat, data[i-1].lng, data[i].lat, data[i].lng);
         }
 
-        function closeModal() { 
-            const modal = document.getElementById('trip-modal');
-            if (modal) modal.classList.add('hidden'); 
+        return {
+            distance,
+            duration,
+            avgSpeed,
+            maxSpeed,
+            maxAltitude,
+            avgAltitude
+        };
+    }
+
+    function closeModal() {
+        document.getElementById('trip-modal').classList.add('hidden');
+    }
+
+    function deleteTrip() {
+        if (!isAndroid) return;
+        if (confirm("Delete permanently?")) {
+            Android.deleteTrip(activeTripId);
+            closeModal();
+            loadTrips();
         }
-        
-        function deleteTrip() {
-            if (confirm("Delete permanently?")) {
-                tripsHistory = tripsHistory.filter(t => t.id !== activeTripId);
-                localStorage.setItem('transitlk_trips', JSON.stringify(tripsHistory));
-                closeModal();
-                updateTripList();
-            }
-        }
-        
-        function downloadCSV() {
-            const trip = tripsHistory.find(t => t.id === activeTripId);
-            const headers = "timestamp,lat,lng,altitude,speed_mps,ax,ay,az,gr,gp,gy\n";
-            const rows = trip.data.map(d => Object.values(d).join(",")).join("\n");
-            const blob = new Blob([headers + rows], { type: 'text/csv' });
-            const a = document.createElement('a');
-            a.href = window.URL.createObjectURL(blob);
-            a.download = `TransitLK_${trip.id}.csv`;
-            a.click();
-        }
-    </script>
+    }
+
+    function downloadCSV() {
+    if (!isAndroid) return;
+    try {
+        const tripJson = Android.getTripData(activeTripId);
+        const trip = JSON.parse(tripJson);
+        const headers = "timestamp,lat,lng,altitude,speed_mps,accuracy,satellites,ax,ay,az,gx,gy,gz\n";
+        const rows = trip.data.map(d =>
+            `${d.ts},${d.lat},${d.lng},${d.alt},${d.spd},${d.acc},${d.sats || 0},${d.ax},${d.ay},${d.az},${d.gx},${d.gy},${d.gz}`
+        ).join("\n");
+        const csvData = headers + rows;
+        const filename = `TransitLK_${trip.id}.csv`;
+        Android.downloadCSV(csvData, filename);
+    } catch (e) {
+        console.error('Download CSV error:', e);
+    }
+}
+</script>
 </body>
 </html>
