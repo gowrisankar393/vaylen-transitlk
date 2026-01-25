@@ -46,6 +46,8 @@ class CrashDetectionGUI:
         # Update UI periodically
         self.update_ui()
 
+        print("🚨 Class Mapping: crash=0 (prob < 0.5), normal=1 (prob >= 0.5)")
+
     def load_model(self):
         """Load TFLite model"""
         try:
@@ -53,9 +55,9 @@ class CrashDetectionGUI:
             self.interpreter.allocate_tensors()
             self.input_details = self.interpreter.get_input_details()
             self.output_details = self.interpreter.get_output_details()
-            print(f"Model loaded successfully. Input shape: {self.input_details[0]['shape']}")
+            print(f"✓ Model loaded successfully. Input shape: {self.input_details[0]['shape']}")
         except Exception as e:
-            print(f"Error loading model: {e}")
+            print(f"✗ Error loading model: {e}")
 
     def create_ui(self):
         """Create the user interface"""
@@ -177,6 +179,9 @@ class CrashDetectionGUI:
         self.video_label.config(image='')
         self.current_prediction = "Waiting..."
         self.current_confidence = 0.0
+        # Reset display
+        self.prediction_label.config(text="WAITING", fg='orange')
+        self.confidence_label.config(text="Confidence: --")
 
     def video_loop(self):
         """Main video loop"""
@@ -187,6 +192,7 @@ class CrashDetectionGUI:
         if not ret:
             self.stop_video()
             self.log_text.insert(tk.END, "Video ended\n")
+            self.log_text.see(tk.END)
             return
 
         self.current_frame = frame.copy()
@@ -257,7 +263,7 @@ class CrashDetectionGUI:
                 continue
 
     def run_inference(self, frame):
-        """Run TFLite inference"""
+        """Run TFLite inference - CORRECTED CLASS MAPPING"""
         if self.interpreter is None:
             return "Error", 0.0
 
@@ -274,12 +280,19 @@ class CrashDetectionGUI:
 
             prob = float(output[0][0])
 
-            # Adjust based on your model's class mapping
-            # If crash = class 1 (prob > 0.5)
-            if prob > 0.5:
-                return "CRASH", prob
+            # CORRECTED LOGIC:
+            # TensorFlow assigns class indices alphabetically:
+            # crash (c) = class 0, normal (n) = class 1
+            # So: prob < 0.5 means crash, prob >= 0.5 means normal
+
+            if prob < 0.5:
+                # Class 0 = Crash (confidence is how far from 0.5 towards 0)
+                confidence = 1 - (prob * 2)  # Scale: 0.5->0, 0.0->1.0
+                return "CRASH", confidence
             else:
-                return "NORMAL", 1 - prob
+                # Class 1 = Normal (confidence is how far from 0.5 towards 1)
+                confidence = (prob - 0.5) * 2  # Scale: 0.5->0, 1.0->1.0
+                return "NORMAL", confidence
 
         except Exception as e:
             print(f"Inference error: {e}")
@@ -291,10 +304,8 @@ class CrashDetectionGUI:
         self.current_confidence = confidence
 
         # Update prediction display
-        self.prediction_label.config(
-            text=label,
-            fg='red' if label == "CRASH" else 'green' if label == "NORMAL" else 'orange'
-        )
+        color = 'red' if label == "CRASH" else 'green' if label == "NORMAL" else 'orange'
+        self.prediction_label.config(text=label, fg=color)
         self.confidence_label.config(text=f"Confidence: {confidence:.2%}")
 
         # Add to log
@@ -309,14 +320,16 @@ class CrashDetectionGUI:
         """Update scan interval"""
         try:
             ms = int(self.interval_var.get())
+            if ms < 100:
+                ms = 100  # Minimum 100ms
             self.inference_interval = ms / 1000.0
             self.log_text.insert(tk.END, f"Scan interval updated to {ms}ms\n")
+            self.log_text.see(tk.END)
         except ValueError:
             pass
 
     def update_ui(self):
         """Periodic UI updates"""
-        # This method can be used for any periodic checks
         self.root.after(100, self.update_ui)
 
     def on_closing(self):
