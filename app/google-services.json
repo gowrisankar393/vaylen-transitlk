@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "756408321316",
+    "project_id": "transitlk-79740",
+    "storage_bucket": "transitlk-79740.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:756408321316:android:021155a80ae829d80f5fb1",
+        "android_client_info": {
+          "package_name": "com.transitlk.transitlkbeta"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqoBhfXXNJYUdOD5oCq8oJWF3NJFuP8XI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
