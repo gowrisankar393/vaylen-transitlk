@@ -11,7 +11,6 @@
         import { getStorage, ref, listAll, getDownloadURL, getMetadata } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // Your Firebase Config (from google-services.json)
         const firebaseConfig = {
             apiKey: "AIzaSyAqoBhfXXNJYUdOD5oCq8oJWF3NJFuP8XI",
             authDomain: "transitlk-79740.firebaseapp.com",
@@ -21,12 +20,10 @@
             appId: "1:756408321316:web:admin-dashboard"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const storage = getStorage(app);
         const auth = getAuth(app);
 
-        // Make Firebase available globally
         window.firebaseApp = app;
         window.firebaseStorage = storage;
         window.firebaseAuth = auth;
@@ -103,22 +100,6 @@
             color: rgba(255,255,255,0.8);
         }
         
-        .csv-preview {
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            line-height: 1.4;
-            background: #1a1a1a;
-            padding: 16px;
-            border-radius: 8px;
-            overflow-x: auto;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        .login-container {
-            background: linear-gradient(135deg, rgba(150, 212, 108, 0.05) 0%, rgba(0,0,0,0) 50%);
-        }
-        
         .logo-nav {
             height: 40px;
             width: auto;
@@ -134,10 +115,9 @@
 <body class="min-h-screen">
 
     <!-- Login Screen -->
-    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center login-container">
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center" style="background: linear-gradient(135deg, rgba(150, 212, 108, 0.05) 0%, rgba(0,0,0,0) 50%);">
         <div class="glass-panel p-8 w-full max-w-md mx-4">
             <div class="text-center mb-8">
-                <!-- Logo2 for login (box logo) -->
                 <div class="w-20 h-20 bg-accent-green/20 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden">
                     <img src="logo2.png" alt="TransitLK" class="w-16 h-16 object-contain">
                 </div>
@@ -150,14 +130,12 @@
                     <label class="block text-xs font-medium uppercase tracking-wider text-gray-400 mb-2">Email</label>
                     <input type="email" id="login-email" required 
                         class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent-green transition-colors"
-                        placeholder="gowrisankar.20240046@iit.ac.lk"
                         value="gowrisankar.20240046@iit.ac.lk">
                 </div>
                 <div>
                     <label class="block text-xs font-medium uppercase tracking-wider text-gray-400 mb-2">Password</label>
                     <input type="password" id="login-password" required 
                         class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent-green transition-colors"
-                        placeholder="••••••••"
                         value="12345678">
                 </div>
                 <button type="submit" 
@@ -186,7 +164,6 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-4">
-                        <!-- Logo.png for navbar (wide rectangle) -->
                         <img src="logo.png" alt="TransitLK" class="logo-nav">
                         <div>
                             <h1 class="font-bold text-lg">Admin</h1>
@@ -219,7 +196,6 @@
                             <p class="text-xs font-medium uppercase tracking-wider text-gray-400">Total Trips</p>
                             <p class="text-3xl font-bold mt-1" id="stat-total-trips">-</p>
                         </div>
-                        <!-- Logo2 for stats icon -->
                         <div class="w-10 h-10 bg-accent-green/20 rounded-lg flex items-center justify-center overflow-hidden">
                             <img src="logo2.png" alt="" class="w-8 h-8 object-contain opacity-80">
                         </div>
@@ -378,32 +354,39 @@
         </main>
     </div>
 
-    <!-- CSV Preview Modal -->
-    <div id="csv-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="glass-panel w-full max-w-4xl max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center p-6 border-b border-white/10">
-                <div>
-                    <h3 class="text-lg font-bold" id="csv-modal-title">CSV Preview</h3>
-                    <p class="text-xs text-gray-400 mt-1" id="csv-modal-subtitle">--</p>
-                </div>
-                <div class="flex gap-2">
-                    <a id="csv-download-btn" href="#" target="_blank" 
-                        class="flex items-center gap-2 px-4 py-2 bg-accent-green text-black font-medium rounded-lg hover:bg-opacity-90 transition-all text-sm">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                        </svg>
-                        Download CSV
-                    </a>
-                    <button onclick="closeCsvModal()" class="p-2 hover:bg-white/5 rounded-lg transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
+    <!-- Download Modal (No Preview - Avoids CORS) -->
+    <div id="download-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold" id="download-title">File Ready</h3>
+                <button onclick="closeDownloadModal()" class="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
             </div>
-            <div class="p-6 overflow-auto flex-1">
-                <div id="csv-content" class="csv-preview text-gray-300"></div>
+            
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-accent-green/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                </div>
+                <p class="text-gray-300 mb-2" id="download-filename">filename.csv</p>
+                <p class="text-xs text-gray-500" id="download-type">Trip Log</p>
             </div>
+
+            <a id="download-link" href="#" target="_blank" 
+                class="flex items-center justify-center gap-2 w-full py-4 bg-accent-green text-black font-bold rounded-lg hover:bg-opacity-90 transition-all mb-3">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Download File
+            </a>
+            
+            <button onclick="closeDownloadModal()" class="w-full py-3 border border-white/20 rounded-lg text-sm hover:bg-white/5 transition-colors">
+                Cancel
+            </button>
         </div>
     </div>
 
@@ -493,7 +476,6 @@
                 
                 allTrips = [];
                 
-                // Get all files from all date subfolders
                 for (const prefix of result.prefixes) {
                     const dayResult = await listAll(prefix);
                     for (const item of dayResult.items) {
@@ -503,15 +485,12 @@
                             fullPath: item.fullPath,
                             date: prefix.name,
                             size: metadata.size,
-                            updated: metadata.updated,
-                            url: null // Will be fetched on demand
+                            updated: metadata.updated
                         });
                     }
                 }
                 
-                // Sort by date (newest first)
                 allTrips.sort((a, b) => new Date(b.updated) - new Date(a.updated));
-                
                 renderTrips();
             } catch (error) {
                 console.error('Error loading trips:', error);
@@ -545,7 +524,6 @@
                 }
                 
                 allIncidents.sort((a, b) => new Date(b.updated) - new Date(a.updated));
-                
                 renderIncidents();
             } catch (error) {
                 console.error('Error loading incidents:', error);
@@ -589,7 +567,7 @@
                 const sizeKB = (trip.size / 1024).toFixed(1);
                 
                 return `
-                    <div class="glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-colors cursor-pointer" onclick="viewCsv('${trip.fullPath}', '${trip.name}', 'trip')">
+                    <div class="glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-colors cursor-pointer" onclick="openDownload('${trip.fullPath}', '${trip.name}', 'trip')">
                         <div class="flex items-center gap-4">
                             <div class="w-12 h-12 bg-accent-green/20 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
                                 <img src="logo2.png" alt="" class="w-8 h-8 object-contain opacity-80">
@@ -604,8 +582,7 @@
                             <span class="text-xs text-gray-500">${sizeKB} KB</span>
                             <button class="p-2 hover:bg-white/10 rounded-lg transition-colors">
                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                 </svg>
                             </button>
                         </div>
@@ -636,7 +613,7 @@
                 const formattedTime = time ? `${time.slice(0,2)}:${time.slice(2,4)}` : '';
                 
                 return `
-                    <div class="incident-card glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-colors cursor-pointer" onclick="viewCsv('${incident.fullPath}', '${incident.name}', 'incident')">
+                    <div class="incident-card glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-colors cursor-pointer" onclick="openDownload('${incident.fullPath}', '${incident.name}', 'incident')">
                         <div class="flex items-center gap-4">
                             <div class="w-12 h-12 bg-accent-orange/20 rounded-xl flex items-center justify-center flex-shrink-0">
                                 <svg class="w-6 h-6 accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -656,8 +633,7 @@
                             <span class="text-xs text-gray-500">${sizeKB} KB</span>
                             <button class="p-2 hover:bg-white/10 rounded-lg transition-colors">
                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                 </svg>
                             </button>
                         </div>
@@ -693,18 +669,17 @@
         function switchTab(tab) {
             currentTab = tab;
             
-            // Update tab buttons
             document.getElementById('tab-trips-btn').className = tab === 'trips' ? 'tab-active pb-4 px-2 font-medium text-sm transition-all' : 'tab-inactive pb-4 px-2 font-medium text-sm transition-all';
             document.getElementById('tab-incidents-btn').className = tab === 'incidents' ? 'tab-active pb-4 px-2 font-medium text-sm transition-all' : 'tab-inactive pb-4 px-2 font-medium text-sm transition-all';
             document.getElementById('tab-live-btn').className = tab === 'live' ? 'tab-active pb-4 px-2 font-medium text-sm transition-all flex items-center gap-2' : 'tab-inactive pb-4 px-2 font-medium text-sm transition-all flex items-center gap-2';
             
-            // Show/hide content
             document.getElementById('tab-trips').classList.toggle('hidden', tab !== 'trips');
             document.getElementById('tab-incidents').classList.toggle('hidden', tab !== 'incidents');
             document.getElementById('tab-live').classList.toggle('hidden', tab !== 'live');
         }
 
-        async function viewCsv(path, name, type) {
+        // SIMPLIFIED: Just open download modal (no preview to avoid CORS)
+        async function openDownload(path, name, type) {
             const storage = window.firebaseStorage;
             const { ref, getDownloadURL } = window.firebaseRefs;
             
@@ -712,30 +687,26 @@
                 const fileRef = ref(storage, path);
                 const url = await getDownloadURL(fileRef);
                 
-                // Fetch and display CSV
-                const response = await fetch(url);
-                const text = await response.text();
+                document.getElementById('download-title').textContent = type === 'incident' ? 'Incident Report' : 'Trip Log';
+                document.getElementById('download-filename').textContent = name;
+                document.getElementById('download-type').textContent = type === 'incident' ? 'Crash Incident CSV' : 'Trip Data CSV';
+                document.getElementById('download-link').href = url;
                 
-                document.getElementById('csv-modal-title').textContent = name;
-                document.getElementById('csv-modal-subtitle').textContent = type === 'incident' ? 'Crash Incident Report' : 'Trip Log Data';
-                document.getElementById('csv-download-btn').href = url;
-                document.getElementById('csv-content').textContent = text;
-                
-                document.getElementById('csv-modal').classList.remove('hidden');
+                document.getElementById('download-modal').classList.remove('hidden');
             } catch (error) {
-                console.error('Error loading CSV:', error);
-                alert('Failed to load file');
+                console.error('Error:', error);
+                alert('Failed to get download link. Please try again.');
             }
         }
 
-        function closeCsvModal() {
-            document.getElementById('csv-modal').classList.add('hidden');
+        function closeDownloadModal() {
+            document.getElementById('download-modal').classList.add('hidden');
         }
 
         // Close modal on outside click
-        document.getElementById('csv-modal').addEventListener('click', (e) => {
+        document.getElementById('download-modal').addEventListener('click', (e) => {
             if (e.target === e.currentTarget) {
-                closeCsvModal();
+                closeDownloadModal();
             }
         });
     </script>
