@@ -450,7 +450,7 @@
                             <div id="trip-map"></div>
                             <div class="flex items-center gap-6 mt-4 text-sm">
                                 <div class="flex items-center gap-2">
-                                    <div class="w-3 h-3 rounded-full bg-green-500 shadow-lg shadow-green-500/50"></div>
+                                    <div class="w-3 h-3 rounded-full bg-yellow-400 shadow-lg shadow-yellow-400/50"></div>
                                     <span class="text-gray-400">Start Point</span>
                                 </div>
                                 <div class="flex items-center gap-2">
@@ -458,7 +458,7 @@
                                     <span class="text-gray-400">End Point</span>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <div class="w-8 h-1 bg-gradient-to-r from-accent-green to-accent-green/50 rounded"></div>
+                                    <div class="w-8 h-1 bg-gradient-to-r from-green-800 via-green-500 to-accent-green rounded"></div>
                                     <span class="text-gray-400">Route</span>
                                 </div>
                             </div>
@@ -496,12 +496,12 @@
                             </div>
                             <h3 class="font-bold mb-2">Download Data</h3>
                             <p class="text-sm text-gray-400 mb-4">Get the complete CSV file</p>
-                            <a id="trip-download-btn" href="#" target="_blank" class="download-btn w-full justify-center">
+                            <button onclick="downloadTripCSV()" class="download-btn w-full justify-center">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                 </svg>
                                 Download CSV
-                            </a>
+                            </button>
                         </div>
 
                         <!-- Trip Info -->
@@ -648,17 +648,23 @@
             const empty = document.getElementById('trips-empty');
             loading.classList.add('hidden');
             
+            const now = new Date();
+            // Build local today string YYYY-MM-DD
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+            
             let filtered = allTrips;
             if (filter === 'today') {
-                const today = new Date().toISOString().split('T')[0];
-                filtered = allTrips.filter(t => t.date === today);
+                filtered = allTrips.filter(t => t.date === todayStr);
             } else if (filter === 'week') {
-                const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-                filtered = allTrips.filter(t => new Date(t.updated) > weekAgo);
+                const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+                filtered = allTrips.filter(t => new Date(t.date) >= weekAgo);
             } else if (filter === 'month') {
-                const monthAgo = new Date(); monthAgo.setMonth(monthAgo.getMonth() - 1);
-                filtered = allTrips.filter(t => new Date(t.updated) > monthAgo);
+                const monthAgo = new Date(now); monthAgo.setMonth(monthAgo.getMonth() - 1);
+                filtered = allTrips.filter(t => new Date(t.date) >= monthAgo);
             }
+            
+            // Sort filtered by date descending
+            filtered = filtered.slice().sort((a, b) => new Date(b.date) - new Date(a.date) || new Date(b.updated) - new Date(a.updated));
             
             if (filtered.length === 0) { empty.classList.remove('hidden'); container.innerHTML = ''; return; }
             empty.classList.add('hidden');
@@ -666,6 +672,9 @@
             container.innerHTML = filtered.map(trip => {
                 const date = new Date(trip.updated);
                 const sizeKB = (trip.size / 1024).toFixed(1);
+                // Count how many trips were on the same day
+                const tripsOnDay = allTrips.filter(t => t.date === trip.date).length;
+                const dayBadge = tripsOnDay > 1 ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-accent-green/10 border border-accent-green/20 accent-green font-semibold">${tripsOnDay} trips this day</span>` : '';
                 return `
                     <div class="glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-all cursor-pointer group" onclick="viewTripDetail('${trip.fullPath}', '${trip.name}', '${trip.date}')">
                         <div class="flex items-center gap-4">
@@ -673,7 +682,10 @@
                                 <img src="logo2.png" alt="" class="w-8 h-8 object-contain opacity-80">
                             </div>
                             <div>
-                                <h4 class="font-bold text-sm group-hover:text-accent-green transition-colors">${trip.name}</h4>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <h4 class="font-bold text-sm group-hover:text-accent-green transition-colors">${trip.name}</h4>
+                                    ${dayBadge}
+                                </div>
                                 <p class="text-xs text-gray-400 mt-1">${date.toLocaleString()}</p>
                                 <p class="text-xs accent-green mt-1">${trip.date}</p>
                             </div>
@@ -747,14 +759,13 @@
                 
                 if (data.length === 0) { alert('No data in file'); return; }
                 
-                currentTripData = { path, name, date, data, url };
+                currentTripData = { path, name, date, data, url, rawCsv: csvText };
                 document.getElementById('trip-modal').classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
                 
                 // Update info
                 document.getElementById('trip-title').textContent = 'Trip Details';
                 document.getElementById('trip-subtitle').textContent = `${name} • ${date}`;
-                document.getElementById('trip-download-btn').href = url;
                 document.getElementById('info-date').textContent = date;
                 document.getElementById('info-points').textContent = data.length;
                 
@@ -830,30 +841,42 @@
         function initMap(data) {
             if (currentMap) { currentMap.remove(); }
             const startPoint = [data[0].lat, data[0].lng];
-            currentMap = L.map('trip-map', { zoomControl: false, attributionControl: false }).setView(startPoint, 14);
+            currentMap = L.map('trip-map', { zoomControl: true, attributionControl: false }).setView(startPoint, 14);
             
+            // Dark tile base layer
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(currentMap);
             
             const latlngs = data.map(d => [d.lat, d.lng]);
-            L.polyline(latlngs, { color: '#96d46c', weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }).addTo(currentMap);
-            L.polyline(latlngs, { color: '#96d46c', weight: 8, opacity: 0.2, lineCap: 'round', lineJoin: 'round' }).addTo(currentMap);
             
-            // Green start marker
+            // Glow effect — dark green wide underlay
+            L.polyline(latlngs, { color: '#2d6a1f', weight: 14, opacity: 0.25, lineCap: 'round', lineJoin: 'round' }).addTo(currentMap);
+            // Mid glow — medium green
+            L.polyline(latlngs, { color: '#4caf50', weight: 7, opacity: 0.45, lineCap: 'round', lineJoin: 'round' }).addTo(currentMap);
+            // Main route — bright light green
+            L.polyline(latlngs, { color: '#96d46c', weight: 3.5, opacity: 1, lineCap: 'round', lineJoin: 'round' }).addTo(currentMap);
+
+            // Yellow START marker
             const startIcon = L.divIcon({
                 className: 'custom-marker',
-                html: `<div style="background: #22c55e; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 20px rgba(34, 197, 94, 0.6);"></div>`,
-                iconSize: [20, 20], iconAnchor: [10, 10]
+                html: `<div style="background: #facc15; width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 3px rgba(250,204,21,0.35), 0 0 18px rgba(250,204,21,0.7); display:flex; align-items:center; justify-content:center;">
+                    <div style="width:7px;height:7px;border-radius:50%;background:#fff;opacity:0.9;"></div>
+                </div>`,
+                iconSize: [22, 22], iconAnchor: [11, 11]
             });
-            L.marker(startPoint, { icon: startIcon }).addTo(currentMap).bindPopup('<div style="color: #22c55e; font-weight: bold;">START</div>');
+            L.marker(startPoint, { icon: startIcon }).addTo(currentMap)
+              .bindPopup('<div style="background:#1a1a2e;color:#facc15;font-weight:bold;padding:6px 12px;border-radius:8px;border:1px solid rgba(250,204,21,0.4);">🟡 START</div>');
             
-            // Purple end marker
+            // Purple END marker
             const endPoint = [data[data.length-1].lat, data[data.length-1].lng];
             const endIcon = L.divIcon({
                 className: 'custom-marker',
-                html: `<div style="background: #a855f7; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 20px rgba(168, 85, 247, 0.6);"></div>`,
-                iconSize: [20, 20], iconAnchor: [10, 10]
+                html: `<div style="background: #a855f7; width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 3px rgba(168,85,247,0.35), 0 0 18px rgba(168,85,247,0.7); display:flex; align-items:center; justify-content:center;">
+                    <div style="width:7px;height:7px;border-radius:50%;background:#fff;opacity:0.9;"></div>
+                </div>`,
+                iconSize: [22, 22], iconAnchor: [11, 11]
             });
-            L.marker(endPoint, { icon: endIcon }).addTo(currentMap).bindPopup('<div style="color: #a855f7; font-weight: bold;">END</div>');
+            L.marker(endPoint, { icon: endIcon }).addTo(currentMap)
+              .bindPopup('<div style="background:#1a1a2e;color:#a855f7;font-weight:bold;padding:6px 12px;border-radius:8px;border:1px solid rgba(168,85,247,0.4);">🟣 END</div>');
             
             currentMap.fitBounds(latlngs, { padding: [50, 50] });
         }
@@ -875,11 +898,32 @@
             }
         }
 
+        function downloadTripCSV() {
+            if (!currentTripData) return;
+            const csvContent = currentTripData.rawCsv || 
+                'timestamp,latitude,longitude,altitude,speed\n' +
+                currentTripData.data.map(d => `${d.timestamp},${d.lat},${d.lng},,${d.speed}`).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentTripData.name || 'trip.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
         function updateStats() {
             document.getElementById('stat-total-trips').textContent = allTrips.length;
             document.getElementById('stat-total-incidents').textContent = allIncidents.length;
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('stat-today-trips').textContent = allTrips.filter(t => t.date === today).length;
+            
+            // Today: compare trip date folder name to local date string YYYY-MM-DD
+            const todayLocal = new Date();
+            const todayStr = `${todayLocal.getFullYear()}-${String(todayLocal.getMonth()+1).padStart(2,'0')}-${String(todayLocal.getDate()).padStart(2,'0')}`;
+            const todayCount = allTrips.filter(t => t.date === todayStr).length;
+            document.getElementById('stat-today-trips').textContent = todayCount;
+            
             const totalSize = [...allTrips, ...allIncidents].reduce((sum, item) => sum + item.size, 0);
             document.getElementById('stat-storage').textContent = (totalSize / (1024 * 1024)).toFixed(1) + ' MB';
         }
