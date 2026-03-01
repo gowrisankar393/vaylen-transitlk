@@ -32,11 +32,9 @@
         window.firebaseAuthFns = { signInWithEmailAndPassword, onAuthStateChanged, signOut };
     </script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
         
         body {
             font-family: 'Inter', sans-serif;
@@ -46,25 +44,19 @@
             min-height: 100vh;
         }
         
-        /* Enhanced Glassmorphism */
         .glass-panel {
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 24px;
-            box-shadow: 
-                0 8px 32px 0 rgba(0, 0, 0, 0.37),
-                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 0 rgba(255, 255, 255, 0.05);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         .glass-panel:hover {
             border-color: rgba(150, 212, 108, 0.2);
-            box-shadow: 
-                0 12px 40px 0 rgba(0, 0, 0, 0.5),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1),
-                0 0 20px rgba(150, 212, 108, 0.05);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 20px rgba(150, 212, 108, 0.05);
         }
         
         .glass-button {
@@ -84,14 +76,9 @@
         
         .accent-green { color: #96d46c; }
         .bg-accent-green { background-color: #96d46c; }
-        .border-accent-green { border-color: #96d46c; }
-        
         .accent-orange { color: #f97316; }
         .bg-accent-orange { background-color: #f97316; }
-        .border-accent-orange { border-color: #f97316; }
-        
         .accent-purple { color: #a855f7; }
-        .bg-accent-purple { background-color: #a855f7; }
         
         .stat-card {
             background: linear-gradient(135deg, rgba(150, 212, 108, 0.08) 0%, rgba(255,255,255,0.02) 100%);
@@ -103,10 +90,7 @@
         .stat-card::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
+            top: 0; left: 0; right: 0; height: 1px;
             background: linear-gradient(90deg, transparent, rgba(150, 212, 108, 0.4), transparent);
         }
         
@@ -120,10 +104,7 @@
         .incident-card::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
+            top: 0; left: 0; right: 0; height: 1px;
             background: linear-gradient(90deg, transparent, rgba(249, 115, 22, 0.4), transparent);
         }
         
@@ -137,14 +118,9 @@
             box-shadow: 0 0 20px rgba(150, 212, 108, 0.2);
         }
         
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         
-        .fade-in {
-            animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
+        .fade-in { animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -167,41 +143,11 @@
             background: rgba(255,255,255,0.02);
         }
         
-        .logo-nav {
-            height: 40px;
-            width: auto;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-        }
+        .logo-nav { height: 40px; width: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
         
-        /* Map Styles */
-        #trip-map {
-            height: 400px;
-            width: 100%;
-            border-radius: 16px;
-            z-index: 1;
-        }
+        #trip-map { height: 400px; width: 100%; border-radius: 16px; z-index: 1; }
         
-        .leaflet-container {
-            background: #1a1a2e;
-            font-family: 'Inter', sans-serif;
-        }
-        
-        .custom-popup .leaflet-popup-content-wrapper {
-            background: rgba(20, 20, 30, 0.95);
-            backdrop-filter: blur(10px);
-            color: white;
-            border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .custom-popup .leaflet-popup-tip {
-            background: rgba(20, 20, 30, 0.95);
-        }
-        
-        /* Trip Detail Modal */
-        .trip-detail-modal {
-            background: linear-gradient(135deg, rgba(10,10,10,0.98) 0%, rgba(26,26,46,0.98) 100%);
-        }
+        .leaflet-container { background: #1a1a2e; font-family: 'Inter', sans-serif; }
         
         .metric-card {
             background: rgba(255,255,255,0.03);
@@ -228,6 +174,9 @@
             cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 4px 20px rgba(150, 212, 108, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .download-btn:hover {
@@ -235,38 +184,14 @@
             box-shadow: 0 8px 30px rgba(150, 212, 108, 0.4);
         }
         
-        .close-btn {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: white;
-            padding: 16px 32px;
-            border-radius: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        .trip-detail-modal {
+            background: linear-gradient(135deg, rgba(10,10,10,0.98) 0%, rgba(26,26,46,0.98) 100%);
         }
         
-        .close-btn:hover {
-            background: rgba(255,255,255,0.1);
-        }
-        
-        /* Scrollbar Styling */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: rgba(255,255,255,0.02);
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: rgba(150, 212, 108, 0.3);
-            border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(150, 212, 108, 0.5);
-        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+        ::-webkit-scrollbar-thumb { background: rgba(150, 212, 108, 0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(150, 212, 108, 0.5); }
     </style>
 </head>
 <body class="min-h-screen">
@@ -298,9 +223,7 @@
                 <button type="submit" 
                     class="w-full bg-gradient-to-r from-accent-green to-[#7bc452] text-black font-bold py-4 rounded-xl hover:shadow-lg hover:shadow-accent-green/30 transition-all flex items-center justify-center gap-2 mt-6">
                     <span>Access Dashboard</span>
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-                    </svg>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                 </button>
             </form>
             
@@ -345,7 +268,7 @@
 
         <!-- Main Content -->
         <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <!-- Stats Overview -->
+            <!-- Stats -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div class="stat-card glass-panel p-6">
                     <div class="flex justify-between items-start mb-4">
@@ -408,12 +331,8 @@
 
             <!-- Tabs -->
             <div class="flex gap-6 border-b border-white/10 mb-6">
-                <button onclick="switchTab('trips')" id="tab-trips-btn" class="tab-active pb-4 px-4 font-medium text-sm transition-all rounded-t-xl">
-                    Trip Logs
-                </button>
-                <button onclick="switchTab('incidents')" id="tab-incidents-btn" class="tab-inactive pb-4 px-4 font-medium text-sm transition-all rounded-t-xl">
-                    Incidents
-                </button>
+                <button onclick="switchTab('trips')" id="tab-trips-btn" class="tab-active pb-4 px-4 font-medium text-sm transition-all rounded-t-xl">Trip Logs</button>
+                <button onclick="switchTab('incidents')" id="tab-incidents-btn" class="tab-inactive pb-4 px-4 font-medium text-sm transition-all rounded-t-xl">Incidents</button>
                 <button onclick="switchTab('live')" id="tab-live-btn" class="tab-inactive pb-4 px-4 font-medium text-sm transition-all flex items-center gap-2 rounded-t-xl">
                     <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50"></span>
                     Live Tracking
@@ -425,7 +344,7 @@
                 <div class="flex justify-between items-center mb-6">
                     <div class="flex items-center gap-4">
                         <h2 class="text-xl font-bold">Recent Trips</h2>
-                        <select id="trip-filter" onchange="filterTrips()" class="glass-button px-4 py-2 text-sm focus:outline-none focus:border-accent-green bg-transparent">
+                        <select id="trip-filter" onchange="filterTrips()" class="glass-button px-4 py-2 text-sm focus:outline-none bg-transparent">
                             <option value="all" class="bg-gray-900">All Time</option>
                             <option value="today" class="bg-gray-900">Today</option>
                             <option value="week" class="bg-gray-900">This Week</option>
@@ -451,9 +370,7 @@
                     <p class="text-gray-400">No trips found</p>
                 </div>
 
-                <div id="trips-list" class="grid gap-4">
-                    <!-- Trip cards will be inserted here -->
-                </div>
+                <div id="trips-list" class="grid gap-4"></div>
             </div>
 
             <!-- Incidents Tab -->
@@ -479,9 +396,7 @@
                     <p class="text-gray-400">No incidents recorded</p>
                 </div>
 
-                <div id="incidents-list" class="grid gap-4">
-                    <!-- Incident cards will be inserted here -->
-                </div>
+                <div id="incidents-list" class="grid gap-4"></div>
             </div>
 
             <!-- Live Tracking Tab -->
@@ -581,7 +496,7 @@
                             </div>
                             <h3 class="font-bold mb-2">Download Data</h3>
                             <p class="text-sm text-gray-400 mb-4">Get the complete CSV file</p>
-                            <a id="trip-download-btn" href="#" target="_blank" class="download-btn inline-flex items-center gap-2 w-full justify-center">
+                            <a id="trip-download-btn" href="#" target="_blank" class="download-btn w-full justify-center">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                 </svg>
@@ -598,22 +513,10 @@
                                 Trip Info
                             </h3>
                             <div class="space-y-3 text-sm">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-400">Date</span>
-                                    <span id="info-date">--</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-400">Start Time</span>
-                                    <span id="info-start">--</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-400">End Time</span>
-                                    <span id="info-end">--</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-400">Data Points</span>
-                                    <span id="info-points">--</span>
-                                </div>
+                                <div class="flex justify-between"><span class="text-gray-400">Date</span><span id="info-date">--</span></div>
+                                <div class="flex justify-between"><span class="text-gray-400">Start Time</span><span id="info-start">--</span></div>
+                                <div class="flex justify-between"><span class="text-gray-400">End Time</span><span id="info-end">--</span></div>
+                                <div class="flex justify-between"><span class="text-gray-400">Data Points</span><span id="info-points">--</span></div>
                             </div>
                         </div>
 
@@ -644,14 +547,9 @@
     </div>
 
     <script>
-        // Global state
-        let allTrips = [];
-        let allIncidents = [];
-        let currentTab = 'trips';
-        let currentMap = null;
-        let currentTripData = null;
-        
-        // Initialize
+        let allTrips = [], allIncidents = [], currentTab = 'trips';
+        let currentMap = null, currentTripData = null;
+
         document.addEventListener('DOMContentLoaded', () => {
             updateDate();
             checkAuth();
@@ -659,25 +557,15 @@
 
         function updateDate() {
             const now = new Date();
-            document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', { 
-                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-            });
-            document.getElementById('today-date').textContent = now.toLocaleDateString('en-US', { 
-                month: 'short', day: 'numeric' 
-            });
+            document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('today-date').textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         }
 
-        // Auth Functions
         function checkAuth() {
             const { onAuthStateChanged } = window.firebaseAuthFns;
             const auth = window.firebaseAuth;
-            
             onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    showDashboard();
-                } else {
-                    showLogin();
-                }
+                if (user) { showDashboard(); } else { showLogin(); }
             });
         }
 
@@ -694,57 +582,36 @@
 
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            
             try {
                 const { signInWithEmailAndPassword } = window.firebaseAuthFns;
-                const auth = window.firebaseAuth;
-                await signInWithEmailAndPassword(auth, email, password);
+                await signInWithEmailAndPassword(window.firebaseAuth, document.getElementById('login-email').value, document.getElementById('login-password').value);
             } catch (error) {
                 document.getElementById('login-error').classList.remove('hidden');
-                setTimeout(() => {
-                    document.getElementById('login-error').classList.add('hidden');
-                }, 3000);
+                setTimeout(() => document.getElementById('login-error').classList.add('hidden'), 3000);
             }
         });
 
         function logout() {
-            const { signOut } = window.firebaseAuthFns;
-            const auth = window.firebaseAuth;
-            signOut(auth);
+            window.firebaseAuthFns.signOut(window.firebaseAuth);
         }
 
-        // Data Loading
         async function loadData() {
             await Promise.all([loadTrips(), loadIncidents()]);
             updateStats();
         }
 
         async function loadTrips() {
-            const storage = window.firebaseStorage;
-            const { ref, listAll, getMetadata } = window.firebaseRefs;
-            
             try {
-                const tripsRef = ref(storage, 'trips');
-                const result = await listAll(tripsRef);
-                
+                const { ref, listAll, getMetadata } = window.firebaseRefs;
+                const result = await listAll(ref(window.firebaseStorage, 'trips'));
                 allTrips = [];
-                
                 for (const prefix of result.prefixes) {
                     const dayResult = await listAll(prefix);
                     for (const item of dayResult.items) {
                         const metadata = await getMetadata(item);
-                        allTrips.push({
-                            name: item.name,
-                            fullPath: item.fullPath,
-                            date: prefix.name,
-                            size: metadata.size,
-                            updated: metadata.updated
-                        });
+                        allTrips.push({ name: item.name, fullPath: item.fullPath, date: prefix.name, size: metadata.size, updated: metadata.updated });
                     }
                 }
-                
                 allTrips.sort((a, b) => new Date(b.updated) - new Date(a.updated));
                 renderTrips();
             } catch (error) {
@@ -755,29 +622,17 @@
         }
 
         async function loadIncidents() {
-            const storage = window.firebaseStorage;
-            const { ref, listAll, getMetadata } = window.firebaseRefs;
-            
             try {
-                const incidentsRef = ref(storage, 'incidents');
-                const result = await listAll(incidentsRef);
-                
+                const { ref, listAll, getMetadata } = window.firebaseRefs;
+                const result = await listAll(ref(window.firebaseStorage, 'incidents'));
                 allIncidents = [];
-                
                 for (const prefix of result.prefixes) {
                     const dayResult = await listAll(prefix);
                     for (const item of dayResult.items) {
                         const metadata = await getMetadata(item);
-                        allIncidents.push({
-                            name: item.name,
-                            fullPath: item.fullPath,
-                            date: prefix.name,
-                            size: metadata.size,
-                            updated: metadata.updated
-                        });
+                        allIncidents.push({ name: item.name, fullPath: item.fullPath, date: prefix.name, size: metadata.size, updated: metadata.updated });
                     }
                 }
-                
                 allIncidents.sort((a, b) => new Date(b.updated) - new Date(a.updated));
                 renderIncidents();
             } catch (error) {
@@ -791,36 +646,26 @@
             const container = document.getElementById('trips-list');
             const loading = document.getElementById('trips-loading');
             const empty = document.getElementById('trips-empty');
-            
             loading.classList.add('hidden');
             
-            let filteredTrips = allTrips;
-            
+            let filtered = allTrips;
             if (filter === 'today') {
                 const today = new Date().toISOString().split('T')[0];
-                filteredTrips = allTrips.filter(t => t.date === today);
+                filtered = allTrips.filter(t => t.date === today);
             } else if (filter === 'week') {
-                const weekAgo = new Date();
-                weekAgo.setDate(weekAgo.getDate() - 7);
-                filteredTrips = allTrips.filter(t => new Date(t.updated) > weekAgo);
+                const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+                filtered = allTrips.filter(t => new Date(t.updated) > weekAgo);
             } else if (filter === 'month') {
-                const monthAgo = new Date();
-                monthAgo.setMonth(monthAgo.getMonth() - 1);
-                filteredTrips = allTrips.filter(t => new Date(t.updated) > monthAgo);
+                const monthAgo = new Date(); monthAgo.setMonth(monthAgo.getMonth() - 1);
+                filtered = allTrips.filter(t => new Date(t.updated) > monthAgo);
             }
             
-            if (filteredTrips.length === 0) {
-                empty.classList.remove('hidden');
-                container.innerHTML = '';
-                return;
-            }
-            
+            if (filtered.length === 0) { empty.classList.remove('hidden'); container.innerHTML = ''; return; }
             empty.classList.add('hidden');
             
-            container.innerHTML = filteredTrips.map(trip => {
+            container.innerHTML = filtered.map(trip => {
                 const date = new Date(trip.updated);
                 const sizeKB = (trip.size / 1024).toFixed(1);
-                
                 return `
                     <div class="glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-all cursor-pointer group" onclick="viewTripDetail('${trip.fullPath}', '${trip.name}', '${trip.date}')">
                         <div class="flex items-center gap-4">
@@ -836,13 +681,10 @@
                         <div class="flex items-center gap-4">
                             <span class="text-xs text-gray-500">${sizeKB} KB</span>
                             <button class="glass-button p-2 opacity-0 group-hover:opacity-100 transition-all">
-                                <svg class="w-5 h-5 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 7m0 13V7"/>
-                                </svg>
+                                <svg class="w-5 h-5 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 7m0 13V7"/></svg>
                             </button>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             }).join('');
         }
 
@@ -850,15 +692,9 @@
             const container = document.getElementById('incidents-list');
             const loading = document.getElementById('incidents-loading');
             const empty = document.getElementById('incidents-empty');
-            
             loading.classList.add('hidden');
             
-            if (allIncidents.length === 0) {
-                empty.classList.remove('hidden');
-                container.innerHTML = '';
-                return;
-            }
-            
+            if (allIncidents.length === 0) { empty.classList.remove('hidden'); container.innerHTML = ''; return; }
             empty.classList.add('hidden');
             
             container.innerHTML = allIncidents.map(incident => {
@@ -866,14 +702,11 @@
                 const sizeKB = (incident.size / 1024).toFixed(1);
                 const time = incident.name.match(/(\d{4})/)?.[0] || '';
                 const formattedTime = time ? `${time.slice(0,2)}:${time.slice(2,4)}` : '';
-                
                 return `
                     <div class="incident-card glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-all cursor-pointer group" onclick="viewIncidentDetail('${incident.fullPath}', '${incident.name}')">
                         <div class="flex items-center gap-4">
                             <div class="w-12 h-12 bg-accent-orange/20 rounded-2xl flex items-center justify-center flex-shrink-0 border border-accent-orange/20 group-hover:border-accent-orange/40 transition-all">
-                                <svg class="w-6 h-6 accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                </svg>
+                                <svg class="w-6 h-6 accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                             </div>
                             <div>
                                 <div class="flex items-center gap-2">
@@ -887,38 +720,34 @@
                         <div class="flex items-center gap-4">
                             <span class="text-xs text-gray-500">${sizeKB} KB</span>
                             <button class="glass-button p-2 opacity-0 group-hover:opacity-100 transition-all">
-                                <svg class="w-5 h-5 text-accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </svg>
+                                <svg class="w-5 h-5 text-accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             </button>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             }).join('');
         }
 
         async function viewTripDetail(path, name, date) {
-            const storage = window.firebaseStorage;
-            const { ref, getDownloadURL } = window.firebaseRefs;
-            
             try {
-                const fileRef = ref(storage, path);
-                const url = await getDownloadURL(fileRef);
+                const { ref, getDownloadURL } = window.firebaseRefs;
+                const url = await getDownloadURL(ref(window.firebaseStorage, path));
                 
-                // Fetch and parse CSV
-                const response = await fetch(url);
-                const csvText = await response.text();
-                const data = parseCSV(csvText);
-                
-                if (data.length === 0) {
-                    alert('No data in file');
+                // Fetch CSV with error handling
+                let data = [];
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('Failed to fetch');
+                    const csvText = await response.text();
+                    data = parseCSV(csvText);
+                } catch (fetchError) {
+                    console.log('Fetch failed, opening direct download:', fetchError);
+                    window.open(url, '_blank');
                     return;
                 }
                 
-                currentTripData = { path, name, date, data, url };
+                if (data.length === 0) { alert('No data in file'); return; }
                 
-                // Show modal
+                currentTripData = { path, name, date, data, url };
                 document.getElementById('trip-modal').classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
                 
@@ -929,39 +758,30 @@
                 document.getElementById('info-date').textContent = date;
                 document.getElementById('info-points').textContent = data.length;
                 
-                // Calculate metrics
+                // Calculate and display metrics
                 const metrics = calculateMetrics(data);
                 document.getElementById('metric-distance').textContent = metrics.distance + ' km';
                 document.getElementById('metric-duration').textContent = metrics.duration;
                 document.getElementById('metric-maxspeed').textContent = metrics.maxSpeed + ' km/h';
                 document.getElementById('metric-avgspeed').textContent = metrics.avgSpeed + ' km/h';
-                
-                // Times
                 document.getElementById('info-start').textContent = metrics.startTime;
                 document.getElementById('info-end').textContent = metrics.endTime;
+                document.getElementById('coord-start').textContent = `${metrics.startLat.toFixed(6)}, ${metrics.startLng.toFixed(6)}`;
+                document.getElementById('coord-end').textContent = `${metrics.endLat.toFixed(6)}, ${metrics.endLng.toFixed(6)}`;
                 
-                // Coordinates
-                document.getElementById('coord-start').textContent = 
-                    `${metrics.startLat.toFixed(6)}, ${metrics.startLng.toFixed(6)}`;
-                document.getElementById('coord-end').textContent = 
-                    `${metrics.endLat.toFixed(6)}, ${metrics.endLng.toFixed(6)}`;
-                
-                // Initialize map
+                // Initialize map after modal is visible
                 setTimeout(() => initMap(data), 100);
                 
             } catch (error) {
-                console.error('Error loading trip:', error);
-                alert('Failed to load trip data');
+                console.error('Error:', error);
+                alert('Failed to load trip: ' + error.message);
             }
         }
 
         function parseCSV(csvText) {
             const lines = csvText.trim().split('\n');
             if (lines.length < 2) return [];
-            
-            const headers = lines[0].split(',').map(h => h.trim());
             const data = [];
-            
             for (let i = 1; i < lines.length; i++) {
                 const values = lines[i].split(',');
                 if (values.length >= 3) {
@@ -969,156 +789,86 @@
                     const lng = parseFloat(values[2]);
                     const speed = parseFloat(values[4]) || 0;
                     const timestamp = values[0];
-                    
                     if (!isNaN(lat) && !isNaN(lng)) {
                         data.push({ lat, lng, speed, timestamp });
                     }
                 }
             }
-            
             return data;
         }
 
         function calculateMetrics(data) {
             if (data.length === 0) return {};
-            
-            let totalDistance = 0;
-            let maxSpeed = 0;
-            let totalSpeed = 0;
-            
+            let totalDistance = 0, maxSpeed = 0, totalSpeed = 0;
             for (let i = 0; i < data.length; i++) {
-                const point = data[i];
-                const speedKmh = point.speed * 3.6;
+                const speedKmh = data[i].speed * 3.6;
                 maxSpeed = Math.max(maxSpeed, speedKmh);
                 totalSpeed += speedKmh;
-                
                 if (i > 0) {
-                    const prev = data[i - 1];
-                    totalDistance += calculateDistance(prev.lat, prev.lng, point.lat, point.lng);
+                    const prev = data[i-1], curr = data[i];
+                    const R = 6371;
+                    const dLat = (curr.lat - prev.lat) * Math.PI / 180;
+                    const dLng = (curr.lng - prev.lng) * Math.PI / 180;
+                    const a = Math.sin(dLat/2)**2 + Math.cos(prev.lat * Math.PI/180) * Math.cos(curr.lat * Math.PI/180) * Math.sin(dLng/2)**2;
+                    totalDistance += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
                 }
             }
-            
-            const startTime = data[0].timestamp.split(' ')[1] || '--:--:--';
-            const endTime = data[data.length - 1].timestamp.split(' ')[1] || '--:--:--';
-            
-            // Calculate duration
-            const start = new Date(data[0].timestamp);
-            const end = new Date(data[data.length - 1].timestamp);
+            const startTime = data[0].timestamp.split(' ')[1]?.substring(0,8) || '--:--:--';
+            const endTime = data[data.length-1].timestamp.split(' ')[1]?.substring(0,8) || '--:--:--';
+            const start = new Date(data[0].timestamp), end = new Date(data[data.length-1].timestamp);
             const durationMs = end - start;
-            const hours = Math.floor(durationMs / 3600000);
-            const minutes = Math.floor((durationMs % 3600000) / 60000);
-            const duration = `${hours}h ${minutes}m`;
-            
+            const hours = Math.floor(durationMs / 3600000), minutes = Math.floor((durationMs % 3600000) / 60000);
             return {
-                distance: totalDistance.toFixed(2),
-                duration: duration,
-                maxSpeed: maxSpeed.toFixed(1),
-                avgSpeed: (totalSpeed / data.length).toFixed(1),
-                startTime: startTime.substring(0, 8),
-                endTime: endTime.substring(0, 8),
-                startLat: data[0].lat,
-                startLng: data[0].lng,
-                endLat: data[data.length - 1].lat,
-                endLng: data[data.length - 1].lng
+                distance: totalDistance.toFixed(2), duration: `${hours}h ${minutes}m`,
+                maxSpeed: maxSpeed.toFixed(1), avgSpeed: (totalSpeed / data.length).toFixed(1),
+                startTime, endTime,
+                startLat: data[0].lat, startLng: data[0].lng,
+                endLat: data[data.length-1].lat, endLng: data[data.length-1].lng
             };
         }
 
-        function calculateDistance(lat1, lng1, lat2, lng2) {
-            const R = 6371;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLng = (lng2 - lng1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLng/2) * Math.sin(dLng/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
-        }
-
         function initMap(data) {
-            if (currentMap) {
-                currentMap.remove();
-            }
-            
+            if (currentMap) { currentMap.remove(); }
             const startPoint = [data[0].lat, data[0].lng];
+            currentMap = L.map('trip-map', { zoomControl: false, attributionControl: false }).setView(startPoint, 14);
             
-            currentMap = L.map('trip-map', {
-                zoomControl: false,
-                attributionControl: false
-            }).setView(startPoint, 14);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(currentMap);
             
-            // Dark theme tiles
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                maxZoom: 19
-            }).addTo(currentMap);
-            
-            // Route line with gradient effect
             const latlngs = data.map(d => [d.lat, d.lng]);
+            L.polyline(latlngs, { color: '#96d46c', weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }).addTo(currentMap);
+            L.polyline(latlngs, { color: '#96d46c', weight: 8, opacity: 0.2, lineCap: 'round', lineJoin: 'round' }).addTo(currentMap);
             
-            // Main route line
-            L.polyline(latlngs, {
-                color: '#96d46c',
-                weight: 4,
-                opacity: 0.9,
-                lineCap: 'round',
-                lineJoin: 'round'
-            }).addTo(currentMap);
-            
-            // Glow effect
-            L.polyline(latlngs, {
-                color: '#96d46c',
-                weight: 8,
-                opacity: 0.2,
-                lineCap: 'round',
-                lineJoin: 'round'
-            }).addTo(currentMap);
-            
-            // Start marker (Green)
+            // Green start marker
             const startIcon = L.divIcon({
                 className: 'custom-marker',
                 html: `<div style="background: #22c55e; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 20px rgba(34, 197, 94, 0.6);"></div>`,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
+                iconSize: [20, 20], iconAnchor: [10, 10]
             });
+            L.marker(startPoint, { icon: startIcon }).addTo(currentMap).bindPopup('<div style="color: #22c55e; font-weight: bold;">START</div>');
             
-            L.marker(startPoint, { icon: startIcon })
-                .addTo(currentMap)
-                .bindPopup('<div style="color: #22c55e; font-weight: bold;">START</div>', { className: 'custom-popup' });
-            
-            // End marker (Purple)
-            const endPoint = [data[data.length - 1].lat, data[data.length - 1].lng];
+            // Purple end marker
+            const endPoint = [data[data.length-1].lat, data[data.length-1].lng];
             const endIcon = L.divIcon({
                 className: 'custom-marker',
                 html: `<div style="background: #a855f7; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 20px rgba(168, 85, 247, 0.6);"></div>`,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
+                iconSize: [20, 20], iconAnchor: [10, 10]
             });
+            L.marker(endPoint, { icon: endIcon }).addTo(currentMap).bindPopup('<div style="color: #a855f7; font-weight: bold;">END</div>');
             
-            L.marker(endPoint, { icon: endIcon })
-                .addTo(currentMap)
-                .bindPopup('<div style="color: #a855f7; font-weight: bold;">END</div>', { className: 'custom-popup' });
-            
-            // Fit bounds
             currentMap.fitBounds(latlngs, { padding: [50, 50] });
         }
 
         function closeTripModal() {
             document.getElementById('trip-modal').classList.add('hidden');
             document.body.style.overflow = '';
-            if (currentMap) {
-                currentMap.remove();
-                currentMap = null;
-            }
+            if (currentMap) { currentMap.remove(); currentMap = null; }
             currentTripData = null;
         }
 
         async function viewIncidentDetail(path, name) {
-            // Similar to trip but for incidents - simplified for now
-            const storage = window.firebaseStorage;
-            const { ref, getDownloadURL } = window.firebaseRefs;
-            
             try {
-                const fileRef = ref(storage, path);
-                const url = await getDownloadURL(fileRef);
+                const { ref, getDownloadURL } = window.firebaseRefs;
+                const url = await getDownloadURL(ref(window.firebaseStorage, path));
                 window.open(url, '_blank');
             } catch (error) {
                 alert('Failed to open incident file');
@@ -1128,19 +878,14 @@
         function updateStats() {
             document.getElementById('stat-total-trips').textContent = allTrips.length;
             document.getElementById('stat-total-incidents').textContent = allIncidents.length;
-            
             const today = new Date().toISOString().split('T')[0];
-            const todayTrips = allTrips.filter(t => t.date === today).length;
-            document.getElementById('stat-today-trips').textContent = todayTrips;
-            
+            document.getElementById('stat-today-trips').textContent = allTrips.filter(t => t.date === today).length;
             const totalSize = [...allTrips, ...allIncidents].reduce((sum, item) => sum + item.size, 0);
-            const sizeMB = (totalSize / (1024 * 1024)).toFixed(1);
-            document.getElementById('stat-storage').textContent = `${sizeMB} MB`;
+            document.getElementById('stat-storage').textContent = (totalSize / (1024 * 1024)).toFixed(1) + ' MB';
         }
 
         function filterTrips() {
-            const filter = document.getElementById('trip-filter').value;
-            renderTrips(filter);
+            renderTrips(document.getElementById('trip-filter').value);
         }
 
         function refreshData() {
@@ -1151,21 +896,16 @@
 
         function switchTab(tab) {
             currentTab = tab;
-            
             document.getElementById('tab-trips-btn').className = tab === 'trips' ? 'tab-active pb-4 px-4 font-medium text-sm transition-all rounded-t-xl' : 'tab-inactive pb-4 px-4 font-medium text-sm transition-all rounded-t-xl';
             document.getElementById('tab-incidents-btn').className = tab === 'incidents' ? 'tab-active pb-4 px-4 font-medium text-sm transition-all rounded-t-xl' : 'tab-inactive pb-4 px-4 font-medium text-sm transition-all rounded-t-xl';
             document.getElementById('tab-live-btn').className = tab === 'live' ? 'tab-active pb-4 px-4 font-medium text-sm transition-all flex items-center gap-2 rounded-t-xl' : 'tab-inactive pb-4 px-4 font-medium text-sm transition-all flex items-center gap-2 rounded-t-xl';
-            
             document.getElementById('tab-trips').classList.toggle('hidden', tab !== 'trips');
             document.getElementById('tab-incidents').classList.toggle('hidden', tab !== 'incidents');
             document.getElementById('tab-live').classList.toggle('hidden', tab !== 'live');
         }
 
-        // Close modal on escape key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeTripModal();
-            }
+            if (e.key === 'Escape') closeTripModal();
         });
     </script>
 </body>
