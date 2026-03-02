@@ -11,6 +11,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getStorage, ref, listAll, getDownloadURL, getMetadata } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getDatabase, ref as dbRef, onValue, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAqoBhfXXNJYUdOD5oCq8oJWF3NJFuP8XI",
@@ -24,12 +25,21 @@
         const app = initializeApp(firebaseConfig);
         const storage = getStorage(app);
         const auth = getAuth(app);
+        const database = getDatabase(app); // Initialize database here
 
         window.firebaseApp = app;
         window.firebaseStorage = storage;
         window.firebaseAuth = auth;
         window.firebaseRefs = { ref, listAll, getDownloadURL, getMetadata };
         window.firebaseAuthFns = { signInWithEmailAndPassword, onAuthStateChanged, signOut };
+        window.firebaseDatabase = database; // Expose database
+        window.firebaseDbFns = { dbRef, onValue, off }; // Expose db functions
+
+        // Initialize the app after Firebase is ready
+        window.addEventListener('DOMContentLoaded', () => {
+            updateDate();
+            checkAuth();
+        });
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -541,12 +551,16 @@
     </div>
 
     <script>
+        // Global variables
         let allTrips = [], allIncidents = [], currentTab = 'trips';
         let currentMap = null, currentTripData = null;
+        let liveMap = null;
+        let busMarkers = {};
+        let liveUnsubscribe = null;
 
-        document.addEventListener('DOMContentLoaded', () => {
-            updateDate();
-            checkAuth();
+        // Wait for Firebase to be initialized
+        window.addEventListener('load', () => {
+            // Firebase is initialized in the module script above
         });
 
         function updateDate() {
@@ -740,10 +754,11 @@
                 
                 // Fetch CSV with error handling
                 let data = [];
+                let csvText = ''; // Define csvText here so it's available for download
                 try {
                     const response = await fetch(url);
                     if (!response.ok) throw new Error('Failed to fetch');
-                    const csvText = await response.text();
+                    csvText = await response.text();
                     data = parseCSV(csvText);
                 } catch (fetchError) {
                     console.log('Fetch failed, opening direct download:', fetchError);
@@ -957,23 +972,7 @@
             if (e.key === 'Escape') closeTripModal();
         });
 
-        //Firebase imports
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getStorage, ref, listAll, getDownloadURL, getMetadata } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getDatabase, ref as dbRef, onValue, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        // After initializing app
-        const database = getDatabase(app);
-        window.firebaseDatabase = database;
-        window.firebaseDbFns = { dbRef, onValue, off };
-
-        // Global variables
-        let liveMap = null;
-        let busMarkers = {};
-        let liveUnsubscribe = null;
-
-        // Call this when switching to live tab
+        // Live tracking functions
         function initLiveTracking() {
             if (liveMap) return; // Already initialized
             
