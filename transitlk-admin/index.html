@@ -1055,14 +1055,18 @@
             updateBusListCards(busArray);
         }
 
-        function createBusPopup(busId, busData) {
-            const status = busData.online ? '🟢 Online' : '🔴 Offline';
+                function createBusPopup(busId, busData) {
+            const status = busData.online ? (busData.inTrip ? '🟢 In Trip' : '🟡 Online') : '🔴 Offline';
+            const statusColor = busData.online ? (busData.inTrip ? '#96d46c' : '#eab308') : '#ef4444';
             const speed = ((busData.speed || 0) * 3.6).toFixed(1);
+            const displayName = busData.customName || busId;
+            
             return `
                 <div style="font-family: Inter, sans-serif; min-width: 200px;">
-                    <h3 style="margin: 0 0 8px 0; font-weight: bold; color: #96d46c;">${busId}</h3>
+                    <h3 style="margin: 0 0 8px 0; font-weight: bold; color: ${statusColor};">${displayName}</h3>
+                    ${busData.customName && busData.customName !== busId ? `<p style="margin: 2px 0; color: #666; font-size: 10px;">ID: ${busId}</p>` : ''}
                     <p style="margin: 4px 0; color: #aaa; font-size: 12px;">${status}</p>
-                    <p style="margin: 4px 0; color: #fff; font-size: 14px;">🚌 ${speed} km/h</p>
+                    ${busData.inTrip ? `<p style="margin: 4px 0; color: #fff; font-size: 14px;">🚌 ${speed} km/h</p>` : ''}
                     <p style="margin: 4px 0; color: #888; font-size: 11px;">Last seen: ${busData.lastSeen || 'Unknown'}</p>
                     <p style="margin: 4px 0; color: #666; font-size: 10px;">${busData.lat?.toFixed(5)}, ${busData.lng?.toFixed(5)}</p>
                 </div>
@@ -1077,27 +1081,34 @@
                 return;
             }
             
-            container.innerHTML = busArray.map(([busId, bus]) => `
+            container.innerHTML = busArray.map(([busId, bus]) => {
+                const displayName = bus.customName || busId;
+                const statusText = bus.online ? (bus.inTrip ? 'In Trip' : 'Online') : 'Offline';
+                const statusColor = bus.online ? (bus.inTrip ? 'text-green-400' : 'text-yellow-400') : 'text-red-400';
+                const bgColor = bus.online ? (bus.inTrip ? 'rgba(150,212,108,0.2)' : 'rgba(234,179,8,0.2)') : 'rgba(239,68,68,0.2)';
+                const borderColor = bus.online ? (bus.inTrip ? '#96d46c' : '#eab308') : '#ef4444';
+                
+                return `
                 <div class="glass-panel p-4 cursor-pointer hover:bg-white/5 transition-all" onclick="focusOnBus('${busId}')">
                     <div class="flex items-center gap-3 mb-3">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: ${bus.online ? 'rgba(150,212,108,0.2)' : 'rgba(239,68,68,0.2)'}; border: 2px solid ${bus.online ? '#96d46c' : '#ef4444'}">
-                            <svg class="w-5 h-5" style="color: ${bus.online ? '#96d46c' : '#ef4444'}" fill="currentColor" viewBox="0 0 24 24">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: ${bgColor}; border: 2px solid ${borderColor}">
+                            <svg class="w-5 h-5" style="color: ${borderColor}" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
                             </svg>
                         </div>
                         <div>
-                            <h4 class="font-bold text-sm">${busId}</h4>
-                            <p class="text-xs ${bus.online ? 'text-green-400' : 'text-red-400'}">${bus.online ? '● Online' : '● Offline'}</p>
+                            <h4 class="font-bold text-sm">${displayName}</h4>
+                            ${bus.customName && bus.customName !== busId ? `<p class="text-[10px] text-gray-500">${busId}</p>` : ''}
+                            <p class="text-xs ${statusColor}">● ${statusText}</p>
                         </div>
                     </div>
                     <div class="space-y-1 text-xs text-gray-400">
-                        <p>Speed: <span class="text-white">${((bus.speed || 0) * 3.6).toFixed(1)} km/h</span></p>
+                        ${bus.inTrip ? `<p>Speed: <span class="text-white">${((bus.speed || 0) * 3.6).toFixed(1)} km/h</span></p>` : ''}
                         <p>Updated: <span class="text-white">${bus.lastSeen || 'Unknown'}</span></p>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
-
         function focusOnBus(busId) {
             const marker = busMarkers[busId];
             if (marker) {
