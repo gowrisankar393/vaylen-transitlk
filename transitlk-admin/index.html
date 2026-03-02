@@ -25,17 +25,16 @@
         const app = initializeApp(firebaseConfig);
         const storage = getStorage(app);
         const auth = getAuth(app);
-        const database = getDatabase(app); // Initialize database here
+        const database = getDatabase(app);
 
         window.firebaseApp = app;
         window.firebaseStorage = storage;
         window.firebaseAuth = auth;
         window.firebaseRefs = { ref, listAll, getDownloadURL, getMetadata };
         window.firebaseAuthFns = { signInWithEmailAndPassword, onAuthStateChanged, signOut };
-        window.firebaseDatabase = database; // Expose database
-        window.firebaseDbFns = { dbRef, onValue, off }; // Expose db functions
+        window.firebaseDatabase = database;
+        window.firebaseDbFns = { dbRef, onValue, off };
 
-        // Initialize the app after Firebase is ready
         window.addEventListener('DOMContentLoaded', () => {
             updateDate();
             checkAuth();
@@ -89,6 +88,7 @@
         .accent-orange { color: #f97316; }
         .bg-accent-orange { background-color: #f97316; }
         .accent-purple { color: #a855f7; }
+        .accent-yellow { color: #eab308; }
         
         .stat-card {
             background: linear-gradient(135deg, rgba(150, 212, 108, 0.08) 0%, rgba(255,255,255,0.02) 100%);
@@ -156,6 +156,7 @@
         .logo-nav { height: 40px; width: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
         
         #trip-map { height: 400px; width: 100%; border-radius: 16px; z-index: 1; }
+        #live-map { height: 500px; width: 100%; border-radius: 16px; z-index: 1; }
         
         .leaflet-container { background: #1a1a2e; font-family: 'Inter', sans-serif; }
         
@@ -202,6 +203,10 @@
         ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
         ::-webkit-scrollbar-thumb { background: rgba(150, 212, 108, 0.3); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(150, 212, 108, 0.5); }
+        
+        .bus-marker-icon {
+            transition: all 0.3s ease;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -339,6 +344,22 @@
                 </div>
             </div>
 
+            <!-- Legend -->
+            <div class="flex gap-4 mb-4 text-xs">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-yellow-500 shadow-lg shadow-yellow-500/50"></div>
+                    <span class="text-gray-400">Online (Idle)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-purple-500 shadow-lg shadow-purple-500/50"></div>
+                    <span class="text-gray-400">In Trip</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-red-500 shadow-lg shadow-red-500/50"></div>
+                    <span class="text-gray-400">Offline</span>
+                </div>
+            </div>
+
             <!-- Tabs -->
             <div class="flex gap-6 border-b border-white/10 mb-6">
                 <button onclick="switchTab('trips')" id="tab-trips-btn" class="tab-active pb-4 px-4 font-medium text-sm transition-all rounded-t-xl">Trip Logs</button>
@@ -420,7 +441,7 @@
                 </div>
                 
                 <div class="glass-panel p-4 mb-6">
-                    <div id="live-map" style="height: 500px; width: 100%; border-radius: 16px;"></div>
+                    <div id="live-map"></div>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="bus-list">
@@ -558,11 +579,6 @@
         let busMarkers = {};
         let liveUnsubscribe = null;
 
-        // Wait for Firebase to be initialized
-        window.addEventListener('load', () => {
-            // Firebase is initialized in the module script above
-        });
-
         function updateDate() {
             const now = new Date();
             document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -657,7 +673,6 @@
             loading.classList.add('hidden');
             
             const now = new Date();
-            // Build local today string YYYY-MM-DD
             const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
             
             let filtered = allTrips;
@@ -671,7 +686,6 @@
                 filtered = allTrips.filter(t => new Date(t.date) >= monthAgo);
             }
             
-            // Sort filtered by date descending
             filtered = filtered.slice().sort((a, b) => new Date(b.date) - new Date(a.date) || new Date(b.updated) - new Date(a.updated));
             
             if (filtered.length === 0) { empty.classList.remove('hidden'); container.innerHTML = ''; return; }
@@ -680,7 +694,6 @@
             container.innerHTML = filtered.map(trip => {
                 const date = new Date(trip.updated);
                 const sizeKB = (trip.size / 1024).toFixed(1);
-                // Count how many trips were on the same day
                 const tripsOnDay = allTrips.filter(t => t.date === trip.date).length;
                 const dayBadge = tripsOnDay > 1 ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-accent-green/10 border border-accent-green/20 accent-green font-semibold">${tripsOnDay} trips this day</span>` : '';
                 return `
@@ -752,9 +765,8 @@
                 const { ref, getDownloadURL } = window.firebaseRefs;
                 const url = await getDownloadURL(ref(window.firebaseStorage, path));
                 
-                // Fetch CSV with error handling
                 let data = [];
-                let csvText = ''; // Define csvText here so it's available for download
+                let csvText = '';
                 try {
                     const response = await fetch(url);
                     if (!response.ok) throw new Error('Failed to fetch');
@@ -772,13 +784,11 @@
                 document.getElementById('trip-modal').classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
                 
-                // Update info
                 document.getElementById('trip-title').textContent = 'Trip Details';
                 document.getElementById('trip-subtitle').textContent = `${name} • ${date}`;
                 document.getElementById('info-date').textContent = date;
                 document.getElementById('info-points').textContent = data.length;
                 
-                // Calculate and display metrics
                 const metrics = calculateMetrics(data);
                 document.getElementById('metric-distance').textContent = metrics.distance + ' km';
                 document.getElementById('metric-duration').textContent = metrics.duration;
@@ -789,7 +799,6 @@
                 document.getElementById('coord-start').textContent = `${metrics.startLat.toFixed(6)}, ${metrics.startLng.toFixed(6)}`;
                 document.getElementById('coord-end').textContent = `${metrics.endLat.toFixed(6)}, ${metrics.endLng.toFixed(6)}`;
                 
-                // Initialize map after modal is visible
                 setTimeout(() => initMap(data), 100);
                 
             } catch (error) {
@@ -852,19 +861,14 @@
             const startPoint = [data[0].lat, data[0].lng];
             currentMap = L.map('trip-map', { zoomControl: true, attributionControl: false }).setView(startPoint, 14);
             
-            // Dark tile base layer
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(currentMap);
             
             const latlngs = data.map(d => [d.lat, d.lng]);
             
-            // Glow effect — dark green wide underlay
             L.polyline(latlngs, { color: '#2d6a1f', weight: 14, opacity: 0.25, lineCap: 'round', lineJoin: 'round' }).addTo(currentMap);
-            // Mid glow — medium green
             L.polyline(latlngs, { color: '#4caf50', weight: 7, opacity: 0.45, lineCap: 'round', lineJoin: 'round' }).addTo(currentMap);
-            // Main route — bright light green
             L.polyline(latlngs, { color: '#96d46c', weight: 3.5, opacity: 1, lineCap: 'round', lineJoin: 'round' }).addTo(currentMap);
 
-            // Yellow START marker
             const startIcon = L.divIcon({
                 className: 'custom-marker',
                 html: `<div style="background: #facc15; width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 3px rgba(250,204,21,0.35), 0 0 18px rgba(250,204,21,0.7); display:flex; align-items:center; justify-content:center;">
@@ -875,7 +879,6 @@
             L.marker(startPoint, { icon: startIcon }).addTo(currentMap)
               .bindPopup('<div style="background:#1a1a2e;color:#facc15;font-weight:bold;padding:6px 12px;border-radius:8px;border:1px solid rgba(250,204,21,0.4);">🟡 START</div>');
             
-            // Purple END marker
             const endPoint = [data[data.length-1].lat, data[data.length-1].lng];
             const endIcon = L.divIcon({
                 className: 'custom-marker',
@@ -927,7 +930,6 @@
             document.getElementById('stat-total-trips').textContent = allTrips.length;
             document.getElementById('stat-total-incidents').textContent = allIncidents.length;
             
-            // Today: compare trip date folder name to local date string YYYY-MM-DD
             const todayLocal = new Date();
             const todayStr = `${todayLocal.getFullYear()}-${String(todayLocal.getMonth()+1).padStart(2,'0')}-${String(todayLocal.getDate()).padStart(2,'0')}`;
             const todayCount = allTrips.filter(t => t.date === todayStr).length;
@@ -948,46 +950,56 @@
         }
 
         function switchTab(tab) {
-          currentTab = tab;
-          
-          // Update tab styles...
-          document.getElementById('tab-trips-btn').className = tab === 'trips' ? 'tab-active pb-4 px-4 font-medium text-sm transition-all rounded-t-xl' : 'tab-inactive pb-4 px-4 font-medium text-sm transition-all rounded-t-xl';
-          document.getElementById('tab-incidents-btn').className = tab === 'incidents' ? 'tab-active pb-4 px-4 font-medium text-sm transition-all rounded-t-xl' : 'tab-inactive pb-4 px-4 font-medium text-sm transition-all rounded-t-xl';
-          document.getElementById('tab-live-btn').className = tab === 'live' ? 'tab-active pb-4 px-4 font-medium text-sm transition-all flex items-center gap-2 rounded-t-xl' : 'tab-inactive pb-4 px-4 font-medium text-sm transition-all flex items-center gap-2 rounded-t-xl';
-          
-          // Show/hide content
-          document.getElementById('tab-trips').classList.toggle('hidden', tab !== 'trips');
-          document.getElementById('tab-incidents').classList.toggle('hidden', tab !== 'incidents');
-          document.getElementById('tab-live').classList.toggle('hidden', tab !== 'live');
-          
-          // Initialize or stop live tracking
-          if (tab === 'live') {
-              initLiveTracking();
-          } else {
-              stopLiveTracking();
-          }
+            currentTab = tab;
+            
+            document.getElementById('tab-trips-btn').className = tab === 'trips' ? 'tab-active pb-4 px-4 font-medium text-sm transition-all rounded-t-xl' : 'tab-inactive pb-4 px-4 font-medium text-sm transition-all rounded-t-xl';
+            document.getElementById('tab-incidents-btn').className = tab === 'incidents' ? 'tab-active pb-4 px-4 font-medium text-sm transition-all rounded-t-xl' : 'tab-inactive pb-4 px-4 font-medium text-sm transition-all rounded-t-xl';
+            document.getElementById('tab-live-btn').className = tab === 'live' ? 'tab-active pb-4 px-4 font-medium text-sm transition-all flex items-center gap-2 rounded-t-xl' : 'tab-inactive pb-4 px-4 font-medium text-sm transition-all flex items-center gap-2 rounded-t-xl';
+            
+            document.getElementById('tab-trips').classList.toggle('hidden', tab !== 'trips');
+            document.getElementById('tab-incidents').classList.toggle('hidden', tab !== 'incidents');
+            document.getElementById('tab-live').classList.toggle('hidden', tab !== 'live');
+            
+            if (tab === 'live') {
+                initLiveTracking();
+            } else {
+                stopLiveTracking();
+            }
         }
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeTripModal();
         });
 
-        // Live tracking functions
+        // ==================== LIVE TRACKING FUNCTIONS ====================
+
         function initLiveTracking() {
-            if (liveMap) return; // Already initialized
+            if (liveMap) {
+                // Map already initialized, just ensure listener is active
+                if (!liveUnsubscribe) startLiveListener();
+                return;
+            }
             
-            // Initialize map
-            liveMap = L.map('live-map', { zoomControl: true, attributionControl: false }).setView([6.9271, 79.8612], 12); // Default to Colombo
+            // Initialize map centered on Colombo, Sri Lanka
+            liveMap = L.map('live-map', { zoomControl: true, attributionControl: false }).setView([6.9271, 79.8612], 12);
             
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(liveMap);
             
-            // Listen to buses in realtime
+            startLiveListener();
+        }
+
+        function startLiveListener() {
             const { dbRef, onValue } = window.firebaseDbFns;
             const busesRef = dbRef(window.firebaseDatabase, 'buses');
             
+            console.log('Starting live tracking listener...');
+            
             liveUnsubscribe = onValue(busesRef, (snapshot) => {
                 const buses = snapshot.val();
+                console.log('Received bus data:', buses);
                 updateLiveBuses(buses);
+            }, (error) => {
+                console.error('Firebase listener error:', error);
             });
         }
 
@@ -995,44 +1007,67 @@
             if (!buses) {
                 document.getElementById('online-count').textContent = '0 buses online';
                 document.getElementById('bus-list').innerHTML = '<p class="text-gray-400 text-center col-span-3">No buses currently tracking</p>';
+                // Clear existing markers
+                Object.keys(busMarkers).forEach(busId => {
+                    liveMap.removeLayer(busMarkers[busId]);
+                    delete busMarkers[busId];
+                });
                 return;
             }
             
             const busArray = Object.entries(buses);
-            const onlineBuses = busArray.filter(([id, bus]) => bus.online);
+            
+            // Count online buses (online === true)
+            const onlineBuses = busArray.filter(([id, bus]) => bus.online === true);
             
             document.getElementById('online-count').textContent = `${onlineBuses.length} bus${onlineBuses.length !== 1 ? 'es' : ''} online`;
             
-            // Update markers
+            // Update or create markers for each bus
             busArray.forEach(([busId, busData]) => {
+                // Validate coordinates
+                if (!busData.lat || !busData.lng || isNaN(busData.lat) || isNaN(busData.lng)) {
+                    console.warn(`Invalid coordinates for bus ${busId}:`, busData.lat, busData.lng);
+                    return;
+                }
+                
                 const pos = [busData.lat, busData.lng];
                 
+                // Determine color based on status
+                let color, statusText, statusClass, statusBg;
+                
+                if (busData.online === true) {
+                    if (busData.inTrip === true) {
+                        color = '#a855f7'; // Purple for in trip
+                        statusText = 'In Trip';
+                        statusClass = 'text-purple-400';
+                        statusBg = 'rgba(168, 85, 247, 0.2)';
+                    } else {
+                        color = '#eab308'; // Yellow for online but not in trip
+                        statusText = 'Online (Idle)';
+                        statusClass = 'text-yellow-400';
+                        statusBg = 'rgba(234, 179, 8, 0.2)';
+                    }
+                } else {
+                    color = '#ef4444'; // Red for offline
+                    statusText = 'Offline';
+                    statusClass = 'text-red-400';
+                    statusBg = 'rgba(239, 68, 68, 0.2)';
+                }
+                
                 if (busMarkers[busId]) {
-                    // Update existing marker
+                    // Update existing marker position and popup
                     busMarkers[busId].setLatLng(pos);
-                    busMarkers[busId].setPopupContent(createBusPopup(busId, busData));
+                    busMarkers[busId].setPopupContent(createBusPopup(busId, busData, color, statusText));
+                    
+                    // Update marker icon color
+                    const newIcon = createBusIcon(color, busData.heading || 0);
+                    busMarkers[busId].setIcon(newIcon);
                 } else {
                     // Create new marker
-                    const icon = L.divIcon({
-                        className: 'bus-marker',
-                        html: `<div style="
-                            background: ${busData.online ? '#96d46c' : '#ef4444'};
-                            width: 36px; height: 36px; border-radius: 50%;
-                            border: 3px solid white;
-                            box-shadow: 0 0 0 4px ${busData.online ? 'rgba(150,212,108,0.3)' : 'rgba(239,68,68,0.3)'};
-                            display: flex; align-items: center; justify-content: center;
-                            transform: rotate(${busData.heading || 0}deg);
-                        ">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                                <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
-                            </svg>
-                        </div>`,
-                        iconSize: [36, 36],
-                        iconAnchor: [18, 18]
-                    });
+                    const icon = createBusIcon(color, busData.heading || 0);
                     
                     const marker = L.marker(pos, { icon }).addTo(liveMap);
-                    marker.bindPopup(createBusPopup(busId, busData));
+                    marker.bindPopup(createBusPopup(busId, busData, color, statusText));
                     busMarkers[busId] = marker;
                 }
             });
@@ -1055,20 +1090,40 @@
             updateBusListCards(busArray);
         }
 
-                function createBusPopup(busId, busData) {
-            const status = busData.online ? (busData.inTrip ? '🟢 In Trip' : '🟡 Online') : '🔴 Offline';
-            const statusColor = busData.online ? (busData.inTrip ? '#96d46c' : '#eab308') : '#ef4444';
+        function createBusIcon(color, heading) {
+            return L.divIcon({
+                className: 'bus-marker-icon',
+                html: `<div style="
+                    background: ${color};
+                    width: 36px; height: 36px; border-radius: 50%;
+                    border: 3px solid white;
+                    box-shadow: 0 0 0 4px ${color}33, 0 4px 12px rgba(0,0,0,0.4);
+                    display: flex; align-items: center; justify-content: center;
+                    transform: rotate(${heading}deg);
+                    transition: all 0.3s ease;
+                ">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                        <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
+                    </svg>
+                </div>`,
+                iconSize: [36, 36],
+                iconAnchor: [18, 18]
+            });
+        }
+
+        function createBusPopup(busId, busData, color, statusText) {
             const speed = ((busData.speed || 0) * 3.6).toFixed(1);
             const displayName = busData.customName || busId;
+            const lastSeen = busData.lastSeen || 'Unknown';
             
             return `
-                <div style="font-family: Inter, sans-serif; min-width: 200px;">
-                    <h3 style="margin: 0 0 8px 0; font-weight: bold; color: ${statusColor};">${displayName}</h3>
-                    ${busData.customName && busData.customName !== busId ? `<p style="margin: 2px 0; color: #666; font-size: 10px;">ID: ${busId}</p>` : ''}
-                    <p style="margin: 4px 0; color: #aaa; font-size: 12px;">${status}</p>
-                    ${busData.inTrip ? `<p style="margin: 4px 0; color: #fff; font-size: 14px;">🚌 ${speed} km/h</p>` : ''}
-                    <p style="margin: 4px 0; color: #888; font-size: 11px;">Last seen: ${busData.lastSeen || 'Unknown'}</p>
-                    <p style="margin: 4px 0; color: #666; font-size: 10px;">${busData.lat?.toFixed(5)}, ${busData.lng?.toFixed(5)}</p>
+                <div style="font-family: Inter, sans-serif; min-width: 220px;">
+                    <h3 style="margin: 0 0 8px 0; font-weight: bold; color: ${color}; font-size: 16px;">${displayName}</h3>
+                    ${busData.customName && busData.customName !== busId ? `<p style="margin: 2px 0; color: #666; font-size: 11px;">Device ID: ${busId}</p>` : ''}
+                    <p style="margin: 6px 0; color: #aaa; font-size: 13px; font-weight: 600;">${statusText}</p>
+                    ${busData.inTrip === true ? `<p style="margin: 4px 0; color: #fff; font-size: 14px;">🚌 ${speed} km/h</p>` : ''}
+                    <p style="margin: 4px 0; color: #888; font-size: 11px;">Last seen: ${lastSeen}</p>
+                    <p style="margin: 4px 0; color: #666; font-size: 10px; font-family: monospace;">${busData.lat?.toFixed(5)}, ${busData.lng?.toFixed(5)}</p>
                 </div>
             `;
         }
@@ -1083,10 +1138,29 @@
             
             container.innerHTML = busArray.map(([busId, bus]) => {
                 const displayName = bus.customName || busId;
-                const statusText = bus.online ? (bus.inTrip ? 'In Trip' : 'Online') : 'Offline';
-                const statusColor = bus.online ? (bus.inTrip ? 'text-green-400' : 'text-yellow-400') : 'text-red-400';
-                const bgColor = bus.online ? (bus.inTrip ? 'rgba(150,212,108,0.2)' : 'rgba(234,179,8,0.2)') : 'rgba(239,68,68,0.2)';
-                const borderColor = bus.online ? (bus.inTrip ? '#96d46c' : '#eab308') : '#ef4444';
+                
+                let statusText, statusColor, bgColor, borderColor;
+                
+                if (bus.online === true) {
+                    if (bus.inTrip === true) {
+                        statusText = '● In Trip';
+                        statusColor = 'text-purple-400';
+                        bgColor = 'rgba(168, 85, 247, 0.2)';
+                        borderColor = '#a855f7';
+                    } else {
+                        statusText = '● Online (Idle)';
+                        statusColor = 'text-yellow-400';
+                        bgColor = 'rgba(234, 179, 8, 0.2)';
+                        borderColor = '#eab308';
+                    }
+                } else {
+                    statusText = '● Offline';
+                    statusColor = 'text-red-400';
+                    bgColor = 'rgba(239, 68, 68, 0.2)';
+                    borderColor = '#ef4444';
+                }
+                
+                const speed = ((bus.speed || 0) * 3.6).toFixed(1);
                 
                 return `
                 <div class="glass-panel p-4 cursor-pointer hover:bg-white/5 transition-all" onclick="focusOnBus('${busId}')">
@@ -1099,30 +1173,32 @@
                         <div>
                             <h4 class="font-bold text-sm">${displayName}</h4>
                             ${bus.customName && bus.customName !== busId ? `<p class="text-[10px] text-gray-500">${busId}</p>` : ''}
-                            <p class="text-xs ${statusColor}">● ${statusText}</p>
+                            <p class="text-xs ${statusColor} font-semibold">${statusText}</p>
                         </div>
                     </div>
                     <div class="space-y-1 text-xs text-gray-400">
-                        ${bus.inTrip ? `<p>Speed: <span class="text-white">${((bus.speed || 0) * 3.6).toFixed(1)} km/h</span></p>` : ''}
+                        ${bus.inTrip === true ? `<p>Speed: <span class="text-white font-bold">${speed} km/h</span></p>` : ''}
                         <p>Updated: <span class="text-white">${bus.lastSeen || 'Unknown'}</span></p>
+                        <p class="font-mono text-[10px] opacity-70">${bus.lat?.toFixed(4)}, ${bus.lng?.toFixed(4)}</p>
                     </div>
                 </div>
             `}).join('');
         }
+
         function focusOnBus(busId) {
             const marker = busMarkers[busId];
-            if (marker) {
+            if (marker && liveMap) {
                 liveMap.setView(marker.getLatLng(), 16);
                 marker.openPopup();
             }
         }
 
-        // Stop live tracking when leaving tab
         function stopLiveTracking() {
             if (liveUnsubscribe) {
                 const { off, dbRef } = window.firebaseDbFns;
                 off(dbRef(window.firebaseDatabase, 'buses'));
                 liveUnsubscribe = null;
+                console.log('Live tracking stopped');
             }
         }
     </script>
