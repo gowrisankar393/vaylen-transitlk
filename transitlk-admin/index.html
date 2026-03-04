@@ -253,9 +253,14 @@
         #live-map { height: 500px; width: 100%; border-radius: 16px; z-index: 1; }
 
         .leaflet-container {
-            background: #0d1512;
+            background: #0a1a10;
             font-family: 'Sora', sans-serif;
             border-radius: 16px;
+        }
+
+        /* Tint the map tiles dark green */
+        .leaflet-tile-pane {
+            filter: hue-rotate(100deg) saturate(0.35) brightness(0.82);
         }
 
         /* ── METRIC CARD ── */
@@ -287,6 +292,10 @@
         /* ── LOGIN SCREEN ── */
         #login-screen {
             background: transparent !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-height: 100vh !important;
         }
 
         .login-card {
@@ -452,7 +461,7 @@
 <body class="min-h-screen">
 
     <!-- Login Screen -->
-    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center">
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center" style="min-height:100vh;">
         <div class="login-card p-10 w-full max-w-sm mx-4">
             <!-- Logo -->
             <div class="flex flex-col items-center mb-10">
