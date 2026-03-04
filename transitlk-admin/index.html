@@ -99,19 +99,9 @@
             z-index: 0;
         }
 
-        #dashboard {
+        #login-screen, #dashboard, .fixed {
             position: relative;
             z-index: 1;
-        }
-
-        #login-screen {
-            position: fixed !important;
-            inset: 0 !important;
-            z-index: 50 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            background: transparent !important;
         }
 
         /* ── GLASS PANEL ── */
@@ -263,14 +253,9 @@
         #live-map { height: 500px; width: 100%; border-radius: 16px; z-index: 1; }
 
         .leaflet-container {
-            background: #0a1a10;
+            background: #0d1512;
             font-family: 'Sora', sans-serif;
             border-radius: 16px;
-        }
-
-        /* Tint the map tiles dark green */
-        .leaflet-tile-pane {
-            filter: hue-rotate(100deg) saturate(0.35) brightness(0.82);
         }
 
         /* ── METRIC CARD ── */
@@ -299,7 +284,11 @@
             transform: translateY(-2px);
         }
 
-        /* ── LOGIN CARD ── */
+        /* ── LOGIN SCREEN ── */
+        #login-screen {
+            background: transparent !important;
+        }
+
         .login-card {
             background: rgba(10,16,12,0.8);
             backdrop-filter: blur(40px) saturate(1.5);
@@ -463,7 +452,7 @@
 <body class="min-h-screen">
 
     <!-- Login Screen -->
-    <div id="login-screen">
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center">
         <div class="login-card p-10 w-full max-w-sm mx-4">
             <!-- Logo -->
             <div class="flex flex-col items-center mb-10">
@@ -546,7 +535,7 @@
                     <div class="flex justify-between items-start mb-3">
                         <div>
                             <p class="section-label mb-1">Total Trips</p>
-                            <p class="text-3xl font-bold mt-1" id="stat-total-trips">-</p>
+                            <p class="text-3xl font-bold mt-1 gradient-text-green" id="stat-total-trips">-</p>
                         </div>
                         <div class="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden" style="background:rgba(126,232,90,0.1);border:1px solid rgba(126,232,90,0.18)">
                             <img src="logo2.png" alt="" class="w-7 h-7 object-contain opacity-90">
@@ -698,24 +687,8 @@
                     </div>
                 </div>
                 
-                <div class="glass-panel p-4 mb-6" style="position:relative;">
+                <div class="glass-panel p-4 mb-6">
                     <div id="live-map"></div>
-                    <button onclick="recenterMap()" id="recenter-btn" title="Reset view" style="
-                        position:absolute; bottom:20px; right:20px; z-index:1000;
-                        background:rgba(10,16,12,0.85); backdrop-filter:blur(12px);
-                        border:1px solid rgba(126,232,90,0.3); border-radius:10px;
-                        padding:8px 14px; color:#fff; font-family:'Sora',sans-serif;
-                        font-size:12px; font-weight:600; cursor:pointer;
-                        display:flex; align-items:center; gap:6px;
-                        box-shadow:0 4px 16px rgba(0,0,0,0.4);
-                        transition:all 0.2s ease;
-                    " onmouseover="this.style.borderColor='rgba(126,232,90,0.7)';this.style.background='rgba(20,30,22,0.95)'"
-                       onmouseout="this.style.borderColor=trackedBusId?'rgba(126,232,90,0.6)':'rgba(126,232,90,0.3)';this.style.background='rgba(10,16,12,0.85)'">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z"/>
-                        </svg>
-                        <span id="recenter-label">Recenter</span>
-                    </button>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="bus-list">
@@ -852,7 +825,6 @@
         let liveMap = null;
         let busMarkers = {};
         let liveUnsubscribe = null;
-        let trackedBusId = null;
 
         function updateDate() {
             const now = new Date();
@@ -1266,13 +1238,6 @@
                 if (e.originalEvent) {
                     // Only set flag on genuine user input, not programmatic moves
                     liveMap._userHasInteracted = true;
-                    if (trackedBusId) {
-                        trackedBusId = null;
-                        const label = document.getElementById('recenter-label');
-                        const btn = document.getElementById('recenter-btn');
-                        if (label) label.textContent = 'Recenter';
-                        if (btn) btn.style.borderColor = 'rgba(126,232,90,0.3)';
-                    }
                 }
             });
             
@@ -1371,11 +1336,6 @@
                 }
             });
             
-            // If a bus is being tracked, follow it
-            if (trackedBusId && busMarkers[trackedBusId]) {
-                liveMap.setView(busMarkers[trackedBusId].getLatLng(), liveMap.getZoom(), { animate: true, duration: 0.6 });
-            }
-
             // Only auto-fit on first load; skip if user has zoomed/panned manually
             if (!liveMap._userHasInteracted) {
                 const positions = Object.values(busMarkers).map(m => m.getLatLng());
@@ -1433,11 +1393,12 @@
                 container.innerHTML = '<p class="text-gray-400 text-center col-span-3">No buses found</p>';
                 return;
             }
-
-            busArray.forEach(([busId, bus]) => {
+            
+            container.innerHTML = busArray.map(([busId, bus]) => {
                 const displayName = bus.customName || busId;
+                
                 let statusText, statusColor, bgColor, borderColor;
-
+                
                 if (bus.online === true) {
                     if (bus.inTrip === true) {
                         statusText = '● In Trip';
@@ -1456,37 +1417,19 @@
                     bgColor = 'rgba(239, 68, 68, 0.2)';
                     borderColor = '#ef4444';
                 }
-
+                
                 const speed = ((bus.speed || 0) * 3.6).toFixed(1);
-                const isTracked = trackedBusId === busId;
-                const cardBorder = isTracked ? 'rgba(126,232,90,0.6)' : '';
-
-                // Check if a card for this bus already exists
-                let card = container.querySelector(`.glass-panel[data-bus-id="${busId}"]`);
-
-                if (!card) {
-                    // Create the card for the first time
-                    card = document.createElement('div');
-                    card.className = 'glass-panel p-4 cursor-pointer hover:bg-white/5 transition-all';
-                    card.dataset.busId = busId;
-                    card.onclick = () => focusOnBus(busId);
-                    container.appendChild(card);
-                }
-
-                // Always update inner content (speed, status, coords change live)
-                card.style.borderColor = cardBorder;
-                card.innerHTML = `
+                
+                return `
+                <div class="glass-panel p-4 cursor-pointer hover:bg-white/5 transition-all" onclick="focusOnBus('${busId}')">
                     <div class="flex items-center gap-3 mb-3">
                         <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: ${bgColor}; border: 2px solid ${borderColor}">
                             <svg class="w-5 h-5" style="color: ${borderColor}" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
                             </svg>
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2">
-                                <h4 class="font-bold text-sm truncate">${displayName}</h4>
-                                ${isTracked ? `<span style="font-size:9px;padding:2px 6px;border-radius:99px;background:rgba(126,232,90,0.15);color:#7ee85a;border:1px solid rgba(126,232,90,0.3);font-weight:700;letter-spacing:0.04em;white-space:nowrap;">TRACKING</span>` : ''}
-                            </div>
+                        <div>
+                            <h4 class="font-bold text-sm">${displayName}</h4>
                             ${bus.customName && bus.customName !== busId ? `<p class="text-[10px] text-gray-500">${busId}</p>` : ''}
                             <p class="text-xs ${statusColor} font-semibold">${statusText}</p>
                         </div>
@@ -1496,46 +1439,17 @@
                         <p>Updated: <span class="text-white">${bus.lastSeen || 'Unknown'}</span></p>
                         <p class="font-mono text-[10px] opacity-70">${bus.lat?.toFixed(4)}, ${bus.lng?.toFixed(4)}</p>
                     </div>
-                `;
-            });
-
-            // Remove cards for buses that no longer exist
-            container.querySelectorAll('.glass-panel[data-bus-id]').forEach(card => {
-                if (!busArray.find(([id]) => id === card.dataset.busId)) {
-                    card.remove();
-                }
-            });
+                </div>
+            `}).join('');
         }
 
         function focusOnBus(busId) {
             const marker = busMarkers[busId];
             if (marker && liveMap) {
-                trackedBusId = busId;
-                liveMap._userHasInteracted = true;
-                liveMap.setView(marker.getLatLng(), 17, { animate: true, duration: 0.8 });
+                liveMap._userHasInteracted = true; // prevent fitBounds from overriding
+                liveMap.setView(marker.getLatLng(), 17);
                 marker.openPopup();
-                // Update recenter button label
-                const label = document.getElementById('recenter-label');
-                const btn = document.getElementById('recenter-btn');
-                if (label) label.textContent = 'Stop Tracking';
-                if (btn) btn.style.borderColor = 'rgba(126,232,90,0.6)';
             }
-        }
-
-        function recenterMap() {
-            trackedBusId = null;
-            liveMap._userHasInteracted = false;
-            const positions = Object.values(busMarkers).map(m => m.getLatLng());
-            if (positions.length > 0) {
-                liveMap.fitBounds(positions, { padding: [100, 100], maxZoom: 16, animate: true });
-            } else {
-                liveMap.setView([6.9271, 79.8612], 12, { animate: true });
-            }
-            // Reset button label
-            const label = document.getElementById('recenter-label');
-            const btn = document.getElementById('recenter-btn');
-            if (label) label.textContent = 'Recenter';
-            if (btn) btn.style.borderColor = 'rgba(126,232,90,0.3)';
         }
 
         function stopLiveTracking() {
