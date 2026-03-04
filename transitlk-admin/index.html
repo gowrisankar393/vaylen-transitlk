@@ -99,9 +99,19 @@
             z-index: 0;
         }
 
-        #login-screen, #dashboard, .fixed {
+        #dashboard {
             position: relative;
             z-index: 1;
+        }
+
+        #login-screen {
+            position: fixed !important;
+            inset: 0 !important;
+            z-index: 50 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: transparent !important;
         }
 
         /* ── GLASS PANEL ── */
@@ -289,15 +299,7 @@
             transform: translateY(-2px);
         }
 
-        /* ── LOGIN SCREEN ── */
-        #login-screen {
-            background: transparent !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            min-height: 100vh !important;
-        }
-
+        /* ── LOGIN CARD ── */
         .login-card {
             background: rgba(10,16,12,0.8);
             backdrop-filter: blur(40px) saturate(1.5);
@@ -461,7 +463,7 @@
 <body class="min-h-screen">
 
     <!-- Login Screen -->
-    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center" style="min-height:100vh;">
+    <div id="login-screen">
         <div class="login-card p-10 w-full max-w-sm mx-4">
             <!-- Logo -->
             <div class="flex flex-col items-center mb-10">
