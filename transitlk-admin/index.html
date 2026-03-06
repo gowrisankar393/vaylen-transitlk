@@ -614,9 +614,9 @@
 
             <!-- Tabs -->
             <div class="flex gap-1 border-b mb-6" style="border-color:rgba(255,255,255,0.07)">
-                <button onclick="switchTab('trips')" id="tab-trips-btn" class="tab-active pb-3.5 px-5 font-semibold text-sm transition-all rounded-t-lg">Trip Logs</button>
-                <button onclick="switchTab('incidents')" id="tab-incidents-btn" class="tab-inactive pb-3.5 px-5 font-semibold text-sm transition-all rounded-t-lg">Incidents</button>
-                <button onclick="switchTab('live')" id="tab-live-btn" class="tab-inactive pb-3.5 px-5 font-semibold text-sm transition-all flex items-center gap-2 rounded-t-lg">
+                <button onclick="switchTab('trips')" id="tab-trips-btn" class="tab-active py-3 px-5 font-semibold text-sm transition-all rounded-t-lg flex items-center justify-center">Trip Logs</button>
+                <button onclick="switchTab('incidents')" id="tab-incidents-btn" class="tab-inactive py-3 px-5 font-semibold text-sm transition-all rounded-t-lg flex items-center justify-center">Incidents</button>
+                <button onclick="switchTab('live')" id="tab-live-btn" class="tab-inactive py-3 px-5 font-semibold text-sm transition-all flex items-center justify-center gap-2 rounded-t-lg">
                     <span class="w-1.5 h-1.5 bg-red-500 rounded-full" style="box-shadow:0 0 6px rgba(239,68,68,0.6);animation:livePulse 1.8s ease-in-out infinite"></span>
                     Live Tracking
                 </button>
@@ -796,7 +796,7 @@
                     <div class="space-y-6">
                         <!-- Download Card -->
                         <div class="glass-panel p-6 text-center">
-                            <div class="w-16 h-16 bg-accent-green/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-accent-green/20">
+                            <div class="w-16 h-16 bg-accent-green/20 rounded-2xl flex items-center justify-center mx-auto mb-4" style="border: 1px solid rgba(126,232,90,0.2);">
                                 <svg class="w-8 h-8 accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                 </svg>
@@ -982,7 +982,7 @@
                 return `
                     <div class="glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-all cursor-pointer group" onclick="viewTripDetail('${trip.fullPath}', '${trip.name}', '${trip.date}')">
                         <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 bg-gradient-to-br from-accent-green/20 to-accent-purple/20 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden border border-accent-green/20 group-hover:border-accent-green/40 transition-all">
+                            <div class="w-12 h-12 bg-gradient-to-br from-accent-green/20 to-accent-purple/20 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden transition-all" style="border: 1px solid rgba(126,232,90,0.2);" onmouseenter="this.style.borderColor='rgba(126,232,90,0.4)'" onmouseleave="this.style.borderColor='rgba(126,232,90,0.2)'">
                                 <img src="logo2.png" alt="" class="w-8 h-8 object-contain opacity-80">
                             </div>
                             <div>
@@ -1021,7 +1021,7 @@
                 return `
                     <div class="incident-card glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-all cursor-pointer group" onclick="viewIncidentDetail('${incident.fullPath}', '${incident.name}')">
                         <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 bg-accent-orange/20 rounded-2xl flex items-center justify-center flex-shrink-0 border border-accent-orange/20 group-hover:border-accent-orange/40 transition-all">
+                            <div class="w-12 h-12 bg-accent-orange/20 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all" style="border: 1px solid rgba(249,115,22,0.2);" onmouseenter="this.style.borderColor='rgba(249,115,22,0.4)'" onmouseleave="this.style.borderColor='rgba(249,115,22,0.2)'">
                                 <svg class="w-6 h-6 accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                             </div>
                             <div>
@@ -1235,9 +1235,9 @@
         function switchTab(tab) {
             currentTab = tab;
             
-            document.getElementById('tab-trips-btn').className = tab === 'trips' ? 'tab-active pb-4 px-4 font-medium text-sm transition-all rounded-t-xl' : 'tab-inactive pb-4 px-4 font-medium text-sm transition-all rounded-t-xl';
-            document.getElementById('tab-incidents-btn').className = tab === 'incidents' ? 'tab-active pb-4 px-4 font-medium text-sm transition-all rounded-t-xl' : 'tab-inactive pb-4 px-4 font-medium text-sm transition-all rounded-t-xl';
-            document.getElementById('tab-live-btn').className = tab === 'live' ? 'tab-active pb-4 px-4 font-medium text-sm transition-all flex items-center gap-2 rounded-t-xl' : 'tab-inactive pb-4 px-4 font-medium text-sm transition-all flex items-center gap-2 rounded-t-xl';
+            document.getElementById('tab-trips-btn').className = tab === 'trips' ? 'tab-active py-3 px-5 font-semibold text-sm transition-all rounded-t-lg flex items-center justify-center' : 'tab-inactive py-3 px-5 font-semibold text-sm transition-all rounded-t-lg flex items-center justify-center';
+            document.getElementById('tab-incidents-btn').className = tab === 'incidents' ? 'tab-active py-3 px-5 font-semibold text-sm transition-all rounded-t-lg flex items-center justify-center' : 'tab-inactive py-3 px-5 font-semibold text-sm transition-all rounded-t-lg flex items-center justify-center';
+            document.getElementById('tab-live-btn').className = tab === 'live' ? 'tab-active py-3 px-5 font-semibold text-sm transition-all flex items-center justify-center gap-2 rounded-t-lg' : 'tab-inactive py-3 px-5 font-semibold text-sm transition-all flex items-center justify-center gap-2 rounded-t-lg';
             
             document.getElementById('tab-trips').classList.toggle('hidden', tab !== 'trips');
             document.getElementById('tab-incidents').classList.toggle('hidden', tab !== 'incidents');
