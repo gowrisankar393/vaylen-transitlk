@@ -206,6 +206,11 @@
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        @keyframes markerPulse {
+            0%, 40%, 100% { opacity: 1; }
+            60% { opacity: 0.25; }
+        }
+
         .fade-in { animation: fadeIn 0.45s cubic-bezier(0.4,0,0.2,1); }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(16px); }
@@ -1391,23 +1396,65 @@
         }
 
         function createBusIcon(color, heading) {
+            const hex = color.replace('#','');
+            const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
+            const colorA60 = `rgba(${r},${g},${b},0.60)`;
+            const colorA25 = `rgba(${r},${g},${b},0.25)`;
+
             return L.divIcon({
                 className: 'bus-marker-icon',
-                html: `<div style="
-                    background: ${color};
-                    width: 36px; height: 36px; border-radius: 50%;
-                    border: 3px solid white;
-                    box-shadow: 0 0 0 4px ${color}33, 0 4px 12px rgba(0,0,0,0.4);
-                    display: flex; align-items: center; justify-content: center;
+                html: `
+                <div style="
+                    width: 34px; height: 34px;
+                    position: relative;
                     transform: rotate(${heading}deg);
-                    transition: all 0.3s ease;
+                    filter: drop-shadow(0 4px 12px rgba(${r},${g},${b},0.18)) drop-shadow(0 2px 5px rgba(0,0,0,0.7));
+                    transition: all 0.35s ease;
                 ">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                        <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
-                    </svg>
+                    <!-- Blurred cast shadow -->
+                    <div style="
+                        position: absolute; inset: 0;
+                        border-radius: 50%;
+                        background: rgba(0,0,0,0.6);
+                        transform: translateY(4px) scale(0.85);
+                        filter: blur(6px);
+                    "></div>
+                    <!-- Main circle body -->
+                    <div style="
+                        position: absolute; inset: 0;
+                        border-radius: 50%;
+                        background: radial-gradient(circle at 38% 32%,
+                            rgba(30,30,30,0.72) 0%,
+                            rgba(10,10,10,0.88) 60%,
+                            rgba(0,0,0,0.93) 100%);
+                        border: 2px solid ${color};
+                        box-shadow:
+                            inset 0 1px 2px rgba(255,255,255,0.07),
+                            inset 0 -2px 6px rgba(0,0,0,0.6),
+                            0 0 8px -3px ${colorA25};
+                        display: flex; align-items: center; justify-content: center;
+                    ">
+                        <!-- Direction arrow in status color -->
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 3L5 19.5l.8.5L12 17l6.2 3 .8-.5z"
+                                fill="${color}"
+                                stroke="rgba(0,0,0,0.3)"
+                                stroke-width="0.75"/>
+                        </svg>
+                    </div>
+                    <!-- Subtle specular glint -->
+                    <div style="
+                        position: absolute;
+                        top: 5px; left: 7px;
+                        width: 6px; height: 3px;
+                        border-radius: 50%;
+                        background: rgba(255,255,255,0.10);
+                        transform: rotate(-25deg);
+                        pointer-events: none;
+                    "></div>
                 </div>`,
-                iconSize: [36, 36],
-                iconAnchor: [18, 18]
+                iconSize: [34, 34],
+                iconAnchor: [17, 17]
             });
         }
 
