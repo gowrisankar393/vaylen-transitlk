@@ -540,7 +540,7 @@
                     <div class="flex justify-between items-start mb-3">
                         <div>
                             <p class="section-label mb-1">Total Trips</p>
-                            <p class="text-3xl font-bold mt-1 gradient-text-green" id="stat-total-trips">-</p>
+                            <p class="text-3xl font-bold mt-1" style="background: linear-gradient(135deg, #7ee85a 0%, #2dd4bf 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;" id="stat-total-trips">-</p>
                         </div>
                         <div class="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden" style="background:rgba(126,232,90,0.1);border:1px solid rgba(126,232,90,0.18)">
                             <img src="logo2.png" alt="" class="w-7 h-7 object-contain opacity-90">
@@ -659,7 +659,15 @@
             <!-- Incidents Tab -->
             <div id="tab-incidents" class="hidden fade-in">
                 <div class="flex justify-between items-center mb-5">
-                    <h2 class="text-lg font-bold tracking-tight">Crash Incidents</h2>
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-lg font-bold tracking-tight">Incidents</h2>
+                        <select id="incident-filter" onchange="filterIncidents()" class="glass-button px-3 py-2 text-xs focus:outline-none cursor-pointer" style="background:transparent;">
+                            <option value="all" class="bg-gray-900">All Time</option>
+                            <option value="today" class="bg-gray-900">Today</option>
+                            <option value="week" class="bg-gray-900">This Week</option>
+                            <option value="month" class="bg-gray-900">This Month</option>
+                        </select>
+                    </div>
                     <div class="flex items-center gap-2 glass-button px-3.5 py-2">
                         <span class="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
                         <span class="text-xs" style="color:var(--text-muted)">Requires attention</span>
@@ -978,7 +986,7 @@
                 const date = new Date(trip.updated);
                 const sizeKB = (trip.size / 1024).toFixed(1);
                 const tripsOnDay = allTrips.filter(t => t.date === trip.date).length;
-                const dayBadge = tripsOnDay > 1 ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-accent-green/10 border border-accent-green/20 accent-green font-semibold">${tripsOnDay} trips this day</span>` : '';
+                const dayBadge = tripsOnDay > 1 ? `<span style="font-size:10px; padding: 2px 8px; border-radius: 999px; background: rgba(126,232,90,0.08); border: 1px solid rgba(126,232,90,0.35); color: #7ee85a; font-weight: 600;">${tripsOnDay} trips this day</span>` : '';
                 return `
                     <div class="glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-all cursor-pointer group" onclick="viewTripDetail('${trip.fullPath}', '${trip.name}', '${trip.date}')">
                         <div class="flex items-center gap-4">
@@ -1004,13 +1012,33 @@
             }).join('');
         }
 
-        function renderIncidents() {
+        function filterIncidents() {
+            renderIncidents(document.getElementById('incident-filter').value);
+        }
+
+        function renderIncidents(filter = 'all') {
             const container = document.getElementById('incidents-list');
             const loading = document.getElementById('incidents-loading');
             const empty = document.getElementById('incidents-empty');
             loading.classList.add('hidden');
-            
-            if (allIncidents.length === 0) { empty.classList.remove('hidden'); container.innerHTML = ''; return; }
+
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+            let filtered = allIncidents;
+            if (filter === 'today') {
+                filtered = allIncidents.filter(i => i.date === todayStr);
+            } else if (filter === 'week') {
+                const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+                filtered = allIncidents.filter(i => new Date(i.date) >= weekAgo);
+            } else if (filter === 'month') {
+                const monthAgo = new Date(now); monthAgo.setMonth(monthAgo.getMonth() - 1);
+                filtered = allIncidents.filter(i => new Date(i.date) >= monthAgo);
+            }
+
+            filtered = filtered.slice().sort((a, b) => new Date(b.date) - new Date(a.date) || new Date(b.updated) - new Date(a.updated));
+
+            if (filtered.length === 0) { empty.classList.remove('hidden'); container.innerHTML = ''; return; }
             empty.classList.add('hidden');
             
             container.innerHTML = allIncidents.map(incident => {
@@ -1021,13 +1049,13 @@
                 return `
                     <div class="incident-card glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-all cursor-pointer group" onclick="viewIncidentDetail('${incident.fullPath}', '${incident.name}')">
                         <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 bg-accent-orange/20 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all" style="border: 1px solid rgba(249,115,22,0.2);" onmouseenter="this.style.borderColor='rgba(249,115,22,0.4)'" onmouseleave="this.style.borderColor='rgba(249,115,22,0.2)'">
-                                <svg class="w-6 h-6 accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all" style="background: rgba(249,115,22,0.12); border: 1px solid rgba(249,115,22,0.2);" onmouseenter="this.style.borderColor='rgba(249,115,22,0.4)'" onmouseleave="this.style.borderColor='rgba(249,115,22,0.2)'">
+                                <svg width="24" height="24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                             </div>
                             <div>
                                 <div class="flex items-center gap-2">
                                     <h4 class="font-bold text-sm group-hover:text-accent-orange transition-colors">${incident.name}</h4>
-                                    <span class="px-2 py-0.5 bg-accent-orange/20 text-accent-orange text-[10px] font-bold rounded uppercase">Incident</span>
+                                    <span style="font-size:10px; padding: 2px 8px; border-radius: 999px; background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.35); color: #f97316; font-weight: 600; letter-spacing: 0.02em;">Incident</span>
                                 </div>
                                 <p class="text-xs text-gray-400 mt-1">${incident.date} ${formattedTime}</p>
                                 <p class="text-xs text-gray-500 mt-1">${date.toLocaleString()}</p>
