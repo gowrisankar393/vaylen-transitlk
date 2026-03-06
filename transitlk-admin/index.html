@@ -505,6 +505,22 @@
         border-top-color: #7ee85a !important;
         border-right-color: rgba(126,232,90,0.4) !important;
     }
+
+    /* ── CONSISTENT SCROLLBAR ── */
+    html, body, :fullscreen, :-webkit-full-screen, :-moz-full-screen {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(126,232,90,0.25) rgba(255,255,255,0.04);
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb { background: rgba(126,232,90,0.25); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(126,232,90,0.45); }
+
+    :fullscreen ::-webkit-scrollbar { width: 6px; height: 6px; }
+    :fullscreen ::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); border-radius: 999px; }
+    :fullscreen ::-webkit-scrollbar-thumb { background: rgba(126,232,90,0.25); border-radius: 999px; }
+    :fullscreen ::-webkit-scrollbar-thumb:hover { background: rgba(126,232,90,0.45); }
 </style>
 
     <!-- Login Screen -->
@@ -1752,6 +1768,8 @@
             const isFs = !!document.fullscreenElement;
             document.getElementById('fs-icon-expand').style.display = isFs ? 'none' : 'block';
             document.getElementById('fs-icon-compress').style.display = isFs ? 'block' : 'none';
+            document.documentElement.style.overflow = isFs ? 'hidden' : '';
+            document.body.style.overflow = isFs ? 'hidden' : '';
         });
     </script>
 </body>
