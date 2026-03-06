@@ -36,6 +36,10 @@
         window.firebaseDbFns = { dbRef, onValue, off };
 
         window.addEventListener('DOMContentLoaded', () => {
+            // If user had checked "remember me", keep session alive across reloads
+            if (localStorage.getItem('rememberMe') === 'true') {
+                sessionStorage.setItem('lastActivity', Date.now());
+            }
             updateDate();
             checkAuth();
         });
@@ -99,9 +103,23 @@
             z-index: 0;
         }
 
-        #login-screen, #dashboard, .fixed {
+        #dashboard, .fixed {
             position: relative;
             z-index: 1;
+        }
+
+        #login-screen {
+            position: fixed !important;
+            inset: 0;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent !important;
+        }
+
+        #login-screen.hidden {
+            display: none !important;
         }
 
         /* ── GLASS PANEL ── */
@@ -178,6 +196,18 @@
         }
 
         /* ── INCIDENT CARD ── */
+        #stat-total-incidents {
+            color: #f97316 !important;
+            -webkit-text-fill-color: #f97316 !important;
+        }
+
+        #stat-total-trips {
+            background: linear-gradient(135deg, #7ee85a 0%, #2dd4bf 100%) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            background-clip: text !important;
+        }
+
         .incident-card {
             background: linear-gradient(135deg, rgba(249,115,22,0.07) 0%, rgba(12,18,14,0.5) 100%);
             border: 1px solid rgba(249,115,22,0.18);
@@ -290,9 +320,6 @@
         }
 
         /* ── LOGIN SCREEN ── */
-        #login-screen {
-            background: transparent !important;
-        }
 
         .login-card {
             background: rgba(10,16,12,0.8);
@@ -435,17 +462,17 @@
 
         /* Gradient text */
         .gradient-text {
-            background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.65) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.65) 100%) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            background-clip: text !important;
         }
 
         .gradient-text-green {
-            background: linear-gradient(135deg, var(--green) 0%, var(--teal) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            background: linear-gradient(135deg, #7ee85a 0%, #2dd4bf 100%) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            background-clip: text !important;
         }
 
         /* Trip/Incident cards in list */
@@ -455,6 +482,30 @@
     </style>
 </head>
 <body class="min-h-screen">
+<style>
+    .gradient-text {
+        background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.65) 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
+    }
+    .gradient-text-green,
+    #stat-total-trips {
+        background: linear-gradient(135deg, #7ee85a 0%, #2dd4bf 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
+    }
+    #stat-total-incidents {
+        color: #f97316 !important;
+        -webkit-text-fill-color: #f97316 !important;
+    }
+    .loading-spinner {
+        border-color: rgba(255,255,255,0.04) !important;
+        border-top-color: #7ee85a !important;
+        border-right-color: rgba(126,232,90,0.4) !important;
+    }
+</style>
 
     <!-- Login Screen -->
     <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center">
@@ -483,6 +534,16 @@
                         class="w-full px-4 py-3 text-sm"
                         value="12345678">
                 </div>
+                <div class="flex items-center justify-between mt-1">
+                    <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                        <input type="checkbox" id="remember-me" style="
+                            width: 15px; height: 15px;
+                            accent-color: #7ee85a;
+                            cursor: pointer;
+                        ">
+                        <span class="text-xs" style="color:rgba(255,255,255,0.45);">Remember me</span>
+                    </label>
+                </div>
                 <button type="submit"
                     class="w-full font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 mt-2 text-sm"
                     style="background:linear-gradient(135deg,#7ee85a,#2dd4bf);color:#000;letter-spacing:-0.01em;box-shadow:0 4px 24px rgba(126,232,90,0.28);">
@@ -497,7 +558,7 @@
 
             <div class="mt-8 flex items-center gap-3">
                 <div class="flex-1 h-px" style="background:rgba(255,255,255,0.06)"></div>
-                <p class="text-xs" style="color:rgba(255,255,255,0.2);letter-spacing:0.04em;">IIT DSGP Project</p>
+                <p class="text-xs" style="color:rgba(255,255,255,0.2);letter-spacing:0.04em;">Powered by Vaylen</p>
                 <div class="flex-1 h-px" style="background:rgba(255,255,255,0.06)"></div>
             </div>
         </div>
@@ -510,7 +571,7 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-3">
-                        <img src="logo.png" alt="TransitLK" class="logo-nav">
+                        <a href="/" style="cursor:pointer;"><img src="logo.png" alt="TransitLK" class="logo-nav"></a>
                         <div class="pl-3 border-l border-white/10">
                             <p class="font-semibold text-sm tracking-tight">Admin Console</p>
                             <p class="text-xs font-mono" style="color:rgba(255,255,255,0.3)" id="current-date">Loading...</p>
@@ -553,10 +614,10 @@
                     <div class="flex justify-between items-start mb-3">
                         <div>
                             <p class="section-label mb-1">Incidents</p>
-                            <p class="text-3xl font-bold mt-1 accent-orange" id="stat-total-incidents">-</p>
+                            <p class="text-3xl font-bold mt-1" style="-webkit-text-fill-color: #f97316 !important; color: #f97316 !important;" id="stat-total-incidents">-</p>
                         </div>
                         <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.18)">
-                            <svg class="w-5 h-5 accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5" style="color:#f97316" fill="none" stroke="#f97316" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                             </svg>
                         </div>
@@ -667,10 +728,6 @@
                             <option value="week" class="bg-gray-900">This Week</option>
                             <option value="month" class="bg-gray-900">This Month</option>
                         </select>
-                    </div>
-                    <div class="flex items-center gap-2 glass-button px-3.5 py-2">
-                        <span class="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
-                        <span class="text-xs" style="color:var(--text-muted)">Requires attention</span>
                     </div>
                 </div>
 
@@ -876,11 +933,27 @@
             document.getElementById('today-date').textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         }
 
+        const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+
+        function updateActivity() {
+            sessionStorage.setItem('lastActivity', Date.now());
+        }
+
+        function isSessionValid() {
+            const last = parseInt(sessionStorage.getItem('lastActivity') || '0');
+            return last && (Date.now() - last) < SESSION_TIMEOUT;
+        }
+
         function checkAuth() {
             const { onAuthStateChanged } = window.firebaseAuthFns;
             const auth = window.firebaseAuth;
             onAuthStateChanged(auth, (user) => {
-                if (user) { showDashboard(); } else { showLogin(); }
+                if (user && isSessionValid()) {
+                    updateActivity();
+                    showDashboard();
+                } else {
+                    showLogin();
+                }
             });
         }
 
@@ -892,6 +965,11 @@
         function showDashboard() {
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
+            updateActivity();
+            // Reset inactivity timer on user interactions
+            ['click', 'keydown', 'scroll', 'mousemove', 'touchstart'].forEach(evt =>
+                document.addEventListener(evt, updateActivity, { passive: true })
+            );
             loadData();
         }
 
@@ -900,6 +978,16 @@
             try {
                 const { signInWithEmailAndPassword } = window.firebaseAuthFns;
                 await signInWithEmailAndPassword(window.firebaseAuth, document.getElementById('login-email').value, document.getElementById('login-password').value);
+                const rememberMe = document.getElementById('remember-me').checked;
+                if (rememberMe) {
+                    // Set a long-lived activity so session persists across page loads
+                    sessionStorage.setItem('lastActivity', Date.now());
+                    localStorage.setItem('rememberMe', 'true');
+                } else {
+                    sessionStorage.setItem('lastActivity', Date.now());
+                    localStorage.removeItem('rememberMe');
+                }
+                showDashboard();
             } catch (error) {
                 document.getElementById('login-error').classList.remove('hidden');
                 setTimeout(() => document.getElementById('login-error').classList.add('hidden'), 3000);
@@ -907,6 +995,8 @@
         });
 
         function logout() {
+            sessionStorage.removeItem('lastActivity');
+            localStorage.removeItem('rememberMe');
             window.firebaseAuthFns.signOut(window.firebaseAuth);
         }
 
@@ -1239,7 +1329,10 @@
 
         function updateStats() {
             document.getElementById('stat-total-trips').textContent = allTrips.length;
-            document.getElementById('stat-total-incidents').textContent = allIncidents.length;
+            const incEl = document.getElementById('stat-total-incidents');
+            incEl.textContent = allIncidents.length;
+            incEl.style.color = '#f97316';
+            incEl.style.webkitTextFillColor = '#f97316';
             
             const todayLocal = new Date();
             const todayStr = `${todayLocal.getFullYear()}-${String(todayLocal.getMonth()+1).padStart(2,'0')}-${String(todayLocal.getDate()).padStart(2,'0')}`;
