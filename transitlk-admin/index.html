@@ -154,6 +154,9 @@
         .glow-red:hover {
             box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 12px 40px rgba(0,0,0,0.45), 0 0 18px -4px rgba(239,68,68,0.3);
         }
+        .glow-blue:hover {
+            box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 12px 40px rgba(0,0,0,0.45), 0 0 18px -4px rgba(59,130,246,0.3);
+        }
 
         /* ── GLASS BUTTON ── */
         .glass-button {
@@ -729,6 +732,10 @@
                     In Trip
                 </div>
                 <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full inline-block" style="background:#3b82f6;box-shadow:0 0 6px rgba(59,130,246,0.5)"></span>
+                    Parked
+                </div>
+                <div class="flex items-center gap-1.5">
                     <span class="w-2 h-2 rounded-full inline-block" style="background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.5)"></span>
                     Offline
                 </div>
@@ -987,6 +994,7 @@
         let busMarkers = {};
         let liveUnsubscribe = null;
         let trackedBusId = null;
+        let busPositionHistory = {}; // { busId: { lat, lng, since } }
 
         function togglePassword() {
             const input = document.getElementById('login-password');
@@ -1519,13 +1527,36 @@
                 
                 // Determine color based on status
                 let color, statusText, statusClass, statusBg;
-                
+
+                // Track position to detect parking (stationary for 30+ mins while online & not in trip)
+                const PARK_THRESHOLD = 30 * 60 * 1000;
+                const now = Date.now();
+                let isParked = false;
+
+                if (busData.online === true && busData.inTrip !== true) {
+                    const prev = busPositionHistory[busId];
+                    const movedSignificantly = !prev ||
+                        Math.abs(busData.lat - prev.lat) > 0.0001 ||
+                        Math.abs(busData.lng - prev.lng) > 0.0001;
+
+                    if (movedSignificantly) {
+                        busPositionHistory[busId] = { lat: busData.lat, lng: busData.lng, since: now };
+                    } else if (prev && (now - prev.since) >= PARK_THRESHOLD) {
+                        isParked = true;
+                    }
+                }
+
                 if (busData.online === true) {
                     if (busData.inTrip === true) {
                         color = '#a855f7'; // Purple for in trip
                         statusText = 'In Trip';
                         statusClass = 'text-purple-400';
                         statusBg = 'rgba(168, 85, 247, 0.2)';
+                    } else if (isParked) {
+                        color = '#3b82f6'; // Blue for parked
+                        statusText = 'Parked';
+                        statusClass = 'text-blue-400';
+                        statusBg = 'rgba(59, 130, 246, 0.2)';
                     } else {
                         color = '#eab308'; // Yellow for online but not in trip
                         statusText = 'Online (Idle)';
@@ -1699,6 +1730,12 @@
                         bgColor = 'rgba(168, 85, 247, 0.2)';
                         borderColor = '#a855f7';
                         glowClass = 'glow-purple';
+                    } else if (busPositionHistory[busId] && (Date.now() - busPositionHistory[busId].since) >= 30 * 60 * 1000) {
+                        statusText = '● Parked';
+                        statusColor = 'text-blue-400';
+                        bgColor = 'rgba(59, 130, 246, 0.2)';
+                        borderColor = '#3b82f6';
+                        glowClass = 'glow-blue';
                     } else {
                         statusText = '● Online (Idle)';
                         statusColor = 'text-yellow-400';
