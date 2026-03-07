@@ -1023,6 +1023,8 @@
             return last && (Date.now() - last) < SESSION_TIMEOUT;
         }
 
+        let dashboardLoaded = false;
+
         function checkAuth() {
             const { onAuthStateChanged } = window.firebaseAuthFns;
             const auth = window.firebaseAuth;
@@ -1037,11 +1039,14 @@
         }
 
         function showLogin() {
+            dashboardLoaded = false;
             document.getElementById('login-screen').classList.remove('hidden');
             document.getElementById('dashboard').classList.add('hidden');
         }
 
         function showDashboard() {
+            if (dashboardLoaded) return; // prevent double load
+            dashboardLoaded = true;
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
             updateActivity();
@@ -1059,14 +1064,13 @@
                 await signInWithEmailAndPassword(window.firebaseAuth, document.getElementById('login-email').value, document.getElementById('login-password').value);
                 const rememberMe = document.getElementById('remember-me').checked;
                 if (rememberMe) {
-                    // Set a long-lived activity so session persists across page loads
                     sessionStorage.setItem('lastActivity', Date.now());
                     localStorage.setItem('rememberMe', 'true');
                 } else {
                     sessionStorage.setItem('lastActivity', Date.now());
                     localStorage.removeItem('rememberMe');
                 }
-                showDashboard();
+                // Don't call showDashboard() here — onAuthStateChanged will fire and handle it
             } catch (error) {
                 document.getElementById('login-error').classList.remove('hidden');
                 setTimeout(() => document.getElementById('login-error').classList.add('hidden'), 3000);
