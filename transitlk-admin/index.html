@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getStorage, ref, listAll, getDownloadURL, getMetadata } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
@@ -301,6 +302,22 @@
 
         .logo-nav { height: 38px; width: auto; filter: drop-shadow(0 0 8px rgba(126,232,90,0.25)); }
 
+        /* ── BUS MODAL TABS ── */
+        .bus-modal-tab {
+            color: rgba(255,255,255,0.35);
+            border-bottom: 2px solid transparent;
+            background: none;
+            border-top: none; border-left: none; border-right: none;
+            cursor: pointer;
+            transition: color 0.2s ease, border-color 0.2s ease;
+            font-family: 'Sora', sans-serif;
+        }
+        .bus-modal-tab:hover { color: rgba(255,255,255,0.6); }
+        .bus-modal-tab-active {
+            color: #fff !important;
+            border-bottom-color: #7ee85a !important;
+        }
+
         /* ── BUS FILTER CHIPS ── */
         .bus-chip {
             background: rgba(255,255,255,0.04);
@@ -328,6 +345,9 @@
             line-height: 1 !important;
         }
         .leaflet-popup-tip-container { display: none !important; }
+        .route-stop-tooltip { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+        .route-stop-tooltip .leaflet-tooltip-top::before,
+        .route-stop-tooltip::before { display: none !important; }
         .leaflet-popup-close-button {
             color: rgba(255,255,255,0.35) !important;
             font-size: 16px !important;
@@ -972,6 +992,15 @@
                     </div>
                 </div>
 
+                <!-- Modal Tabs -->
+                <div class="flex border-b" style="border-color:rgba(255,255,255,0.06);">
+                    <button onclick="switchBusTab('details')" id="bus-tab-details" class="bus-modal-tab bus-modal-tab-active px-5 py-3 text-xs font-semibold">Details</button>
+                    <button onclick="switchBusTab('route')" id="bus-tab-route" class="bus-modal-tab px-5 py-3 text-xs font-semibold">Route Data</button>
+                    <button onclick="switchBusTab('schedule')" id="bus-tab-schedule" class="bus-modal-tab px-5 py-3 text-xs font-semibold">Schedule</button>
+                </div>
+
+                <!-- Tab: Details -->
+                <div id="bus-tabpanel-details">
                 <!-- Form -->
                 <div class="px-6 py-5 space-y-4" style="max-height:60vh;overflow-y:auto;">
                     <div class="grid grid-cols-2 gap-4">
@@ -1011,6 +1040,62 @@
                         <label class="section-label block mb-1.5">Notes</label>
                         <textarea id="bus-field-notes" placeholder="Any additional notes..." rows="2" class="w-full px-3 py-2.5 text-sm resize-none" style="border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#fff;font-family:'Sora',sans-serif;"></textarea>
                     </div>
+                </div>
+
+                </div><!-- /bus-tabpanel-details -->
+
+                <!-- Tab: Route Data -->
+                <div id="bus-tabpanel-route" class="hidden px-6 py-5 space-y-5" style="max-height:60vh;overflow-y:auto;">
+                    <div>
+                        <p class="text-sm font-bold mb-1">Stops File</p>
+                        <p class="text-xs mb-3" style="color:rgba(255,255,255,0.3);">Upload an Excel file (.xlsx) with two sheets — Sheet 1: outbound trip, Sheet 2: return trip. Columns: <span style="color:rgba(255,255,255,0.5);font-family:monospace;">StopName, Coordinates</span></p>
+                        <label id="stops-upload-label" class="flex items-center justify-center gap-2 w-full py-6 rounded-xl cursor-pointer transition-all" style="border:2px dashed rgba(255,255,255,0.1);background:rgba(255,255,255,0.02);"
+                            onmouseover="this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)'">
+                            <svg class="w-5 h-5" style="color:rgba(255,255,255,0.3)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                            <span id="stops-upload-label-text" class="text-sm" style="color:rgba(255,255,255,0.4);">Click to upload stops .xlsx</span>
+                            <input type="file" accept=".xlsx" class="hidden" onchange="handleStopsXLSX(event)">
+                        </label>
+                    </div>
+                    <div id="stops-preview" class="space-y-3 hidden">
+                        <div>
+                            <p class="text-xs font-bold mb-1.5" style="color:rgba(255,255,255,0.4);">R2M — Ratmalana → Maharagama</p>
+                            <div id="stops-r2m-table"></div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold mb-1.5" style="color:rgba(255,255,255,0.4);">M2R — Maharagama → Ratmalana</p>
+                            <div id="stops-m2r-table"></div>
+                        </div>
+                    </div>
+                    <button onclick="saveRouteData()" class="w-full py-2.5 text-sm font-bold rounded-xl" style="background:linear-gradient(135deg,#0598B1,#26A38C,#96d46c);color:#000;border:none;cursor:pointer;">Save Route Data</button>
+                    <p id="route-save-msg" class="text-xs text-center" style="color:rgba(126,232,90,0.8);opacity:0;transition:opacity 0.3s ease;">Saved!</p>
+                </div>
+
+                <!-- Tab: Schedule -->
+                <div id="bus-tabpanel-schedule" class="hidden px-6 py-5 space-y-5" style="max-height:60vh;overflow-y:auto;">
+                    <div>
+                        <p class="text-sm font-bold mb-1">Timetable File</p>
+                        <p class="text-xs mb-3" style="color:rgba(255,255,255,0.3);">Upload an Excel file (.xlsx) with two sheets — Sheet 1: outbound departures, Sheet 2: return departures. One column: <span style="color:rgba(255,255,255,0.5);font-family:monospace;">Time</span> (HH:MM, 24hr)</p>
+                        <label id="schedule-upload-label" class="flex items-center justify-center gap-2 w-full py-6 rounded-xl cursor-pointer transition-all" style="border:2px dashed rgba(255,255,255,0.1);background:rgba(255,255,255,0.02);"
+                            onmouseover="this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)'">
+                            <svg class="w-5 h-5" style="color:rgba(255,255,255,0.3)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                            <span id="schedule-upload-label-text" class="text-sm" style="color:rgba(255,255,255,0.4);">Click to upload timetable .xlsx</span>
+                            <input type="file" accept=".xlsx" class="hidden" onchange="handleScheduleXLSX(event)">
+                        </label>
+                    </div>
+                    <div id="schedule-preview" class="space-y-3 hidden">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-xs font-bold mb-1.5" style="color:rgba(255,255,255,0.4);">FROM RATMALANA</p>
+                                <div id="schedule-ratmalana-list" class="space-y-1"></div>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold mb-1.5" style="color:rgba(255,255,255,0.4);">FROM MAHARAGAMA</p>
+                                <div id="schedule-maharagama-list" class="space-y-1"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="saveScheduleData()" class="w-full py-2.5 text-sm font-bold rounded-xl" style="background:linear-gradient(135deg,#0598B1,#26A38C,#96d46c);color:#000;border:none;cursor:pointer;">Save Schedule</button>
+                    <p id="schedule-save-msg" class="text-xs text-center" style="color:rgba(126,232,90,0.8);opacity:0;transition:opacity 0.3s ease;">Saved!</p>
                 </div>
 
                 <!-- Footer -->
@@ -1172,7 +1257,56 @@
         let busMarkers = {};
         let liveUnsubscribe = null;
         let trackedBusId = null;
-        let busPositionHistory = {}; // { busId: { lat, lng, since } }
+        // Two separate stores: last known position (updated every Firebase tick) and when it stopped moving
+        let busLastPos = {};
+        let busStoppedSince = {};
+
+        function loadParkedState() {
+            try { busStoppedSince = JSON.parse(localStorage.getItem('busStoppedSince') || '{}'); } catch(e) { busStoppedSince = {}; }
+            try { busLastPos = JSON.parse(localStorage.getItem('busLastPos') || '{}'); } catch(e) { busLastPos = {}; }
+        }
+        function saveParkedState() {
+            try {
+                localStorage.setItem('busStoppedSince', JSON.stringify(busStoppedSince));
+                localStorage.setItem('busLastPos', JSON.stringify(busLastPos));
+            } catch(e) {}
+        }
+        loadParkedState();
+
+        function isParkedByLastSeen() { return false; } // kept for compat
+
+        function updateParkedState(busId, busData) {
+            // Always clear if in trip or offline
+            if (busData.inTrip || !busData.online) {
+                if (busStoppedSince[busId]) { delete busStoppedSince[busId]; saveParkedState(); }
+                busLastPos[busId] = { lat: busData.lat, lng: busData.lng };
+                return;
+            }
+
+            const last = busLastPos[busId];
+            const moved = last && (
+                Math.abs(busData.lat - last.lat) > 0.0001 ||
+                Math.abs(busData.lng - last.lng) > 0.0001
+            );
+
+            if (moved) {
+                // Bus genuinely moved — reset stopped timer
+                if (busStoppedSince[busId]) { delete busStoppedSince[busId]; saveParkedState(); }
+            } else if (!busStoppedSince[busId]) {
+                // Not moved (or first update after reload) — start timer if not already running
+                busStoppedSince[busId] = Date.now();
+                saveParkedState();
+            }
+
+            // Always update last known position
+            busLastPos[busId] = { lat: busData.lat, lng: busData.lng };
+        }
+
+        function checkParked(busId, busData, threshold = 30 * 60 * 1000) {
+            if (busData.inTrip || !busData.online) return false;
+            const since = busStoppedSince[busId];
+            return since && (Date.now() - since) >= threshold;
+        }
 
         function togglePassword() {
             const input = document.getElementById('login-password');
@@ -1658,6 +1792,7 @@
                     // Only set flag on genuine user input, not programmatic moves
                     liveMap._userHasInteracted = true;
                     trackedBusId = null; // stop following a bus if user pans/zooms manually
+                    clearRouteStops();
                 }
             });
             
@@ -1720,23 +1855,11 @@
                 // Determine color based on status
                 let color, statusText, statusClass, statusBg;
 
-                // Track position to detect parking (stationary for 30+ mins while online & not in trip)
+                // Parked = online, not in trip, no movement for 30+ mins
                 const PARK_THRESHOLD = 30 * 60 * 1000;
                 const now = Date.now();
-                let isParked = false;
-
-                if (busData.online === true && busData.inTrip !== true) {
-                    const prev = busPositionHistory[busId];
-                    const movedSignificantly = !prev ||
-                        Math.abs(busData.lat - prev.lat) > 0.0001 ||
-                        Math.abs(busData.lng - prev.lng) > 0.0001;
-
-                    if (movedSignificantly) {
-                        busPositionHistory[busId] = { lat: busData.lat, lng: busData.lng, since: now };
-                    } else if (prev && (now - prev.since) >= PARK_THRESHOLD) {
-                        isParked = true;
-                    }
-                }
+                updateParkedState(busId, busData);
+                const isParked = checkParked(busId, busData, PARK_THRESHOLD);
 
                 if (busData.online === true) {
                     if (busData.inTrip === true) {
@@ -1787,6 +1910,18 @@
                 // If this bus is being tracked, pan map to follow it
                 if (trackedBusId === busId) {
                     liveMap.setView(pos, liveMap.getZoom(), { animate: true, duration: 0.5 });
+                }
+
+                // Compute next stop if bus is in trip and has route data
+                if (busData.inTrip && (busAdminData[busId]?.stopsR2M || busAdminData[busId]?.stopsM2R)) {
+                    computeNextStop(busId, busData);
+                } else if (!busData.inTrip) {
+                    delete busNextStop[busId];
+                }
+
+                // Draw/update route stop markers if this bus is being tracked
+                if (trackedBusId === busId) {
+                    drawRouteStops(busId, busData);
                 }
             });
             
@@ -1896,13 +2031,353 @@
                     ${busData.customName && busData.customName !== busId ? `<p style="margin:0 0 4px 0;color:rgba(255,255,255,0.3);font-size:10px;font-family:monospace;">${busId}</p>` : ''}
                     <p style="margin:0 0 4px 0;font-size:11px;font-weight:600;color:${color};">${statusText}</p>
                     ${busData.inTrip === true ? `<p style="margin:0 0 4px 0;font-size:11px;color:rgba(255,255,255,0.6);">Speed: <span style="color:#fff;font-weight:600;">${speed} km/h</span></p>` : ''}
-                    <p style="margin:0 0 2px 0;font-size:10px;color:rgba(255,255,255,0.35);">${lastSeen}</p>
+                    ${busData.inTrip === true ? nextStopPopupHTML(busId) : ''}
+                    <p style="margin:${busData.inTrip ? '6px' : '0'} 0 2px 0;font-size:10px;color:rgba(255,255,255,0.35);">${lastSeen}</p>
                     <p style="margin:0;font-size:10px;color:rgba(255,255,255,0.2);font-family:monospace;">${busData.lat?.toFixed(4)}, ${busData.lng?.toFixed(4)}</p>
                 </div>
             `;
         }
 
-        // ── BUS ADMIN LISTENER ──
+        // ── BUS MODAL TABS ──
+        function switchBusTab(tab) {
+            ['details','route','schedule'].forEach(t => {
+                document.getElementById(`bus-tabpanel-${t}`).classList.toggle('hidden', t !== tab);
+                const btn = document.getElementById(`bus-tab-${t}`);
+                btn.classList.toggle('bus-modal-tab-active', t === tab);
+            });
+        }
+
+        // ── CSV PARSING ──
+        // old vars removed — see EXCEL UPLOAD HANDLERS block
+
+        function parseCSV(text) {
+            const lines = text.trim().split('\n').filter(l => l.trim());
+            // skip header if first cell is non-numeric / non-time
+            const isHeader = l => isNaN(parseFloat(l.split(',')[0])) && !/^\d{1,2}:\d{2}/.test(l.split(',')[0].trim());
+            return lines.filter((l, i) => i === 0 ? !isHeader(l) : true).map(l => l.split(',').map(c => c.trim()));
+        }
+
+        // ── EXCEL UPLOAD HANDLERS ──
+        let pendingStopsR2M = null, pendingStopsM2R = null, pendingSchedule = null;
+
+        function parseCoordinates(coordStr) {
+            if (!coordStr) return { lat: NaN, lng: NaN };
+            // Supports "6.83319, 79.92539" or "6.83319,79.92539" or "6.83319 79.92539"
+            const parts = String(coordStr).split(/[\s,]+/).map(p => parseFloat(p.trim())).filter(n => !isNaN(n));
+            return parts.length >= 2 ? { lat: parts[0], lng: parts[1] } : { lat: NaN, lng: NaN };
+        }
+
+        function handleStopsXLSX(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                    const r2mSheet = wb.Sheets[wb.SheetNames[0]];  // Sheet 1 = outbound
+                    const m2rSheet = wb.Sheets[wb.SheetNames[1]];  // Sheet 2 = return
+                    const sheet1Name = wb.SheetNames[0];
+                    const sheet2Name = wb.SheetNames[1];
+
+                    const parseSheet = sheet => {
+                        if (!sheet) return [];
+                        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                        // Skip header row
+                        return rows.slice(1).map(r => {
+                            const { lat, lng } = parseCoordinates(r[1]);
+                            return { name: String(r[0] || '').trim(), lat, lng };
+                        }).filter(s => s.name && !isNaN(s.lat) && !isNaN(s.lng));
+                    };
+
+                    pendingStopsR2M = parseSheet(r2mSheet);
+                    pendingStopsM2R = parseSheet(m2rSheet);
+                    window._stopsSheetNames = { outbound: sheet1Name, return: sheet2Name };
+
+                    document.getElementById('stops-upload-label-text').textContent = `✓ ${file.name}`;
+                    document.getElementById('stops-upload-label-text').style.color = '#7ee85a';
+                    document.getElementById('stops-preview').classList.remove('hidden');
+                    document.querySelector('#stops-preview div:first-child p').textContent = `Sheet 1 — ${sheet1Name} (Outbound)`;
+                    document.querySelector('#stops-preview div:last-child p').textContent = `Sheet 2 — ${sheet2Name} (Return)`;
+                    renderStopsTable(pendingStopsR2M, 'stops-r2m-table');
+                    renderStopsTable(pendingStopsM2R, 'stops-m2r-table');
+                } catch(err) {
+                    console.error('Stops parse error:', err);
+                    document.getElementById('stops-upload-label-text').textContent = '⚠ Could not parse file';
+                    document.getElementById('stops-upload-label-text').style.color = '#ef4444';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function renderStopsTable(stops, containerId) {
+            const el = document.getElementById(containerId);
+            if (!stops || !stops.length) {
+                el.innerHTML = '<p class="text-xs py-1" style="color:rgba(255,255,255,0.25);">No stops found</p>';
+                return;
+            }
+            el.innerHTML = `<div class="space-y-1">${stops.map((s, i) => `
+                <div class="flex items-center gap-3 px-3 py-2 rounded-lg" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">
+                    <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${i===0?'#7ee85a':i===stops.length-1?'#a855f7':'#6b7280'};"></div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-semibold truncate">${s.name}</p>
+                        <p class="text-[10px] font-mono" style="color:rgba(255,255,255,0.25);">${s.lat.toFixed(5)}, ${s.lng.toFixed(5)}</p>
+                    </div>
+                    <span class="text-[10px] font-mono" style="color:rgba(255,255,255,0.2);">${i+1}</span>
+                </div>`).join('')}</div>`;
+        }
+
+        function handleScheduleXLSX(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                    const ratSheet = wb.Sheets[wb.SheetNames[0]];  // Sheet 1 = outbound origin
+                    const mahSheet = wb.Sheets[wb.SheetNames[1]];  // Sheet 2 = return origin
+                    const sheet1Name = wb.SheetNames[0];
+                    const sheet2Name = wb.SheetNames[1];
+
+                    const parseTimes = sheet => {
+                        if (!sheet) return [];
+                        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                        return rows.slice(1).map(r => {
+                            const val = r[0];
+                            if (val === '' || val === null || val === undefined) return null;
+                            // Excel time serial: fraction of a day (e.g. 0.270833 = 06:30)
+                            if (typeof val === 'number') {
+                                const totalMins = Math.round(val * 24 * 60);
+                                const hh = String(Math.floor(totalMins / 60)).padStart(2, '0');
+                                const mm = String(totalMins % 60).padStart(2, '0');
+                                return `${hh}:${mm}`;
+                            }
+                            // Already a string like "06:30"
+                            const s = String(val).trim();
+                            return /^\d{1,2}:\d{2}$/.test(s) ? s : null;
+                        }).filter(Boolean);
+                    };
+
+                    const ratTimes = parseTimes(ratSheet);
+                    const mahTimes = parseTimes(mahSheet);
+                    pendingSchedule = {
+                        ratmalana: ratTimes,
+                        maharagama: mahTimes
+                    };
+
+                    document.getElementById('schedule-upload-label-text').textContent = `✓ ${file.name}`;
+                    document.getElementById('schedule-upload-label-text').style.color = '#7ee85a';
+                    document.getElementById('schedule-preview').classList.remove('hidden');
+                    document.querySelector('#schedule-preview .grid div:first-child p').textContent = `FROM ${sheet1Name.toUpperCase()}`;
+                    document.querySelector('#schedule-preview .grid div:last-child p').textContent = `FROM ${sheet2Name.toUpperCase()}`;
+                    renderSchedulePreview(ratTimes, mahTimes);
+                } catch(err) {
+                    console.error('Schedule parse error:', err);
+                    document.getElementById('schedule-upload-label-text').textContent = '⚠ Could not parse file';
+                    document.getElementById('schedule-upload-label-text').style.color = '#ef4444';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function renderSchedulePreview(ratTimes, mahTimes) {
+            const timeChip = t => `<span class="text-xs font-mono px-2.5 py-1 rounded-lg" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">${t}</span>`;
+            document.getElementById('schedule-ratmalana-list').innerHTML =
+                ratTimes.length ? `<div class="flex flex-wrap gap-1.5">${ratTimes.map(timeChip).join('')}</div>`
+                : '<p class="text-xs" style="color:rgba(255,255,255,0.25);">No times found</p>';
+            document.getElementById('schedule-maharagama-list').innerHTML =
+                mahTimes.length ? `<div class="flex flex-wrap gap-1.5">${mahTimes.map(timeChip).join('')}</div>`
+                : '<p class="text-xs" style="color:rgba(255,255,255,0.25);">No times found</p>';
+        }
+
+        async function saveRouteData() {
+            if (!currentBusModalId) return;
+            const { dbRef, update } = window.firebaseDbFns;
+            const data = {};
+            if (pendingStopsR2M) data.stopsR2M = pendingStopsR2M;
+            if (pendingStopsM2R) data.stopsM2R = pendingStopsM2R;
+            if (window._stopsSheetNames) data.stopsSheetNames = window._stopsSheetNames;
+            if (!Object.keys(data).length) return;
+            await update(dbRef(window.firebaseDatabase, `busAdmin/${currentBusModalId}`), data);
+            busAdminData[currentBusModalId] = { ...busAdminData[currentBusModalId], ...data };
+            const msg = document.getElementById('route-save-msg');
+            msg.style.opacity = '1'; setTimeout(() => msg.style.opacity = '0', 2000);
+        }
+
+        async function saveScheduleData() {
+            if (!currentBusModalId || !pendingSchedule) return;
+            const { dbRef, update } = window.firebaseDbFns;
+            await update(dbRef(window.firebaseDatabase, `busAdmin/${currentBusModalId}`), { schedule: pendingSchedule });
+            busAdminData[currentBusModalId] = { ...busAdminData[currentBusModalId], schedule: pendingSchedule };
+            const msg = document.getElementById('schedule-save-msg');
+            msg.style.opacity = '1'; setTimeout(() => msg.style.opacity = '0', 2000);
+        }
+
+        // ── NEXT STOP ENGINE ──
+        const busNextStop = {}; // { busId: { stop, dist, direction, tripNo } }
+
+        function isParkedByLastSeen(lastSeen, threshold = 30 * 60 * 1000) {
+            if (!lastSeen) return false;
+            // lastSeen format: "2026-03-10 11:28:38"
+            const parsed = new Date(lastSeen.replace(' ', 'T'));
+            if (isNaN(parsed)) return false;
+            return (Date.now() - parsed.getTime()) >= threshold;
+        }
+
+        function haversineDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371000, dLat = (lat2-lat1)*Math.PI/180, dLng = (lng2-lng1)*Math.PI/180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function bearingBetween(lat1, lng1, lat2, lng2) {
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+            const y = Math.sin(dLng) * Math.cos(φ2);
+            const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(dLng);
+            return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+        }
+        function angleDiff(a, b) { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; }
+
+        function detectDirection(busId, busData) {
+            const admin = busAdminData[busId] || {};
+            const schedule = admin.schedule;
+            const r2m = admin.stopsR2M || [];
+            const m2r = admin.stopsM2R || [];
+            if (!r2m.length && !m2r.length) return null;
+
+            // Use timetable — find the most recent departure and its direction
+            if (schedule?.ratmalana?.length || schedule?.maharagama?.length) {
+                const now = new Date();
+                const nowMins = now.getHours() * 60 + now.getMinutes();
+
+                const allTrips = [
+                    ...(schedule.ratmalana || []).map(t => ({ dir: 'R2M', mins: toMins(t) })),
+                    ...(schedule.maharagama || []).map(t => ({ dir: 'M2R', mins: toMins(t) }))
+                ].sort((a, b) => a.mins - b.mins);
+
+                // Last trip that has already departed
+                let current = null;
+                for (const trip of allTrips) {
+                    if (trip.mins <= nowMins) current = trip;
+                }
+                if (current) return current.dir;
+
+                // Before first departure of the day — use first trip direction
+                if (allTrips.length) return allTrips[0].dir;
+            }
+
+            // Fallback: heading-based
+            if (busData.heading != null && busData.heading !== 0) {
+                const r2mBearing = r2m.length >= 2 ? bearingBetween(r2m[0].lat, r2m[0].lng, r2m[r2m.length-1].lat, r2m[r2m.length-1].lng) : null;
+                const m2rBearing = m2r.length >= 2 ? bearingBetween(m2r[0].lat, m2r[0].lng, m2r[m2r.length-1].lat, m2r[m2r.length-1].lng) : null;
+                if (r2mBearing !== null && m2rBearing !== null)
+                    return angleDiff(busData.heading, r2mBearing) <= angleDiff(busData.heading, m2rBearing) ? 'R2M' : 'M2R';
+            }
+
+            return r2m.length ? 'R2M' : 'M2R';
+        }
+
+        function toMins(timeStr) {
+            const [hh, mm] = timeStr.split(':').map(Number);
+            return hh * 60 + mm;
+        }
+
+        function getCurrentTripNo(busId) {
+            const admin = busAdminData[busId] || {};
+            const schedule = admin.schedule;
+            if (!schedule) return null;
+            const now = new Date();
+            const nowMins = now.getHours() * 60 + now.getMinutes();
+            // Merge all departures with direction label, sort by time
+            const allTrips = [
+                ...(schedule.ratmalana || []).map(t => ({ time: t, dir: 'R2M' })),
+                ...(schedule.maharagama || []).map(t => ({ time: t, dir: 'M2R' }))
+            ].map(t => {
+                const [hh, mm] = t.time.split(':').map(Number);
+                return { ...t, mins: hh * 60 + mm };
+            }).sort((a, b) => a.mins - b.mins);
+
+            if (!allTrips.length) return null;
+            // Current trip = last departure that has already started
+            let tripNo = null, tripDir = null;
+            for (let i = 0; i < allTrips.length; i++) {
+                if (allTrips[i].mins <= nowMins) { tripNo = i + 1; tripDir = allTrips[i].dir; }
+            }
+            return tripNo ? { tripNo, tripDir, total: allTrips.length } : null;
+        }
+
+        function computeNextStop(busId, busData) {
+            if (!busData.inTrip || !busData.lat || !busData.lng) {
+                delete busNextStop[busId]; return;
+            }
+            const admin = busAdminData[busId] || {};
+            const direction = detectDirection(busId, busData);
+            if (!direction) { delete busNextStop[busId]; return; }
+
+            const stops = direction === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
+            if (!stops.length) { delete busNextStop[busId]; return; }
+
+            // Find the closest stop the bus hasn't fully passed yet
+            // Strategy: find closest stop, then pick the next one in sequence
+            const withDist = stops.map((s, i) => ({ ...s, i, dist: haversineDistance(busData.lat, busData.lng, s.lat, s.lng) }));
+            withDist.sort((a, b) => a.dist - b.dist);
+            const closest = withDist[0];
+
+            // If closest is the last stop, it's the destination
+            let nextIdx = closest.i;
+            // If bus has passed this stop (dist < 80m and not last), advance to next
+            if (closest.dist < 80 && closest.i < stops.length - 1) nextIdx = closest.i + 1;
+            // If clearly between two stops, pick the one ahead (higher index in sequence)
+            else if (closest.dist > 80 && closest.i < stops.length - 1) {
+                const nextCandidate = withDist.find(s => s.i === closest.i + 1);
+                if (nextCandidate && nextCandidate.dist < closest.dist * 1.5) nextIdx = nextCandidate.i;
+            }
+
+            const nextStop = stops[nextIdx];
+            const dist = haversineDistance(busData.lat, busData.lng, nextStop.lat, nextStop.lng);
+            const tripInfo = getCurrentTripNo(busId);
+
+            busNextStop[busId] = {
+                stop: nextStop,
+                dist: Math.round(dist),
+                direction,
+                stopNo: nextIdx + 1,
+                totalStops: stops.length,
+                tripInfo
+            };
+        }
+
+        function formatDist(m) {
+            return m >= 1000 ? `${(m/1000).toFixed(1)} km` : `${m} m`;
+        }
+
+        function nextStopBadgeHTML(busId) {
+            const n = busNextStop[busId];
+            if (!n) return '';
+            const sheetNames = busAdminData[busId]?.stopsSheetNames;
+            const dirLabel = sheetNames
+                ? (n.direction === 'R2M' ? sheetNames.outbound : sheetNames.return)
+                : (n.direction === 'R2M' ? 'Outbound' : 'Return');
+            return `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold" style="background:rgba(5,152,177,0.12);border:1px solid rgba(5,152,177,0.35);color:#38bdf8;">
+                <svg class="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span class="truncate" style="max-width:90px;">${n.stop.name}</span>
+                <span style="opacity:0.6;">· ${formatDist(n.dist)}</span>
+            </div>`;
+        }
+
+        function nextStopPopupHTML(busId) {
+            const n = busNextStop[busId];
+            if (!n) return '';
+            const sheetNames = busAdminData[busId]?.stopsSheetNames;
+            const dirLabel = sheetNames
+                ? (n.direction === 'R2M' ? sheetNames.outbound : sheetNames.return)
+                : (n.direction === 'R2M' ? 'Outbound' : 'Return');
+            const tripLine = n.tripInfo ? `<p style="margin:0 0 3px 0;font-size:10px;color:rgba(255,255,255,0.35);">Trip ${n.tripInfo.tripNo}/${n.tripInfo.total} · ${dirLabel}</p>` : '';
+            return `${tripLine}<p style="margin:0 0 2px 0;font-size:11px;color:#38bdf8;font-weight:600;">
+                ▸ ${n.stop.name}
+                <span style="font-size:10px;color:rgba(255,255,255,0.4);font-weight:400;"> · ${formatDist(n.dist)}</span>
+            </p><p style="margin:0;font-size:10px;color:rgba(255,255,255,0.25);">Stop ${n.stopNo} of ${n.totalStops}</p>`;
+        }
         function startBusAdminListener() {
             const { dbRef, onValue } = window.firebaseDbFns;
             const ref = dbRef(window.firebaseDatabase, 'busAdmin');
@@ -1924,7 +2399,7 @@
                 if (bus.inTrip === true) { color = '#a855f7'; statusLabel = 'In Trip'; }
                 else { color = '#eab308'; statusLabel = 'Online (Idle)'; }
             }
-            if (busPositionHistory[busId] && !bus.inTrip && bus.online && (Date.now() - busPositionHistory[busId].since) >= 30*60*1000) {
+            if (checkParked(busId, bus) && !bus?.inTrip && bus?.online) {
                 color = '#3b82f6'; statusLabel = 'Parked';
             }
 
@@ -1962,6 +2437,36 @@
             }
 
             document.getElementById('bus-modal-save-msg').style.opacity = '0';
+
+            // Reset pending uploads
+            pendingStopsR2M = null; pendingStopsM2R = null; pendingSchedule = null;
+
+            // Reset upload labels
+            const stopsLbl = document.getElementById('stops-upload-label-text');
+            const schedLbl = document.getElementById('schedule-upload-label-text');
+            stopsLbl.textContent = 'Click to upload stops .xlsx'; stopsLbl.style.color = 'rgba(255,255,255,0.4)';
+            schedLbl.textContent = 'Click to upload timetable .xlsx'; schedLbl.style.color = 'rgba(255,255,255,0.4)';
+
+            // Restore saved route data
+            if (admin.stopsR2M?.length || admin.stopsM2R?.length) {
+                document.getElementById('stops-preview').classList.remove('hidden');
+                stopsLbl.textContent = '✓ Stops data loaded from Firebase'; stopsLbl.style.color = '#7ee85a';
+                renderStopsTable(admin.stopsR2M || [], 'stops-r2m-table');
+                renderStopsTable(admin.stopsM2R || [], 'stops-m2r-table');
+            } else {
+                document.getElementById('stops-preview').classList.add('hidden');
+            }
+
+            // Restore saved schedule
+            if (admin.schedule?.ratmalana || admin.schedule?.maharagama) {
+                document.getElementById('schedule-preview').classList.remove('hidden');
+                schedLbl.textContent = '✓ Schedule loaded from Firebase'; schedLbl.style.color = '#7ee85a';
+                renderSchedulePreview(admin.schedule.ratmalana || [], admin.schedule.maharagama || []);
+            } else {
+                document.getElementById('schedule-preview').classList.add('hidden');
+            }
+
+            switchBusTab('details');
             document.getElementById('bus-detail-modal').classList.remove('hidden');
         }
 
@@ -2101,7 +2606,7 @@
                         bgColor = 'rgba(168, 85, 247, 0.2)';
                         borderColor = '#a855f7';
                         glowClass = 'glow-purple';
-                    } else if (busPositionHistory[busId] && (Date.now() - busPositionHistory[busId].since) >= 30 * 60 * 1000) {
+                    } else if (checkParked(busId, bus)) {
                         statusText = '● Parked';
                         statusColor = 'text-blue-400';
                         bgColor = 'rgba(59, 130, 246, 0.2)';
@@ -2150,11 +2655,12 @@
                             ${(admin.routeNo || admin.route) ? `<p class="text-[10px]" style="color:rgba(255,255,255,0.35)">${admin.routeNo ? `<span style="color:rgba(255,255,255,0.5);font-weight:700;">#${admin.routeNo}</span> · ` : ''}${admin.route || ''}</p>` : (bus.customName && bus.customName !== busId ? `<p class="text-[10px] text-gray-500">${busId}</p>` : '')}
                             <p class="text-xs ${statusColor} font-semibold">${statusText}${!isActive ? ' · <span style="color:rgba(255,255,255,0.3)">Deactivated</span>' : ''}</p>
                         </div>
-                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
                             ${isTracked ? `<div class="flex items-center gap-1 px-2 py-1 rounded-full" style="background:rgba(126,232,90,0.12);border:1px solid rgba(126,232,90,0.3)">
                                 <span class="w-1.5 h-1.5 rounded-full" style="background:#7ee85a;box-shadow:0 0 6px rgba(126,232,90,0.7);animation:livePulse 1.8s ease-in-out infinite"></span>
                                 <span class="text-[10px] font-semibold" style="color:#7ee85a">Tracking</span>
                             </div>` : ''}
+                            ${nextStopBadgeHTML(busId)}
                             <button onclick="openBusModal('${busId}')" class="glass-button p-1.5" style="border-radius:7px;" title="Edit bus details">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:rgba(255,255,255,0.4)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                             </button>
@@ -2162,6 +2668,8 @@
                     </div>
                     <div class="space-y-1 text-xs text-gray-400 cursor-pointer" onclick="focusOnBus('${busId}')">
                         ${admin.depot ? `<p>Depot: <span class="text-white">${admin.depot}</span></p>` : ''}
+                        ${bus.inTrip === true && busNextStop[busId] ? `<p>Next stop: <span class="text-white font-semibold">${busNextStop[busId].stop.name}</span> <span class="text-gray-500">· ${formatDist(busNextStop[busId].dist)}</span></p>` : ''}
+                        ${bus.inTrip === true && busNextStop[busId]?.tripInfo ? `<p>Trip: <span class="text-white">${busNextStop[busId].tripInfo.tripNo}/${busNextStop[busId].tripInfo.total}</span></p>` : ''}
                         ${bus.inTrip === true ? `<p>Speed: <span class="text-white font-bold">${speed} km/h</span></p>` : ''}
                         <p>Updated: <span class="text-white">${bus.lastSeen || 'Unknown'}</span></p>
                         <p class="font-mono text-[10px] opacity-70">${bus.lat?.toFixed(4)}, ${bus.lng?.toFixed(4)}</p>
@@ -2191,8 +2699,7 @@
 
                 // Status filter
                 if (activeBusFilter !== 'all') {
-                    const isParked = busPositionHistory[busId] && bus.online && !bus.inTrip &&
-                        (Date.now() - busPositionHistory[busId].since) >= 30 * 60 * 1000;
+                    const isParked = bus.online && !bus.inTrip && checkParked(busId, bus);
                     if (activeBusFilter === 'trip'     && !(bus.online && bus.inTrip)) return false;
                     if (activeBusFilter === 'idle'     && !(bus.online && !bus.inTrip && !isParked)) return false;
                     if (activeBusFilter === 'parked'   && !isParked) return false;
@@ -2226,14 +2733,89 @@
         function focusOnBus(busId) {
             const marker = busMarkers[busId];
             if (marker && liveMap) {
+                if (trackedBusId && trackedBusId !== busId) clearRouteStops();
                 trackedBusId = busId;
-                liveMap._userHasInteracted = true; // prevent fitBounds from overriding
+                liveMap._userHasInteracted = true;
                 liveMap.setView(marker.getLatLng(), 17);
                 marker.openPopup();
             }
         }
 
+        // ── ROUTE STOP MARKERS ──
+        let routeStopLayers = [];
+
+        function clearRouteStops() {
+            routeStopLayers.forEach(l => liveMap.removeLayer(l));
+            routeStopLayers = [];
+            drawRouteStops._lastKey = null;
+        }
+
+        function drawRouteStops(busId, busData) {
+            const admin = busAdminData[busId] || {};
+            const n = busNextStop[busId];
+            if (!n) { clearRouteStops(); return; }
+
+            const stops = n.direction === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
+            if (!stops.length) { clearRouteStops(); return; }
+
+            const cacheKey = `${busId}_${n.direction}_${n.stopNo}`;
+            if (drawRouteStops._lastKey === cacheKey) return;
+            drawRouteStops._lastKey = cacheKey;
+
+            clearRouteStops();
+
+            const nextIdx = n.stopNo - 1;
+
+            // Subtle dashed route line
+            const routeLine = L.polyline(stops.map(s => [s.lat, s.lng]), {
+                color: 'rgba(255,255,255,0.08)', weight: 3, dashArray: '6 6'
+            }).addTo(liveMap);
+            routeStopLayers.push(routeLine);
+
+            stops.forEach((stop, i) => {
+                const isPassed = i < nextIdx;
+                const isNext = i === nextIdx;
+                const isTerminal = i === 0 || i === stops.length - 1;
+
+                const color = isPassed ? '#f97316' : '#38bdf8';
+                // Size: terminals and next stop slightly bigger
+                const size = (isTerminal || isNext) ? 32 : 24;
+                const opacity = isPassed ? (isTerminal ? 1 : 0.8) : (isNext ? 1 : isTerminal ? 0.75 : 0.45);
+
+                const busIcon = L.divIcon({
+                    className: '',
+                    iconSize: [size, size],
+                    iconAnchor: [size/2, size/2],
+                    html: `<div style="
+                        width:${size}px;height:${size}px;
+                        background:rgba(8,8,8,0.85);
+                        border:1.5px solid ${color};
+                        border-radius:50%;
+                        display:flex;align-items:center;justify-content:center;
+                        opacity:${opacity};
+                        box-shadow:0 0 ${isNext ? '8px' : '4px'} -1px ${color}88;
+                    ">
+                        <svg width="${size*0.55}" height="${size*0.55}" viewBox="0 0 24 24" fill="${color}">
+                            <path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+                        </svg>
+                    </div>`
+                });
+
+                const marker = L.marker([stop.lat, stop.lng], { icon: busIcon, interactive: true }).addTo(liveMap);
+
+                marker.bindTooltip(`
+                    <div style="font-family:'Sora',sans-serif;font-size:11px;font-weight:600;color:#fff;background:rgba(8,8,8,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 9px;white-space:nowrap;">
+                        ${isNext ? '▸ ' : ''}${stop.name}
+                        <span style="font-size:10px;font-weight:400;color:${color};margin-left:5px;">${isPassed ? 'Passed' : isNext ? 'Next stop' : 'Upcoming'}</span>
+                    </div>
+                `, { permanent: false, direction: 'top', className: 'route-stop-tooltip', offset: [0, -4] });
+
+                routeStopLayers.push(marker);
+            });
+        }
+
         function recenterMap() {
+            clearRouteStops();
             trackedBusId = null;
             liveMap._userHasInteracted = false;
             const positions = Object.values(busMarkers).map(m => m.getLatLng());
