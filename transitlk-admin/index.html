@@ -1258,54 +1258,13 @@
         let liveUnsubscribe = null;
         let trackedBusId = null;
         // Two separate stores: last known position (updated every Firebase tick) and when it stopped moving
-        let busLastPos = {};
-        let busStoppedSince = {};
-
-        function loadParkedState() {
-            try { busStoppedSince = JSON.parse(localStorage.getItem('busStoppedSince') || '{}'); } catch(e) { busStoppedSince = {}; }
-            try { busLastPos = JSON.parse(localStorage.getItem('busLastPos') || '{}'); } catch(e) { busLastPos = {}; }
-        }
-        function saveParkedState() {
-            try {
-                localStorage.setItem('busStoppedSince', JSON.stringify(busStoppedSince));
-                localStorage.setItem('busLastPos', JSON.stringify(busLastPos));
-            } catch(e) {}
-        }
-        loadParkedState();
-
         function isParkedByLastSeen() { return false; } // kept for compat
-
-        function updateParkedState(busId, busData) {
-            // Always clear if in trip or offline
-            if (busData.inTrip || !busData.online) {
-                if (busStoppedSince[busId]) { delete busStoppedSince[busId]; saveParkedState(); }
-                busLastPos[busId] = { lat: busData.lat, lng: busData.lng };
-                return;
-            }
-
-            const last = busLastPos[busId];
-            const moved = last && (
-                Math.abs(busData.lat - last.lat) > 0.0001 ||
-                Math.abs(busData.lng - last.lng) > 0.0001
-            );
-
-            if (moved) {
-                // Bus genuinely moved — reset stopped timer
-                if (busStoppedSince[busId]) { delete busStoppedSince[busId]; saveParkedState(); }
-            } else if (!busStoppedSince[busId]) {
-                // Not moved (or first update after reload) — start timer if not already running
-                busStoppedSince[busId] = Date.now();
-                saveParkedState();
-            }
-
-            // Always update last known position
-            busLastPos[busId] = { lat: busData.lat, lng: busData.lng };
-        }
+        function updateParkedState() {}                 // no-op, handled by Cloud Function
 
         function checkParked(busId, busData, threshold = 30 * 60 * 1000) {
             if (busData.inTrip || !busData.online) return false;
-            const since = busStoppedSince[busId];
-            return since && (Date.now() - since) >= threshold;
+            if (!busData.tripEndedAt) return false;
+            return (Date.now() - busData.tripEndedAt) >= threshold;
         }
 
         function togglePassword() {
@@ -1858,7 +1817,6 @@
                 // Parked = online, not in trip, no movement for 30+ mins
                 const PARK_THRESHOLD = 30 * 60 * 1000;
                 const now = Date.now();
-                updateParkedState(busId, busData);
                 const isParked = checkParked(busId, busData, PARK_THRESHOLD);
 
                 if (busData.online === true) {
@@ -2033,6 +1991,7 @@
                     ${busData.inTrip === true ? `<p style="margin:0 0 4px 0;font-size:11px;color:rgba(255,255,255,0.6);">Speed: <span style="color:#fff;font-weight:600;">${speed} km/h</span></p>` : ''}
                     ${busData.inTrip === true ? nextStopPopupHTML(busId) : ''}
                     <p style="margin:${busData.inTrip ? '6px' : '0'} 0 2px 0;font-size:10px;color:rgba(255,255,255,0.35);">${lastSeen}</p>
+                    ${busData.battery != null && busData.battery >= 0 ? `<p style="margin:3px 0 0 0;font-size:10px;color:${batteryColor(busData.battery)};">⬡ Battery: <span style="font-weight:600;">${busData.battery}%</span>${busData.charging ? ' <span style="color:#7ee85a;">⚡</span>' : ''}</p>` : ''}
                     <p style="margin:0;font-size:10px;color:rgba(255,255,255,0.2);font-family:monospace;">${busData.lat?.toFixed(4)}, ${busData.lng?.toFixed(4)}</p>
                 </div>
             `;
@@ -2351,6 +2310,38 @@
             return m >= 1000 ? `${(m/1000).toFixed(1)} km` : `${m} m`;
         }
 
+        function batteryColor(pct) {
+            if (pct <= 20) return '#ef4444';
+            if (pct <= 50) return '#eab308';
+            return '#7ee85a';
+        }
+
+        function batteryIcon(pct) {
+            // 4-segment battery icon — filled segments based on level
+            const segs = pct > 75 ? 4 : pct > 50 ? 3 : pct > 25 ? 2 : pct > 10 ? 1 : 0;
+            const c = batteryColor(pct);
+            const seg = (filled) => `<rect x="${0}" y="${0}" width="4" height="7" rx="0.5" fill="${filled ? c : 'rgba(255,255,255,0.12)'}"/>`;
+            return `<svg width="22" height="10" viewBox="0 0 22 10" style="display:inline-block;vertical-align:middle;">
+                <rect x="0" y="1" width="19" height="8" rx="1.5" fill="none" stroke="${c}" stroke-width="1.2"/>
+                <rect x="19.5" y="3.5" width="2" height="3" rx="0.8" fill="${c}"/>
+                <rect x="1.5" y="2.5" width="3.5" height="5" rx="0.5" fill="${segs>=1?c:'rgba(255,255,255,0.12)'}"/>
+                <rect x="6"   y="2.5" width="3.5" height="5" rx="0.5" fill="${segs>=2?c:'rgba(255,255,255,0.12)'}"/>
+                <rect x="10.5" y="2.5" width="3.5" height="5" rx="0.5" fill="${segs>=3?c:'rgba(255,255,255,0.12)'}"/>
+                <rect x="15" y="2.5" width="3" height="5" rx="0.5" fill="${segs>=4?c:'rgba(255,255,255,0.12)'}"/>
+            </svg>`;
+        }
+
+        function batteryBadgeHTML(battery) {
+            if (battery == null || battery < 0) return '';
+            const c = batteryColor(battery);
+            const bg = battery <= 20 ? 'rgba(239,68,68,0.1)' : battery <= 50 ? 'rgba(234,179,8,0.1)' : 'rgba(126,232,90,0.1)';
+            const border = battery <= 20 ? 'rgba(239,68,68,0.3)' : battery <= 50 ? 'rgba(234,179,8,0.3)' : 'rgba(126,232,90,0.3)';
+            return `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold" style="background:${bg};border:1px solid ${border};color:${c};">
+                ${batteryIcon(battery)}
+                <span style="margin-left:2px;">${battery}%</span>
+            </div>`;
+        }
+
         function nextStopBadgeHTML(busId) {
             const n = busNextStop[busId];
             if (!n) return '';
@@ -2660,6 +2651,7 @@
                                 <span class="w-1.5 h-1.5 rounded-full" style="background:#7ee85a;box-shadow:0 0 6px rgba(126,232,90,0.7);animation:livePulse 1.8s ease-in-out infinite"></span>
                                 <span class="text-[10px] font-semibold" style="color:#7ee85a">Tracking</span>
                             </div>` : ''}
+                            ${batteryBadgeHTML(bus.battery)}
                             ${nextStopBadgeHTML(busId)}
                             <button onclick="openBusModal('${busId}')" class="glass-button p-1.5" style="border-radius:7px;" title="Edit bus details">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:rgba(255,255,255,0.4)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
@@ -2668,6 +2660,7 @@
                     </div>
                     <div class="space-y-1 text-xs text-gray-400 cursor-pointer" onclick="focusOnBus('${busId}')">
                         ${admin.depot ? `<p>Depot: <span class="text-white">${admin.depot}</span></p>` : ''}
+                        ${bus.battery != null && bus.battery >= 0 ? `<p>Battery: <span style="color:${batteryColor(bus.battery)};font-weight:700;">${bus.battery}%</span>${bus.charging ? ` <span style="color:#7ee85a;">⚡</span>` : ''}</p>` : `<p>Battery: <span style="color:rgba(255,255,255,0.3);">No data</span></p>`}
                         ${bus.inTrip === true && busNextStop[busId] ? `<p>Next stop: <span class="text-white font-semibold">${busNextStop[busId].stop.name}</span> <span class="text-gray-500">· ${formatDist(busNextStop[busId].dist)}</span></p>` : ''}
                         ${bus.inTrip === true && busNextStop[busId]?.tripInfo ? `<p>Trip: <span class="text-white">${busNextStop[busId].tripInfo.tripNo}/${busNextStop[busId].tripInfo.total}</span></p>` : ''}
                         ${bus.inTrip === true ? `<p>Speed: <span class="text-white font-bold">${speed} km/h</span></p>` : ''}
