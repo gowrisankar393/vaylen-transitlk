@@ -1093,6 +1093,9 @@ function initHomeMap() {
     }).setView([6.83, 79.90], 13);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(homeMap);
+    setTimeout(() => homeMap?.invalidateSize(), 100);
+    setTimeout(() => homeMap?.invalidateSize(), 500);
+    setTimeout(() => homeMap?.invalidateSize(), 1000);
 
     // Update home map markers whenever live buses update
     document.addEventListener('liveBusesUpdated', updateHomeMapMarkers);
@@ -1572,7 +1575,7 @@ function openTracking(busId) {
     document.getElementById('track-bus-name').textContent = name;
     document.getElementById('track-bus-route').textContent = `Route ${admin.routeNo || PILOT_ROUTE.number}`;
 
-    setTimeout(() => initTrackMap(busId), 100);
+    setTimeout(() => initTrackMap(busId), 450);
 }
 
 function initTrackMap(busId) {
@@ -1588,6 +1591,10 @@ function initTrackMap(busId) {
 
     trackMap = L.map('track-map', { zoomControl: false, attributionControl: false }).setView(center, 15);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(trackMap);
+    // Multiple invalidateSize to handle transition timing edge cases
+    setTimeout(() => trackMap?.invalidateSize(), 100);
+    setTimeout(() => trackMap?.invalidateSize(), 300);
+    setTimeout(() => trackMap?.invalidateSize(), 600);
 
     // User location
     if (userLocation) {
@@ -2035,7 +2042,7 @@ function openPlacesMap(match) {
     document.getElementById('places-route-label').textContent = dirLabel;
     document.getElementById('places-route-summary').style.display = 'flex';
 
-    setTimeout(() => initPlacesMap(match, stops), 100);
+    setTimeout(() => initPlacesMap(match, stops), 450);
     renderBusesForRoute(match);
 
     document.addEventListener('liveBusesUpdated', () => {
@@ -2053,6 +2060,9 @@ function initPlacesMap(match, stops) {
     const center = stops.length ? [stops[Math.floor(stops.length/2)].lat, stops[Math.floor(stops.length/2)].lng] : [6.83, 79.90];
     placesMap = L.map('places-map', { zoomControl: false, attributionControl: false }).setView(center, 14);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(placesMap);
+    setTimeout(() => placesMap?.invalidateSize(), 100);
+    setTimeout(() => placesMap?.invalidateSize(), 300);
+    setTimeout(() => placesMap?.invalidateSize(), 600);
 
     // Draw bus route line (only the segment the user will ride)
     if (stops.length && match.boardStop && match.alightStop) {
