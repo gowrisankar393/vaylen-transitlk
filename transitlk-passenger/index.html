@@ -456,17 +456,6 @@ function updBMarkers(){
 // ═══════════════════════════════════════════════
 // SEARCH
 // ═══════════════════════════════════════════════
-function openSearch(field){
-    document.getElementById('homecard').classList.add('hidden');
-    document.getElementById('sovl').classList.add('open');
-    history.pushState({m:'search'},'');
-    setTimeout(()=>document.getElementById(`${field||'to'}-inp`).focus(),350);
-}
-function closeSearch(){
-    document.getElementById('sovl').classList.remove('open');
-    hsugs('from');hsugs('to');
-    if(!match)document.getElementById('homecard').classList.remove('hidden');
-}
 
 function renderPRoutes(){
     const live=Object.values(buses).some(b=>b.online);
@@ -484,16 +473,6 @@ function renderPRoutes(){
     </div>`;
 }
 
-function qroute(){
-    closeSearch();
-    document.getElementById('homecard').classList.add('hidden');
-    const a=getAdmin();
-    if(!a)return;
-    match={admin:a,dir:'R2M',boardStop:a.stopsR2M?.[0],alightStop:a.stopsR2M?.[a.stopsR2M.length-1],walkToBoard:0,walkFromAlight:0};
-    drawRoute();
-    setSheet('half');
-    renderSheet();
-}
 
 // ═══════════════════════════════════════════════
 // INPUTS
@@ -559,42 +538,10 @@ function trySearch(){
     if(fp&&tp)doSearch();
 }
 
-function setPill(txt){
-    document.getElementById('to-pill').textContent=txt;
-    document.getElementById('to-pill').classList.add('on');
-}
 
 // ═══════════════════════════════════════════════
 // ROUTE FINDING
 // ═══════════════════════════════════════════════
-function doSearch(){
-    closeSearch();
-    document.getElementById('homecard').classList.add('hidden');
-    setSheet('half');
-    document.getElementById('sc').innerHTML='<div style="padding:40px;text-align:center;"><span class="spin"></span></div>';
-    const ms=[];
-    for(const [bid,a] of Object.entries(admins)){
-        if(!a.stopsR2M?.length&&!a.stopsM2R?.length)continue;
-        for(const dir of['R2M','M2R']){
-            const stops=dir==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);
-            if(!stops.length)continue;
-            const fc=stops.map((s,i)=>({...s,i,dist:hav(fp.lat,fp.lng,s.lat,s.lng)})).filter(s=>s.dist<=WALK).sort((a,b)=>a.dist-b.dist);
-            const tc=stops.map((s,i)=>({...s,i,dist:hav(tp.lat,tp.lng,s.lat,s.lng)})).filter(s=>s.dist<=WALK).sort((a,b)=>a.dist-b.dist);
-            if(!fc.length||!tc.length)continue;
-            const bo=fc[0],al=tc[0];
-            if(bo.i>=al.i)continue;
-            ms.push({admin:a,dir,boardStop:bo,alightStop:al,walkToBoard:Math.round(bo.dist),walkFromAlight:Math.round(al.dist)});
-        }
-    }
-    if(!ms.length){
-        document.getElementById('sc').innerHTML=`<div class="empty"><svg width="40" height="40" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 12px;display:block;"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>No routes found within 2km.<br>Try a location closer to the route.</div>`;
-        return;
-    }
-    ms.sort((a,b)=>(a.walkToBoard+a.walkFromAlight)-(b.walkToBoard+b.walkFromAlight));
-    match=ms[0];
-    drawRoute();
-    renderSheet();
-}
 
 // ═══════════════════════════════════════════════
 // MAP DRAWING
@@ -675,15 +622,6 @@ async function rpath(o,d){
 // ═══════════════════════════════════════════════
 // SHEET
 // ═══════════════════════════════════════════════
-function setSheet(st){
-    sstate=st;
-    const el=document.getElementById('bsheet');
-    el.classList.remove('peek','half','full');
-    if(st!=='hidden')el.classList.add(st);
-    // update recenter btn
-    const h=st==='full'?0:st==='half'?window.innerHeight*.56:st==='peek'?130:16;
-    document.getElementById('recbtn').style.bottom=(h+60)+'px';
-}
 
 function renderSheet(){
     if(!match)return;
@@ -768,124 +706,6 @@ function renderSheet(){
 // ═══════════════════════════════════════════════
 // TRACKING
 // ═══════════════════════════════════════════════
-function startTrack(bid){
-    tBusId=bid;
-    setSheet('peek');
-    history.pushState({t:bid},'');
-    const b=buses[bid]||{},a=admins[bid]||{};
-    drawTrack(b,a);
-    renderTrack();
-}
-
-function renderTrack(){
-    if(!tBusId)return;
-    const b=buses[tBusId]||{},a=admins[tBusId]||{};
-    const nm2=a.plate||b.customName||tBusId;
-    const dir=ddir(b,a);
-    const stops=dir==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);
-    const sp=((b.speed||0)*3.6).toFixed(0);
-    const c=b.inTrip?'#a855f7':'#6b7280';
-    let nxt='--',eta='--',sl='--';
-    if(stops.length&&b.lat){
-        const wd=stops.map((s,i)=>({...s,i,dist:hav(b.lat,b.lng,s.lat,s.lng)}));
-        wd.sort((a2,b2)=>a2.dist-b2.dist);
-        const ns=wd[0];nxt=ns.name;sl=stops.length-ns.i-1;
-        eta=Math.max(1,Math.round(ns.dist/(b.speed>0.5?b.speed:5)/60));
-    }
-    document.getElementById('sc').innerHTML=`
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-        <div onclick="stopTrack()" style="width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.06);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">
-            <svg width="14" height="14" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        </div>
-        <div style="flex:1;"><div style="font-size:15px;font-weight:800;">${nm2}</div><div style="font-size:11px;color:${c};margin-top:1px;">● ${b.inTrip?'In Trip':'Not in trip'} · ${sp} km/h</div></div>
-        <div style="padding:5px 10px;border-radius:50px;background:rgba(126,232,90,.1);border:1px solid rgba(126,232,90,.3);display:flex;align-items:center;gap:5px;">
-            <span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);display:block;animation:sp 2s linear infinite;"></span>
-            <span style="font-size:11px;font-weight:700;color:var(--green);">LIVE</span>
-        </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:12px 14px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.2);border-radius:14px;">
-        <div style="width:10px;height:10px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);flex-shrink:0;"></div>
-        <div><div style="font-size:10px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Next Stop</div><div style="font-size:16px;font-weight:800;letter-spacing:-.2px;">${nxt}</div></div>
-    </div>
-    <div class="tstat-grid">
-        <div class="tstat"><div class="tstat-v" style="color:var(--cyan);">${eta}</div><div class="tstat-l">min ETA</div></div>
-        <div class="tstat"><div class="tstat-v">${sp}</div><div class="tstat-l">km/h</div></div>
-        <div class="tstat"><div class="tstat-v">${sl}</div><div class="tstat-l">stops left</div></div>
-    </div>`;
-}
-
-function drawTrack(b,a){
-    tlayers.forEach(l=>map.removeLayer(l));tlayers=[];
-    const dir=ddir(b,a);
-    const stops=dir==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);
-    if(!stops.length||!b.lat)return;
-    const wd=stops.map((s,i)=>({...s,i,dist:hav(b.lat,b.lng,s.lat,s.lng)}));wd.sort((a2,b2)=>a2.dist-b2.dist);
-    const ni=wd[0].i;
-    tlayers.push(L.polyline(stops.map(s=>[s.lat,s.lng]),{color:'rgba(255,255,255,.06)',weight:3,dashArray:'6 6'}).addTo(map));
-    stops.forEach((s,i)=>{
-        const ip=i<ni,isN=i===ni,iT2=i===0||i===stops.length-1;
-        const c=ip?'#f97316':'#38bdf8';
-        const sz=iT2||isN?28:20,op=ip?(iT2?1:.75):(isN?1:iT2?.7:.4);
-        const ic=L.divIcon({className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],
-            html:`<div style="width:${sz}px;height:${sz}px;background:rgba(8,8,8,.9);border:${isN?'2.5':'1.5'}px solid ${c};border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:${op};box-shadow:0 0 ${isN?'10':'3'}px ${c}66;">
-                <svg width="${sz*.56}" height="${sz*.56}" viewBox="0 0 24 24" fill="${c}"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg>
-            </div>`});
-        const m=L.marker([s.lat,s.lng],{icon:ic}).addTo(map);
-        m.bindTooltip(`<div style="font-family:'Sora',sans-serif;font-size:11px;font-weight:600;color:${c};background:rgba(8,8,8,.95);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:5px 9px;white-space:nowrap;">${isN?'▸ ':''}${s.name}<span style="font-size:10px;color:rgba(255,255,255,.35);margin-left:5px;">${ip?'Passed':isN?'Next':'Upcoming'}</span></div>`,
-            {permanent:false,direction:'top',className:'rtip',offset:[0,-4]});
-        tlayers.push(m);
-    });
-    if(b.lat)map.setView([b.lat,b.lng],15,{animate:true,duration:.5});
-}
-
-function stopTrack(){
-    tBusId=null;tlayers.forEach(l=>map.removeLayer(l));tlayers=[];
-    if(match){drawRoute();renderSheet();setSheet('half');}else setSheet('hidden');
-}
-
-// ═══════════════════════════════════════════════
-// STOP PICKER
-// ═══════════════════════════════════════════════
-function openSS(){
-    const a=getAdmin();if(!a)return;
-    document.getElementById('dr2m').textContent=`↑ ${getOriginName(a,'R2M')}`;
-    document.getElementById('dm2r').textContent=`↑ ${getOriginName(a,'M2R')}`;
-    if(!a.stopsR2M?.length&&a.stopsM2R?.length)selDir='M2R';
-    udbtns();
-    document.getElementById('ss-inp').value='';document.getElementById('ss-x').style.display='none';
-    rsl('');
-    document.getElementById('ssheet').classList.add('open');
-    history.pushState({m:'stops'},'');
-    setTimeout(()=>document.getElementById('ss-inp').focus(),350);
-}
-function sdir(d){selDir=d;udbtns();rsl(document.getElementById('ss-inp').value||'');}
-function udbtns(){document.getElementById('dr2m').classList.toggle('on',selDir==='R2M');document.getElementById('dm2r').classList.toggle('on',selDir==='M2R');}
-function fstops(){const q=document.getElementById('ss-inp').value||'';document.getElementById('ss-x').style.display=q?'block':'none';rsl(q);}
-function rsl(q){
-    const a=getAdmin();if(!a)return;
-    const stops=selDir==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);
-    const lq=q.toLowerCase(),fl=q?stops.filter(s=>s.name.toLowerCase().includes(lq)):stops;
-    const el=document.getElementById('slist');
-    if(!fl.length){el.innerHTML=`<div style="text-align:center;padding:32px;color:var(--dim);font-size:13px;">${q?`No stops matching "${q}"`:' No stops uploaded'}</div>`;return;}
-    el.innerHTML=fl.map(s=>{
-        const oi=stops.indexOf(s),isF=oi===0,isL=oi===stops.length-1;
-        const dc=isF?'var(--green)':isL?'var(--purple)':'var(--cyan)';
-        const isSel=selStop?.name===s.name&&selStop?.direction===selDir;
-        const nm2=q?s.name.replace(new RegExp(`(${q})`,'gi'),'<span style="color:var(--cyan);font-weight:700;">$1</span>'):s.name;
-        return`<div class="si${isSel?' sel':''}" onclick="pickStop(${oi})">
-            <div class="sdot" style="background:${dc}${isSel?';box-shadow:0 0 6px '+dc:''}"></div>
-            <div class="siname">${nm2}</div><div class="sinum">${oi+1}</div>
-        </div>`;
-    }).join('');
-}
-function pickStop(idx){
-    const a=getAdmin();if(!a)return;
-    const stops=selDir==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);
-    selStop={...stops[idx],direction:selDir,index:idx};
-    closeSS();renderSheet();
-}
-function ssclick(e){if(e.target===document.getElementById('ssheet'))closeSS();}
-function closeSS(){document.getElementById('ssheet').classList.remove('open');}
 
 // ═══════════════════════════════════════════════
 // HELPERS
@@ -915,31 +735,288 @@ function tm(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
 function fd(m){return m>=1000?`${(m/1000).toFixed(1)} km`:`${Math.round(m)} m`;}
 
 // ═══════════════════════════════════════════════
-// BACK BUTTON
+// NAVIGATION STACK — single source of truth
 // ═══════════════════════════════════════════════
-history.replaceState({root:true},'');
-window.addEventListener('popstate',e=>{
-    if(document.getElementById('ssheet').classList.contains('open')){closeSS();history.pushState({},'');return;}
-    if(document.getElementById('sovl').classList.contains('open')){closeSearch();history.pushState({},'');return;}
-    if(tBusId){stopTrack();history.pushState({},'');return;}
-    if(match){clrRoute();match=null;setSheet('hidden');document.getElementById('homecard').classList.remove('hidden');}
+// States (in order): home → search → route → track → stops
+// We manage our own stack and push ONE history entry per "page"
+// so back always does the right thing
+
+const NAV = {
+    stack: ['home'], // current stack of states
+
+    push(state) {
+        this.stack.push(state);
+        history.pushState({ nav: state, depth: this.stack.length }, '');
+    },
+
+    // Called by popstate — go back one level
+    pop() {
+        if (this.stack.length <= 1) return;
+        this.stack.pop();
+        const prev = this.stack[this.stack.length - 1];
+        this._apply(prev);
+    },
+
+    // Apply a state visually without touching history
+    _apply(state) {
+        // Close everything, then open what's needed
+        _closeStopSheet(false);
+        _closeSearch(false);
+        if (state === 'home') {
+            if (tBusId) { tBusId = null; tlayers.forEach(l=>map.removeLayer(l)); tlayers = []; }
+            if (match) { clrRoute(); match = null; }
+            setSheet('hidden', false);
+            showHomeCard();
+        } else if (state === 'route') {
+            if (tBusId) { tBusId = null; tlayers.forEach(l=>map.removeLayer(l)); tlayers = []; }
+            if (match) { drawRoute(); renderSheet(); }
+            setSheet('half', false);
+        } else if (state === 'track') {
+            if (match) { renderSheet(); }
+            setSheet('peek', false);
+        }
+    }
+};
+
+// Intercept all back button presses
+history.replaceState({ nav: 'home', depth: 1 }, '');
+
+window.addEventListener('popstate', (e) => {
+    // If stop sheet open, close it and re-push so we stay on same nav state
+    if (document.getElementById('ssheet').classList.contains('open')) {
+        _closeStopSheet(false);
+        history.pushState({ nav: NAV.stack[NAV.stack.length-1], depth: NAV.stack.length }, '');
+        return;
+    }
+    NAV.pop();
 });
 
 // ═══════════════════════════════════════════════
-// SHEET DRAG
+// SHEET SNAP — real-time drag + snap
 // ═══════════════════════════════════════════════
 (()=>{
-    let sy=0;
-    const dz=document.getElementById('sdrag');
-    dz.addEventListener('touchstart',e=>{sy=e.touches[0].clientY;},{passive:true});
-    dz.addEventListener('touchend',e=>{
-        const dy=sy-e.changedTouches[0].clientY;
-        if(dy>50&&sstate==='peek')setSheet('half');
-        else if(dy>50&&sstate==='half')setSheet('full');
-        else if(dy<-50&&sstate==='full')setSheet('half');
-        else if(dy<-50&&sstate==='half')setSheet('peek');
-    },{passive:true});
+    const sheet = document.getElementById('bsheet');
+    const handle = document.getElementById('sdrag');
+    let startY = 0, startTranslate = 0, isDragging = false, currentTranslate = 0;
+
+    function getSnapTranslate(st) {
+        const h = window.innerHeight;
+        if (st === 'peek') return h * 0.87;
+        if (st === 'half') return h * 0.44;
+        if (st === 'full') return 0;
+        return h; // hidden
+    }
+
+    function applyTranslate(y, animated) {
+        sheet.style.transition = animated ? 'transform .38s cubic-bezier(.4,0,.2,1)' : 'none';
+        sheet.style.transform = `translateY(${y}px)`;
+        currentTranslate = y;
+    }
+
+    function onStart(clientY) {
+        isDragging = true;
+        startY = clientY;
+        // Parse current transform
+        const style = window.getComputedStyle(sheet);
+        const matrix = new DOMMatrix(style.transform);
+        startTranslate = matrix.m42;
+        sheet.style.transition = 'none';
+    }
+
+    function onMove(clientY) {
+        if (!isDragging) return;
+        const dy = clientY - startY;
+        let next = startTranslate + dy;
+        // Rubber band if trying to go above full
+        if (next < 0) next = next * 0.15;
+        // Don't drag below peek
+        const maxTranslate = getSnapTranslate('peek') + 60;
+        if (next > maxTranslate) next = maxTranslate + (next - maxTranslate) * 0.2;
+        applyTranslate(next, false);
+    }
+
+    function onEnd(clientY) {
+        if (!isDragging) return;
+        isDragging = false;
+        const dy = clientY - startY;
+        const velocity = dy; // positive = down, negative = up
+
+        const h = window.innerHeight;
+        const snapPeek = getSnapTranslate('peek');
+        const snapHalf = getSnapTranslate('half');
+        const snapFull = getSnapTranslate('full');
+
+        // Snap logic based on position + velocity
+        let target;
+        if (velocity < -60) {
+            // Fast swipe up
+            if (sstate === 'peek') target = 'half';
+            else if (sstate === 'half') target = 'full';
+            else target = 'full';
+        } else if (velocity > 60) {
+            // Fast swipe down
+            if (sstate === 'full') target = 'half';
+            else if (sstate === 'half') target = 'peek';
+            else { // swipe down from peek — go back
+                NAV.pop();
+                history.go(-1);
+                return;
+            }
+        } else {
+            // Snap to closest
+            const dists = [
+                { s: 'peek', d: Math.abs(currentTranslate - snapPeek) },
+                { s: 'half', d: Math.abs(currentTranslate - snapHalf) },
+                { s: 'full', d: Math.abs(currentTranslate - snapFull) },
+            ];
+            target = dists.sort((a,b) => a.d - b.d)[0].s;
+        }
+        setSheet(target, true);
+    }
+
+    // Touch events
+    handle.addEventListener('touchstart', e => onStart(e.touches[0].clientY), { passive:true });
+    handle.addEventListener('touchmove', e => onMove(e.touches[0].clientY), { passive:true });
+    handle.addEventListener('touchend', e => onEnd(e.changedTouches[0].clientY), { passive:true });
+
+    // Mouse events (desktop)
+    handle.addEventListener('mousedown', e => { onStart(e.clientY); e.preventDefault(); });
+    window.addEventListener('mousemove', e => { if (isDragging) onMove(e.clientY); });
+    window.addEventListener('mouseup', e => { if (isDragging) onEnd(e.clientY); });
 })();
+
+// ═══════════════════════════════════════════════
+// UPDATED NAVIGATION FUNCTIONS
+// ═══════════════════════════════════════════════
+
+function showHomeCard() {
+    document.getElementById('homecard').classList.remove('hidden');
+}
+function hideHomeCard() {
+    document.getElementById('homecard').classList.add('hidden');
+}
+
+function openSearch(field) {
+    hideHomeCard();
+    document.getElementById('sovl').classList.add('open');
+    NAV.push('search');
+    setTimeout(() => document.getElementById(`${field||'to'}-inp`).focus(), 350);
+}
+
+function _closeSearch(pushHistory) {
+    document.getElementById('sovl').classList.remove('open');
+    hsugs('from'); hsugs('to');
+}
+
+function closeSearch() {
+    _closeSearch(false);
+    if (!match) showHomeCard();
+    // popstate handles history
+}
+
+function openSS() {
+    const a = getAdmin(); if (!a) return;
+    document.getElementById('dr2m').textContent = `↑ ${getOriginName(a,'R2M')}`;
+    document.getElementById('dm2r').textContent = `↓ ${getOriginName(a,'M2R')}`;
+    if (!a.stopsR2M?.length && a.stopsM2R?.length) selDir = 'M2R';
+    udbtns();
+    document.getElementById('ss-inp').value = '';
+    document.getElementById('ss-x').style.display = 'none';
+    rsl('');
+    document.getElementById('ssheet').classList.add('open');
+    // Push a history entry so back closes the sheet
+    history.pushState({ nav: 'stops', depth: NAV.stack.length }, '');
+    setTimeout(() => document.getElementById('ss-inp').focus(), 350);
+}
+
+function _closeStopSheet(pushHistory) {
+    document.getElementById('ssheet').classList.remove('open');
+}
+
+function closeSS() { _closeStopSheet(false); }
+function ssclick(e) { if (e.target === document.getElementById('ssheet')) { closeSS(); history.go(-1); } }
+
+function qroute() {
+    _closeSearch(false);
+    hideHomeCard();
+    const a = getAdmin(); if (!a) return;
+    match = { admin:a, dir:'R2M', boardStop:a.stopsR2M?.[0], alightStop:a.stopsR2M?.[a.stopsR2M.length-1], walkToBoard:0, walkFromAlight:0 };
+    drawRoute();
+    setSheet('half', true);
+    renderSheet();
+    NAV.stack = ['home', 'route'];
+    history.replaceState({ nav:'route', depth:2 }, '');
+}
+
+function doSearch() {
+    _closeSearch(false);
+    hideHomeCard();
+    setSheet('half', true);
+    document.getElementById('sc').innerHTML = '<div style="padding:40px;text-align:center;"><span class="spin"></span></div>';
+
+    const ms = [];
+    for (const [bid,a] of Object.entries(admins)) {
+        if (!a.stopsR2M?.length && !a.stopsM2R?.length) continue;
+        for (const dir of ['R2M','M2R']) {
+            const stops = dir==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);
+            if (!stops.length) continue;
+            const fc = stops.map((s,i)=>({...s,i,dist:hav(fp.lat,fp.lng,s.lat,s.lng)})).filter(s=>s.dist<=WALK).sort((a,b)=>a.dist-b.dist);
+            const tc = stops.map((s,i)=>({...s,i,dist:hav(tp.lat,tp.lng,s.lat,s.lng)})).filter(s=>s.dist<=WALK).sort((a,b)=>a.dist-b.dist);
+            if (!fc.length||!tc.length) continue;
+            const bo=fc[0],al=tc[0];
+            if (bo.i>=al.i) continue;
+            ms.push({ admin:a, dir, boardStop:bo, alightStop:al, walkToBoard:Math.round(bo.dist), walkFromAlight:Math.round(al.dist) });
+        }
+    }
+
+    if (!ms.length) {
+        document.getElementById('sc').innerHTML = `<div class="empty"><svg width="40" height="40" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 12px;display:block;"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>No routes found within 2km of your locations.<br>Try a location closer to the route.</div>`;
+        NAV.stack = ['home', 'route'];
+        history.replaceState({ nav:'route', depth:2 }, '');
+        return;
+    }
+
+    ms.sort((a,b) => (a.walkToBoard+a.walkFromAlight)-(b.walkToBoard+b.walkFromAlight));
+    match = ms[0];
+    drawRoute();
+    renderSheet();
+    NAV.stack = ['home', 'route'];
+    history.replaceState({ nav:'route', depth:2 }, '');
+}
+
+function startTrack(bid) {
+    tBusId = bid;
+    const b = buses[bid]||{}, a = admins[bid]||{};
+    drawTrack(b, a);
+    renderTrack();
+    setSheet('peek', true);
+    NAV.push('track');
+}
+
+function stopTrack() {
+    tBusId = null;
+    tlayers.forEach(l => map.removeLayer(l)); tlayers = [];
+    if (match) { drawRoute(); renderSheet(); setSheet('half', true); }
+    else setSheet('hidden', true);
+}
+
+function setSheet(st, animated=true) {
+    sstate = st;
+    const el = document.getElementById('bsheet');
+    const h = window.innerHeight;
+    const translateMap = { hidden: h, peek: h*0.87, half: h*0.44, full: 0 };
+    const y = translateMap[st] ?? h;
+    el.style.transition = animated ? 'transform .38s cubic-bezier(.4,0,.2,1)' : 'none';
+    el.style.transform = `translateY(${y}px)`;
+    // Update recenter button
+    const btnBottom = st==='full' ? 16 : st==='half' ? h*0.56+16 : st==='peek' ? h*0.13+16 : 200;
+    document.getElementById('recbtn').style.bottom = btnBottom + 'px';
+}
+
+function setPill(txt) {
+    document.getElementById('to-pill').textContent = txt;
+    document.getElementById('to-pill').classList.add('on');
+}
 </script>
 </body>
 </html>
