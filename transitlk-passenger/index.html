@@ -356,8 +356,6 @@ let tBusId=null;
 function wf(flag,ev,cb){if(window[flag]){cb();return;}document.addEventListener(ev,cb,{once:true});}
 
 wf('_firebaseReady','firebaseReady',()=>{
-    initMap();
-    getULoc();
     window._onValue(window._dbRef(window._db,'busAdmin'),s=>{
         admins=s.val()||{};
         renderPRoutes();
@@ -371,10 +369,17 @@ wf('_firebaseReady','firebaseReady',()=>{
     });
 });
 
+// Init map immediately — doesn't need Firebase
+document.addEventListener('DOMContentLoaded', () => {
+    initMap();
+    getULoc();
+});
+
 function initMap(){
     map=L.map('map',{zoomControl:false,attributionControl:false}).setView([6.85,79.90],12);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
-    [200,600,1200].forEach(t=>setTimeout(()=>map?.invalidateSize(),t));
+    [100,300,600,1200].forEach(t=>setTimeout(()=>map?.invalidateSize(),t));
+    window.addEventListener('load',()=>map?.invalidateSize());
 }
 
 function getULoc(){
