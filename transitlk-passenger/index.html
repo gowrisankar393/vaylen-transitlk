@@ -1741,6 +1741,38 @@ function stopTracking() {
 // ══════════════════════════════════════════════
 //  HELPERS
 // ══════════════════════════════════════════════
+// Decode Google's encoded polyline format into [lat,lng] array
+function decodePolyline(encoded) {
+    const points = [];
+    let index = 0, lat = 0, lng = 0;
+    while (index < encoded.length) {
+        let b, shift = 0, result = 0;
+        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+        shift = 0; result = 0;
+        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+        points.push([lat / 1e5, lng / 1e5]);
+    }
+    return points;
+}
+
+async function fetchRoadPath(origin, dest, mode = 'walking') {
+    try {
+        const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.lat},${origin.lng}&destination=${dest.lat},${dest.lng}&mode=${mode}&key=${window.GMAPS_KEY}`;
+        // Use a CORS proxy since Directions REST API doesn't support browser calls directly
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
+        const data = await res.json();
+        if (data.status === 'OK' && data.routes[0]) {
+            return decodePolyline(data.routes[0].overview_polyline.points);
+        }
+    } catch(e) {
+        console.warn('[Directions]', e);
+    }
+    return null;
+}
+
 function formatDist(m) {
     return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
 }
@@ -2100,14 +2132,12 @@ function initPlacesMap(match, stops) {
     setTimeout(() => placesMap?.invalidateSize(), 300);
     setTimeout(() => placesMap?.invalidateSize(), 600);
 
-    // Draw bus route line (only the segment the user will ride)
+    // Draw bus route line through stops (straight segments between stops — these are already on roads)
     if (stops.length && match.boardStop && match.alightStop) {
         const rideStops = stops.slice(match.boardStop.i, match.alightStop.i + 1);
-        // Full route in dim
         L.polyline(stops.map(s => [s.lat, s.lng]), {
             color: 'rgba(56,189,248,0.15)', weight: 3, dashArray: '6 6'
         }).addTo(placesMap);
-        // Ride segment highlighted
         L.polyline(rideStops.map(s => [s.lat, s.lng]), {
             color: 'rgba(56,189,248,0.6)', weight: 4
         }).addTo(placesMap);
@@ -2117,18 +2147,27 @@ function initPlacesMap(match, stops) {
         }).addTo(placesMap);
     }
 
-    // Walk line: origin → board stop (green dashed)
+    // Walk lines: fetch real road paths via Directions API
     if (match.walkToBoard > 50) {
-        L.polyline([[fromPlace.lat, fromPlace.lng], [match.boardStop.lat, match.boardStop.lng]], {
-            color: '#7ee85a', weight: 2.5, dashArray: '5 7', opacity: 0.8
-        }).addTo(placesMap);
+        fetchRoadPath(
+            { lat: fromPlace.lat, lng: fromPlace.lng },
+            { lat: match.boardStop.lat, lng: match.boardStop.lng },
+            'walking'
+        ).then(path => {
+            if (path) L.polyline(path, { color: '#7ee85a', weight: 3, dashArray: '5 7', opacity: 0.85 }).addTo(placesMap);
+            else L.polyline([[fromPlace.lat, fromPlace.lng], [match.boardStop.lat, match.boardStop.lng]], { color: '#7ee85a', weight: 2.5, dashArray: '5 7', opacity: 0.7 }).addTo(placesMap);
+        });
     }
 
-    // Walk line: alight stop → destination (purple dashed)
     if (match.walkFromAlight > 50) {
-        L.polyline([[match.alightStop.lat, match.alightStop.lng], [toPlace.lat, toPlace.lng]], {
-            color: '#a855f7', weight: 2.5, dashArray: '5 7', opacity: 0.8
-        }).addTo(placesMap);
+        fetchRoadPath(
+            { lat: match.alightStop.lat, lng: match.alightStop.lng },
+            { lat: toPlace.lat, lng: toPlace.lng },
+            'walking'
+        ).then(path => {
+            if (path) L.polyline(path, { color: '#a855f7', weight: 3, dashArray: '5 7', opacity: 0.85 }).addTo(placesMap);
+            else L.polyline([[match.alightStop.lat, match.alightStop.lng], [toPlace.lat, toPlace.lng]], { color: '#a855f7', weight: 2.5, dashArray: '5 7', opacity: 0.7 }).addTo(placesMap);
+        });
     }
 
     // Origin marker (green)
