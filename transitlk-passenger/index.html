@@ -1925,42 +1925,64 @@ function findMatchingRoutes() {
     const results = document.getElementById('places-search-results');
     results.innerHTML = `<div style="text-align:center;padding:40px;"><span class="spinner"></span></div>`;
 
-    const MATCH_RADIUS = 700; // metres — stop must be within this of from/to point
+    const WALK_MAX = 2000; // 2km max walk
 
     const matches = [];
-    // For pilot: check if from and to are both near stops on route 256-341
+
     for (const [busId, admin] of Object.entries(busAdminData)) {
         if (!admin.stopsR2M?.length && !admin.stopsM2R?.length) continue;
 
-        const allStops = [...(admin.stopsR2M || []), ...(admin.stopsM2R || [])];
+        // Check both directions independently
+        for (const dir of ['R2M', 'M2R']) {
+            const stops = dir === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
+            if (!stops.length) continue;
 
-        const nearFrom = allStops.filter(s => haversine(fromPlace.lat, fromPlace.lng, s.lat, s.lng) < MATCH_RADIUS);
-        const nearTo = allStops.filter(s => haversine(toPlace.lat, toPlace.lng, s.lat, s.lng) < MATCH_RADIUS);
+            // Find nearest stop to origin
+            const fromCandidates = stops
+                .map((s, i) => ({ ...s, i, dist: haversine(fromPlace.lat, fromPlace.lng, s.lat, s.lng) }))
+                .filter(s => s.dist <= WALK_MAX)
+                .sort((a, b) => a.dist - b.dist);
 
-        if (nearFrom.length && nearTo.length) {
-            // Determine best direction
-            const fromIdxR2M = (admin.stopsR2M || []).findIndex(s => nearFrom.some(n => n.name === s.name));
-            const toIdxR2M = (admin.stopsR2M || []).findIndex(s => nearTo.some(n => n.name === s.name));
-            const dir = fromIdxR2M !== -1 && toIdxR2M !== -1 && fromIdxR2M < toIdxR2M ? 'R2M' : 'M2R';
+            // Find nearest stop to destination
+            const toCandidates = stops
+                .map((s, i) => ({ ...s, i, dist: haversine(toPlace.lat, toPlace.lng, s.lat, s.lng) }))
+                .filter(s => s.dist <= WALK_MAX)
+                .sort((a, b) => a.dist - b.dist);
 
-            if (!matches.find(m => m.adminKey === busId)) {
-                matches.push({ adminKey: busId, admin, dir, nearFrom, nearTo });
-            }
+            if (!fromCandidates.length || !toCandidates.length) continue;
+
+            const boardStop = fromCandidates[0];
+            const alightStop = toCandidates[0];
+
+            // Direction check: boarding stop must come before alighting stop in sequence
+            if (boardStop.i >= alightStop.i) continue;
+
+            // Avoid duplicate route matches
+            if (matches.find(m => m.adminKey === busId && m.dir === dir)) continue;
+
+            matches.push({
+                adminKey: busId, admin, dir,
+                boardStop, alightStop,
+                walkToBoard: Math.round(boardStop.dist),
+                walkFromAlight: Math.round(alightStop.dist),
+                // For backward compat
+                nearFrom: [boardStop], nearTo: [alightStop]
+            });
         }
     }
 
     if (!matches.length) {
         results.innerHTML = `<div class="no-buses" style="margin-top:40px;">
             <svg width="36" height="36" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 12px;display:block;"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
-            No bus routes found between these locations.<br>
-            <span style="font-size:12px;color:var(--text-muted);">Try selecting stops closer to the route.</span>
+            No bus routes found within 2km of these locations.<br>
+            <span style="font-size:12px;color:var(--text-muted);">Try a location closer to the route.</span>
         </div>`;
         return;
     }
 
-    // Show matched routes and open map
-    const match = matches[0];
-    openPlacesMap(match);
+    // Sort by total walk distance
+    matches.sort((a, b) => (a.walkToBoard + a.walkFromAlight) - (b.walkToBoard + b.walkFromAlight));
+    openPlacesMap(matches[0]);
 }
 
 function openPlacesMap(match) {
@@ -1971,14 +1993,21 @@ function openPlacesMap(match) {
     const stops = match.dir === 'R2M' ? (match.admin.stopsR2M || []) : (match.admin.stopsM2R || []);
 
     document.getElementById('places-map-title').textContent = `Route ${match.admin.routeNo || PILOT_ROUTE.number}`;
-    document.getElementById('places-map-sub').textContent = `${fromPlace.name} → ${toPlace.name}`;
+
+    // Build subtitle with walk info
+    const walkParts = [];
+    if (match.walkToBoard > 50) walkParts.push(`🚶 ${formatDist(match.walkToBoard)} to board`);
+    if (match.walkFromAlight > 50) walkParts.push(`🚶 ${formatDist(match.walkFromAlight)} after alighting`);
+    document.getElementById('places-map-sub').textContent = walkParts.length
+        ? walkParts.join(' · ')
+        : `${fromPlace.name} → ${toPlace.name}`;
+
     document.getElementById('places-route-label').textContent = dirLabel;
     document.getElementById('places-route-summary').style.display = 'flex';
 
     setTimeout(() => initPlacesMap(match, stops), 100);
     renderBusesForRoute(match);
 
-    // Keep updating bus positions
     document.addEventListener('liveBusesUpdated', () => {
         if (currentScreen === 'places-map') {
             renderBusesForRoute(match);
@@ -1995,22 +2024,45 @@ function initPlacesMap(match, stops) {
     placesMap = L.map('places-map', { zoomControl: false, attributionControl: false }).setView(center, 14);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(placesMap);
 
-    // Draw route line
-    if (stops.length) {
-        const line = L.polyline(stops.map(s => [s.lat, s.lng]), {
+    // Draw bus route line (only the segment the user will ride)
+    if (stops.length && match.boardStop && match.alightStop) {
+        const rideStops = stops.slice(match.boardStop.i, match.alightStop.i + 1);
+        // Full route in dim
+        L.polyline(stops.map(s => [s.lat, s.lng]), {
+            color: 'rgba(56,189,248,0.15)', weight: 3, dashArray: '6 6'
+        }).addTo(placesMap);
+        // Ride segment highlighted
+        L.polyline(rideStops.map(s => [s.lat, s.lng]), {
+            color: 'rgba(56,189,248,0.6)', weight: 4
+        }).addTo(placesMap);
+    } else if (stops.length) {
+        L.polyline(stops.map(s => [s.lat, s.lng]), {
             color: 'rgba(56,189,248,0.4)', weight: 4, dashArray: '8 6'
         }).addTo(placesMap);
-        placesMapLayers.push(line);
     }
 
-    // From marker (green)
+    // Walk line: origin → board stop (green dashed)
+    if (match.walkToBoard > 50) {
+        L.polyline([[fromPlace.lat, fromPlace.lng], [match.boardStop.lat, match.boardStop.lng]], {
+            color: '#7ee85a', weight: 2.5, dashArray: '5 7', opacity: 0.8
+        }).addTo(placesMap);
+    }
+
+    // Walk line: alight stop → destination (purple dashed)
+    if (match.walkFromAlight > 50) {
+        L.polyline([[match.alightStop.lat, match.alightStop.lng], [toPlace.lat, toPlace.lng]], {
+            color: '#a855f7', weight: 2.5, dashArray: '5 7', opacity: 0.8
+        }).addTo(placesMap);
+    }
+
+    // Origin marker (green)
     const fromIcon = L.divIcon({ className: '', iconSize: [14, 14], iconAnchor: [7, 7],
         html: `<div style="width:14px;height:14px;border-radius:50%;background:#7ee85a;border:2px solid #fff;box-shadow:0 0 0 4px rgba(126,232,90,0.25);"></div>` });
     L.marker([fromPlace.lat, fromPlace.lng], { icon: fromIcon }).addTo(placesMap)
         .bindTooltip(`<div style="font-family:'Sora',sans-serif;font-size:11px;font-weight:600;padding:4px 8px;background:rgba(8,8,8,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:8px;">📍 ${fromPlace.name}</div>`,
         { permanent: false, className: 'route-stop-tooltip' });
 
-    // To marker (purple)
+    // Destination marker (purple)
     const toIcon = L.divIcon({ className: '', iconSize: [14, 14], iconAnchor: [7, 7],
         html: `<div style="width:14px;height:14px;border-radius:50%;background:#a855f7;border:2px solid #fff;box-shadow:0 0 0 4px rgba(168,85,247,0.25);"></div>` });
     L.marker([toPlace.lat, toPlace.lng], { icon: toIcon }).addTo(placesMap)
@@ -2019,28 +2071,36 @@ function initPlacesMap(match, stops) {
 
     // Draw stops
     stops.forEach((stop, i) => {
+        const isBoard = match.boardStop && stop.name === match.boardStop.name;
+        const isAlight = match.alightStop && stop.name === match.alightStop.name;
         const isTerminal = i === 0 || i === stops.length - 1;
-        const isNearFrom = match.nearFrom.some(n => n.name === stop.name);
-        const isNearTo = match.nearTo.some(n => n.name === stop.name);
-        const color = isNearFrom ? '#7ee85a' : isNearTo ? '#a855f7' : '#38bdf8';
-        const size = isTerminal || isNearFrom || isNearTo ? 26 : 18;
-        const opacity = isTerminal || isNearFrom || isNearTo ? 1 : 0.5;
+        const inRideSegment = match.boardStop && match.alightStop && i >= match.boardStop.i && i <= match.alightStop.i;
+
+        const color = isBoard ? '#7ee85a' : isAlight ? '#a855f7' : '#38bdf8';
+        const size = isBoard || isAlight ? 30 : isTerminal ? 22 : 18;
+        const opacity = inRideSegment ? 1 : 0.35;
+        const glow = isBoard || isAlight ? `0 0 14px ${color}88` : `0 0 4px ${color}44`;
+
+        const label = isBoard ? '🚌 Board here' : isAlight ? '🚶 Get off here' : stop.name;
 
         const icon = L.divIcon({ className: '', iconSize: [size, size], iconAnchor: [size/2, size/2],
-            html: `<div style="width:${size}px;height:${size}px;background:rgba(8,8,8,0.85);border:1.5px solid ${color};border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:${opacity};box-shadow:0 0 ${isNearFrom||isNearTo?'10px':'4px'} ${color}66;">
+            html: `<div style="width:${size}px;height:${size}px;background:rgba(8,8,8,0.9);border:${isBoard||isAlight?'2.5':'1.5'}px solid ${color};border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:${opacity};box-shadow:${glow};">
                 <svg width="${size*0.55}" height="${size*0.55}" viewBox="0 0 24 24" fill="${color}"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg>
             </div>` });
 
         L.marker([stop.lat, stop.lng], { icon }).addTo(placesMap)
-            .bindTooltip(`<div style="font-family:'Sora',sans-serif;font-size:11px;font-weight:600;color:#fff;background:rgba(8,8,8,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 9px;white-space:nowrap;">${stop.name}</div>`,
-            { permanent: false, direction: 'top', className: 'route-stop-tooltip', offset: [0, -4] });
+            .bindTooltip(`<div style="font-family:'Sora',sans-serif;font-size:11px;font-weight:600;color:#fff;background:rgba(8,8,8,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 9px;white-space:nowrap;color:${color};">${label}<br><span style="font-size:10px;font-weight:400;color:rgba(255,255,255,0.4);">${stop.name}</span></div>`,
+            { permanent: isBoard || isAlight, direction: 'top', className: 'route-stop-tooltip', offset: [0, -4] });
     });
 
-    // Fit map to from/to + route
-    const bounds = [[fromPlace.lat, fromPlace.lng], [toPlace.lat, toPlace.lng], ...stops.map(s => [s.lat, s.lng])];
-    placesMap.fitBounds(bounds, { padding: [80, 80], maxZoom: 15 });
+    // Fit to full journey including walk legs
+    const bounds = [
+        [fromPlace.lat, fromPlace.lng],
+        [toPlace.lat, toPlace.lng],
+        ...stops.map(s => [s.lat, s.lng])
+    ];
+    placesMap.fitBounds(bounds, { padding: [80, 100], maxZoom: 15 });
 
-    // Live bus markers
     updatePlacesMapBusMarkers(match);
 }
 
@@ -2068,22 +2128,34 @@ function renderBusesForRoute(match) {
     const el = document.getElementById('buses-for-route');
     const buses = getBusesOnRoute(PILOT_ROUTE.id);
 
+    // Walk summary banner
+    const walkHTML = (match.walkToBoard > 50 || match.walkFromAlight > 50) ? `
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+            ${match.walkToBoard > 50 ? `<div style="flex:1;padding:8px 10px;border-radius:10px;background:rgba(126,232,90,0.08);border:1px solid rgba(126,232,90,0.2);font-size:11px;">
+                <span style="color:#7ee85a;font-weight:700;">🚶 Walk ${formatDist(match.walkToBoard)}</span><br>
+                <span style="color:rgba(255,255,255,0.4);">to ${match.boardStop.name}</span>
+            </div>` : ''}
+            ${match.walkFromAlight > 50 ? `<div style="flex:1;padding:8px 10px;border-radius:10px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);font-size:11px;">
+                <span style="color:#a855f7;font-weight:700;">🚶 Walk ${formatDist(match.walkFromAlight)}</span><br>
+                <span style="color:rgba(255,255,255,0.4);">from ${match.alightStop.name}</span>
+            </div>` : ''}
+        </div>` : '';
+
     if (!buses.length) {
-        el.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text-dim);font-size:13px;">No buses currently on this route</div>`;
+        el.innerHTML = walkHTML + `<div style="text-align:center;padding:16px;color:var(--text-dim);font-size:13px;">No buses currently on this route</div>`;
         return;
     }
 
-    el.innerHTML = buses.map(([busId, bus]) => {
+    el.innerHTML = walkHTML + buses.map(([busId, bus]) => {
         const admin = busAdminData[busId] || {};
         const name = admin.plate || bus.customName || busId;
         const isInTrip = bus.inTrip === true;
         const color = isInTrip ? '#a855f7' : '#6b7280';
         const speed = ((bus.speed || 0) * 3.6).toFixed(0);
 
-        // ETA to "to" location
         let etaText = '';
-        if (isInTrip && toPlace) {
-            const eta = estimateETA(busId, bus, toPlace);
+        if (isInTrip && match.boardStop) {
+            const eta = estimateETA(busId, bus, match.boardStop);
             if (eta !== null) {
                 const etaColor = eta <= 5 ? '#7ee85a' : eta <= 15 ? '#eab308' : '#38bdf8';
                 etaText = `<span style="font-size:20px;font-weight:800;color:${etaColor};">${eta}</span><span style="font-size:10px;color:var(--text-dim);"> min</span>`;
@@ -2097,6 +2169,7 @@ function renderBusesForRoute(match) {
             <div style="flex:1;min-width:0;">
                 <div style="font-size:14px;font-weight:700;">${name}</div>
                 <div style="font-size:11px;color:${color};font-weight:600;margin-top:2px;">● ${isInTrip ? `In Trip · ${speed} km/h` : 'Trip not started'}</div>
+                ${isInTrip && match.boardStop ? `<div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;">ETA to ${match.boardStop.name}</div>` : ''}
             </div>
             <div style="text-align:right;flex-shrink:0;">
                 ${etaText || (isInTrip ? '' : `<span style="font-size:11px;color:var(--text-dim);">Not<br>active</span>`)}
