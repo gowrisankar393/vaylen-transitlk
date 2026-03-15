@@ -885,7 +885,7 @@
     window.GMAPS_KEY = 'AIzaSyDSSAoB1lo6WslQZrVYY83r77nr9uyP4DI';
     function loadGoogleMaps() {
         const s = document.createElement('script');
-        s.src = `https://maps.googleapis.com/maps/api/js?key=${window.GMAPS_KEY}&libraries=places&callback=onGoogleMapsReady`;
+        s.src = `https://maps.googleapis.com/maps/api/js?key=${window.GMAPS_KEY}&libraries=places,geocoding&callback=onGoogleMapsReady`;
         s.async = true; s.defer = true;
         document.head.appendChild(s);
     }
@@ -1908,21 +1908,41 @@ function selectGooglePlace(field, placeId, name) {
     document.getElementById(`${field}-clear-btn`).classList.add('visible');
     hideSuggestions(field);
 
-    // Resolve place_id to lat/lng
-    if (!placesService) {
-        const dummy = document.createElement('div');
-        placesService = new google.maps.places.PlacesService(dummy);
-    }
-    placesService.getDetails({ placeId, fields: ['geometry', 'name'] }, (result, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && result.geometry) {
+    // Show loading in results
+    document.getElementById('places-search-results').innerHTML =
+        `<div style="text-align:center;padding:40px;"><span class="spinner"></span><p style="color:var(--text-dim);font-size:12px;margin-top:12px;">Getting location...</p></div>`;
+
+    // Resolve place_id to lat/lng using Geocoder (more reliable than PlacesService with detached div)
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ placeId }, (results, status) => {
+        if (status === 'OK' && results[0]?.geometry) {
             const place = {
                 name,
-                lat: result.geometry.location.lat(),
-                lng: result.geometry.location.lng()
+                lat: results[0].geometry.location.lat(),
+                lng: results[0].geometry.location.lng()
             };
             if (field === 'from') fromPlace = place;
             else toPlace = place;
             checkAndSearchRoute();
+        } else {
+            // Fallback to PlacesService with a real DOM element
+            const mapDiv = document.getElementById('places-map');
+            if (!placesService) placesService = new google.maps.places.PlacesService(mapDiv);
+            placesService.getDetails({ placeId, fields: ['geometry', 'name'] }, (result, status2) => {
+                if (status2 === google.maps.places.PlacesServiceStatus.OK && result?.geometry) {
+                    const place = {
+                        name,
+                        lat: result.geometry.location.lat(),
+                        lng: result.geometry.location.lng()
+                    };
+                    if (field === 'from') fromPlace = place;
+                    else toPlace = place;
+                    checkAndSearchRoute();
+                } else {
+                    document.getElementById('places-search-results').innerHTML =
+                        `<div class="no-buses" style="margin-top:40px;">Could not resolve location. Try a different search.</div>`;
+                }
+            });
         }
     });
 }
