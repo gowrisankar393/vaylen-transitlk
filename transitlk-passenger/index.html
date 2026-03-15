@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TransitLK</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, onValue, off } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAqoBhfXXNJYUdOD5oCq8oJWF3NJFuP8XI",
+            authDomain: "transitlk-79740.firebaseapp.com",
+            projectId: "transitlk-79740",
+            storageBucket: "transitlk-79740.firebasestorage.app",
+            messagingSenderId: "756408321316",
+            appId: "1:756408321316:web:admin-dashboard"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        window._db = db;
+        window._dbRef = ref;
+        window._onValue = onValue;
+        window._off = off;
+        window._firebaseReady = true;
+        document.dispatchEvent(new Event('firebaseReady'));
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        :root {
+            --bg: #080808;
+            --surface: rgba(14,14,14,0.95);
+            --glass: rgba(18,18,18,0.85);
+            --border: rgba(255,255,255,0.07);
+            --border-light: rgba(255,255,255,0.12);
+            --text: #ffffff;
+            --text-dim: rgba(255,255,255,0.45);
+            --text-muted: rgba(255,255,255,0.2);
+            --accent: #0598B1;
+            --accent2: #26A38C;
+            --accent3: #96d46c;
+            --grad: linear-gradient(135deg, #0598B1, #26A38C, #96d46c);
+            --purple: #a855f7;
+            --orange: #f97316;
+            --cyan: #38bdf8;
+            --green: #7ee85a;
+            --red: #ef4444;
+            --yellow: #eab308;
+            --blue: #3b82f6;
+        }
+
+        html, body {
+            height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Sora', sans-serif;
+            overflow: hidden;
+        }
+
+        /* ── SCREENS ── */
+        .screen { position: fixed; inset: 0; display: flex; flex-direction: column; transition: transform 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.4s; }
+        .screen.hidden { transform: translateY(40px); opacity: 0; pointer-events: none; }
+        .screen.slide-left { transform: translateX(-100%); opacity: 0; pointer-events: none; }
+        .screen.slide-right { transform: translateX(100%); opacity: 0; pointer-events: none; }
+
+        /* ── HOME SCREEN ── */
+        #screen-home {
+            background: var(--bg);
+        }
+
+        .home-map-bg {
+            position: absolute; inset: 0;
+            z-index: 0;
+        }
+
+        .home-overlay {
+            position: absolute; inset: 0; z-index: 1;
+            background: linear-gradient(to bottom,
+                rgba(8,8,8,0.3) 0%,
+                rgba(8,8,8,0.0) 30%,
+                rgba(8,8,8,0.0) 50%,
+                rgba(8,8,8,0.85) 70%,
+                rgba(8,8,8,0.97) 100%);
+        }
+
+        .home-content {
+            position: relative; z-index: 2;
+            display: flex; flex-direction: column;
+            height: 100%;
+            padding: 0 0 32px 0;
+        }
+
+        .home-header {
+            padding: 52px 20px 0;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .logo {
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .logo-dot {
+            width: 28px; height: 28px; border-radius: 8px;
+            background: var(--grad);
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .logo-text { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+        .logo-text span { background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .home-bottom {
+            margin-top: auto;
+            padding: 0 16px;
+        }
+
+        .home-greeting {
+            padding: 0 4px 16px;
+        }
+
+        .home-greeting h1 {
+            font-size: 26px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.2;
+            margin-bottom: 4px;
+        }
+
+        .home-greeting p { font-size: 13px; color: var(--text-dim); }
+
+        /* Search card */
+        .search-card {
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            padding: 6px;
+            backdrop-filter: blur(24px);
+            box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+        }
+
+        .search-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+            border-radius: 14px;
+            transition: background 0.15s;
+        }
+
+        .search-row:hover, .search-row:active { background: rgba(255,255,255,0.04); }
+
+        .search-dot {
+            width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+        }
+
+        .search-input-fake {
+            flex: 1;
+            font-size: 14px; font-weight: 500;
+            color: var(--text-dim);
+            font-family: 'Sora', sans-serif;
+        }
+
+        .search-input-fake.has-value { color: var(--text); }
+
+        .search-divider {
+            height: 1px; background: var(--border); margin: 0 12px;
+        }
+
+        .search-action-btn {
+            width: 100%; margin-top: 6px;
+            padding: 14px;
+            border-radius: 14px;
+            border: none; cursor: pointer;
+            font-family: 'Sora', sans-serif;
+            font-size: 14px; font-weight: 700;
+            background: var(--grad); color: #000;
+            transition: opacity 0.2s, transform 0.15s;
+        }
+
+        .search-action-btn:active { transform: scale(0.98); opacity: 0.9; }
+
+        /* Quick routes */
+        .quick-section {
+            padding: 20px 16px 0;
+        }
+
+        .quick-label {
+            font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+            color: var(--text-muted); margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .quick-chips {
+            display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+            scrollbar-width: none;
+        }
+
+        .quick-chips::-webkit-scrollbar { display: none; }
+
+        .quick-chip {
+            flex-shrink: 0;
+            padding: 8px 14px;
+            border-radius: 50px;
+            border: 1px solid var(--border-light);
+            background: var(--glass);
+            font-size: 12px; font-weight: 600;
+            cursor: pointer; white-space: nowrap;
+            transition: all 0.15s;
+        }
+
+        .quick-chip:active { background: rgba(255,255,255,0.1); transform: scale(0.97); }
+        .quick-chip.active { background: rgba(5,152,177,0.15); border-color: rgba(5,152,177,0.5); color: var(--cyan); }
+
+        /* ── SEARCH SCREEN ── */
+        #screen-search {
+            background: var(--bg);
+            z-index: 10;
+        }
+
+        .search-screen-header {
+            padding: 52px 16px 12px;
+            display: flex; align-items: center; gap: 12px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .back-btn {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: var(--glass); border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; flex-shrink: 0;
+            transition: background 0.15s;
+        }
+
+        .back-btn:active { background: rgba(255,255,255,0.08); }
+
+        .search-field-wrap {
+            flex: 1;
+            display: flex; flex-direction: column; gap: 6px;
+        }
+
+        .search-field {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+
+        .search-field input {
+            flex: 1; background: none; border: none; outline: none;
+            font-family: 'Sora', sans-serif;
+            font-size: 14px; font-weight: 500; color: var(--text);
+        }
+
+        .search-field input::placeholder { color: var(--text-dim); }
+
+        .search-results { flex: 1; overflow-y: auto; padding: 12px 16px; }
+
+        .search-section-label {
+            font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+            color: var(--text-muted); text-transform: uppercase;
+            margin: 16px 0 8px;
+        }
+
+        .route-result-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: var(--glass);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .route-result-item:active { background: rgba(255,255,255,0.06); transform: scale(0.99); }
+
+        .route-badge {
+            width: 44px; height: 44px; border-radius: 12px;
+            background: rgba(5,152,177,0.15);
+            border: 1px solid rgba(5,152,177,0.3);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .route-badge span {
+            font-size: 13px; font-weight: 800; color: var(--cyan);
+        }
+
+        .route-info { flex: 1; min-width: 0; }
+        .route-name { font-size: 14px; font-weight: 700; }
+        .route-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .route-live-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+            flex-shrink: 0;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.85); }
+        }
+
+        /* ── ROUTE SCREEN ── */
+        #screen-route {
+            background: var(--bg);
+            z-index: 10;
+        }
+
+        .route-screen-header {
+            padding: 52px 16px 16px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .route-header-top {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+        }
+
+        .route-title-block { flex: 1; }
+        .route-title-block h2 { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+        .route-title-block p { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+        /* Stop selector */
+        .stop-selector {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .stop-selector-text { flex: 1; font-size: 13px; font-weight: 500; }
+        .stop-selector-text.placeholder { color: var(--text-dim); }
+
+        .route-content { flex: 1; overflow-y: auto; padding: 16px; }
+
+        /* Timetable section */
+        .section-header {
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+        }
+
+        .section-title { font-size: 13px; font-weight: 700; }
+        .section-sub { font-size: 11px; color: var(--text-dim); }
+
+        .timetable-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;
+        }
+
+        .timetable-col { }
+        .timetable-col-label {
+            font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+            color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;
+        }
+
+        .time-chip {
+            display: inline-block;
+            padding: 6px 10px; margin: 3px 3px 3px 0;
+            border-radius: 8px;
+            font-size: 12px; font-weight: 600; font-family: monospace;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+        }
+
+        .time-chip.next {
+            background: rgba(5,152,177,0.12);
+            border-color: rgba(5,152,177,0.4);
+            color: var(--cyan);
+        }
+
+        /* Live buses section */
+        .live-bus-card {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .live-bus-card:active { transform: scale(0.99); background: rgba(255,255,255,0.06); }
+
+        .live-bus-card-top {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+        }
+
+        .live-bus-icon {
+            width: 40px; height: 40px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .live-bus-info { flex: 1; min-width: 0; }
+        .live-bus-name { font-size: 14px; font-weight: 700; }
+        .live-bus-status { font-size: 11px; margin-top: 2px; font-weight: 600; }
+
+        .eta-badge {
+            text-align: right; flex-shrink: 0;
+        }
+
+        .eta-mins {
+            font-size: 22px; font-weight: 800; letter-spacing: -1px; line-height: 1;
+        }
+
+        .eta-label { font-size: 10px; color: var(--text-dim); font-weight: 500; }
+
+        .live-bus-progress {
+            height: 4px; border-radius: 2px; background: rgba(255,255,255,0.06);
+            overflow: hidden; margin-bottom: 8px;
+        }
+
+        .live-bus-progress-bar {
+            height: 100%; border-radius: 2px;
+            transition: width 1s ease;
+        }
+
+        .live-bus-footer {
+            display: flex; justify-content: space-between;
+            font-size: 11px; color: var(--text-dim);
+        }
+
+        /* ── TRACKING SCREEN ── */
+        #screen-track {
+            z-index: 20;
+        }
+
+        #track-map {
+            position: absolute; inset: 0;
+        }
+
+        .track-overlay-top {
+            position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+            padding: 52px 16px 16px;
+            background: linear-gradient(to bottom, rgba(8,8,8,0.9) 0%, rgba(8,8,8,0) 100%);
+        }
+
+        .track-header {
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        .track-bus-name { font-size: 16px; font-weight: 800; }
+        .track-bus-route { font-size: 12px; color: var(--text-dim); margin-top: 1px; }
+
+        .track-overlay-bottom {
+            position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
+            padding: 20px 16px 36px;
+            background: linear-gradient(to top, rgba(8,8,8,0.95) 0%, rgba(8,8,8,0.85) 60%, rgba(8,8,8,0) 100%);
+        }
+
+        .track-info-card {
+            background: rgba(14,14,14,0.9);
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            padding: 16px;
+            backdrop-filter: blur(20px);
+        }
+
+        .track-next-stop {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+        }
+
+        .track-stop-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: var(--cyan); flex-shrink: 0;
+            box-shadow: 0 0 10px var(--cyan);
+        }
+
+        .track-next-label { font-size: 10px; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+        .track-next-name { font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+
+        .track-stats {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+        }
+
+        .track-stat {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .track-stat-value { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+        .track-stat-label { font-size: 10px; color: var(--text-dim); margin-top: 2px; font-weight: 500; }
+
+        /* Stops list overlay */
+        .track-stops-toggle {
+            display: flex; align-items: center; justify-content: center; gap-6px;
+            padding: 12px;
+            font-size: 12px; font-weight: 600; color: var(--text-dim);
+            cursor: pointer; margin-top: 10px;
+        }
+
+        /* ── STOP PICKER SHEET ── */
+        .bottom-sheet-overlay {
+            position: fixed; inset: 0; z-index: 50;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            display: flex; align-items: flex-end;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .bottom-sheet-overlay.open { opacity: 1; pointer-events: all; }
+
+        .bottom-sheet {
+            width: 100%;
+            background: #111;
+            border: 1px solid var(--border-light);
+            border-radius: 24px 24px 0 0;
+            padding: 0 0 40px;
+            max-height: 70vh;
+            display: flex; flex-direction: column;
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        .bottom-sheet-overlay.open .bottom-sheet { transform: translateY(0); }
+
+        .sheet-handle {
+            width: 36px; height: 4px; border-radius: 2px;
+            background: rgba(255,255,255,0.15);
+            margin: 12px auto 16px;
+        }
+
+        .sheet-title {
+            font-size: 16px; font-weight: 700; padding: 0 16px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sheet-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+
+        .sheet-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .sheet-item:active { background: rgba(255,255,255,0.04); }
+
+        .sheet-item-dot {
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+        }
+
+        .sheet-item-name { font-size: 14px; font-weight: 500; }
+        .sheet-item-num { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+
+        .sheet-item.selected .sheet-item-name { color: var(--cyan); font-weight: 700; }
+        .sheet-item.selected .sheet-item-dot { background: var(--cyan) !important; box-shadow: 0 0 8px var(--cyan); }
+
+        /* ── LEAFLET OVERRIDES ── */
+        .leaflet-container { background: #0a0a0a !important; }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip-container { display: none !important; }
+        .leaflet-control-zoom { display: none; }
+        .leaflet-attribution-flag { display: none !important; }
+        .leaflet-control-attribution { display: none !important; }
+
+        /* ── MISC ── */
+        .no-buses {
+            text-align: center; padding: 32px 16px;
+            color: var(--text-dim); font-size: 14px;
+        }
+
+        .spinner {
+            width: 20px; height: 20px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top-color: var(--cyan);
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+        /* Location dot on map */
+        .user-location-dot {
+            width: 14px; height: 14px; border-radius: 50%;
+            background: #4287f5;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 4px rgba(66,135,245,0.25);
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════ -->
+<!--  SCREEN 1: HOME                        -->
+<!-- ══════════════════════════════════════ -->
+<div id="screen-home" class="screen">
+    <div id="home-map-bg" class="home-map-bg"></div>
+    <div class="home-overlay"></div>
+    <div class="home-content">
+        <div class="home-header">
+            <div class="logo">
+                <div class="logo-dot">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#000">
+                        <path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+                    </svg>
+                </div>
+                <span class="logo-text"><span>TransitLK</span></span>
+            </div>
+        </div>
+
+        <div class="quick-section">
+            <div class="quick-label">Popular Routes</div>
+            <div class="quick-chips" id="quick-chips">
+                <div class="quick-chip active" onclick="selectQuickRoute('256-341-1')">256-341 · Ratmalana</div>
+            </div>
+        </div>
+
+        <div class="home-bottom">
+            <div class="home-greeting">
+                <h1>Where are you<br>headed?</h1>
+                <p>Find your next bus in seconds</p>
+            </div>
+
+            <div class="search-card">
+                <div class="search-row" onclick="openSearch('from')">
+                    <div class="search-dot" style="background:var(--green);box-shadow:0 0 8px var(--green)"></div>
+                    <div class="search-input-fake" id="from-display">Your location</div>
+                </div>
+                <div class="search-divider"></div>
+                <div class="search-row" onclick="openSearch('to')">
+                    <div class="search-dot" style="background:var(--cyan);box-shadow:0 0 8px var(--cyan)44"></div>
+                    <div class="search-input-fake" id="to-display">Where to?</div>
+                </div>
+                <button class="search-action-btn" onclick="searchBuses()">Search Buses</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!--  SCREEN 2: SEARCH / ROUTE LIST         -->
+<!-- ══════════════════════════════════════ -->
+<div id="screen-search" class="screen hidden slide-right">
+    <div class="search-screen-header">
+        <div class="back-btn" onclick="goBack()">
+            <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+            </svg>
+        </div>
+        <div class="search-field-wrap">
+            <div class="search-field">
+                <div style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>
+                <input id="search-from-input" placeholder="From..." oninput="filterResults()">
+            </div>
+            <div class="search-field">
+                <div style="width:8px;height:8px;border-radius:50%;background:var(--cyan);flex-shrink:0;"></div>
+                <input id="search-to-input" placeholder="To..." oninput="filterResults()">
+            </div>
+        </div>
+    </div>
+    <div class="search-results" id="search-results">
+        <!-- populated by JS -->
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!--  SCREEN 3: ROUTE DETAIL                -->
+<!-- ══════════════════════════════════════ -->
+<div id="screen-route" class="screen hidden slide-right">
+    <div class="route-screen-header">
+        <div class="route-header-top">
+            <div class="back-btn" onclick="goBack()">
+                <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </div>
+            <div class="route-title-block">
+                <h2 id="route-screen-title">Route 256-341</h2>
+                <p id="route-screen-sub">Ratmalana Railway Station → Maharagama</p>
+            </div>
+        </div>
+        <div class="stop-selector" onclick="openStopPicker()">
+            <svg width="14" height="14" fill="none" stroke="var(--cyan)" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <circle cx="12" cy="11" r="3"/>
+            </svg>
+            <span class="stop-selector-text placeholder" id="stop-selector-text">Select your stop for ETA</span>
+            <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </div>
+    </div>
+    <div class="route-content" id="route-content">
+        <!-- populated by JS -->
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!--  SCREEN 4: LIVE TRACKING               -->
+<!-- ══════════════════════════════════════ -->
+<div id="screen-track" class="screen hidden slide-right">
+    <div id="track-map"></div>
+    <div class="track-overlay-top">
+        <div class="track-header">
+            <div class="back-btn" onclick="stopTracking()">
+                <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </div>
+            <div style="flex:1;">
+                <div class="track-bus-name" id="track-bus-name">Bus 256</div>
+                <div class="track-bus-route" id="track-bus-route">Route 256-341</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:50px;background:rgba(126,232,90,0.12);border:1px solid rgba(126,232,90,0.3);">
+                <span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;display:block;"></span>
+                <span style="font-size:11px;font-weight:700;color:var(--green);">LIVE</span>
+            </div>
+        </div>
+    </div>
+    <div class="track-overlay-bottom">
+        <div class="track-info-card">
+            <div class="track-next-stop">
+                <div class="track-stop-dot"></div>
+                <div>
+                    <div class="track-next-label">Next Stop</div>
+                    <div class="track-next-name" id="track-next-stop">Loading...</div>
+                </div>
+            </div>
+            <div class="track-stats">
+                <div class="track-stat">
+                    <div class="track-stat-value" id="track-eta" style="color:var(--cyan);">--</div>
+                    <div class="track-stat-label">ETA (mins)</div>
+                </div>
+                <div class="track-stat">
+                    <div class="track-stat-value" id="track-speed">--</div>
+                    <div class="track-stat-label">km/h</div>
+                </div>
+                <div class="track-stat">
+                    <div class="track-stat-value" id="track-stops-away">--</div>
+                    <div class="track-stat-label">Stops away</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!--  STOP PICKER SHEET                     -->
+<!-- ══════════════════════════════════════ -->
+<div class="bottom-sheet-overlay" id="stop-sheet" onclick="closeStopPicker(event)">
+    <div class="bottom-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Choose Your Stop</div>
+        <div class="sheet-list" id="sheet-list"></div>
+    </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+const PILOT_ROUTE = {
+    id: '256-341-1',
+    number: '256-341',
+    name: 'Ratmalana Railway Station → Maharagama',
+    shortName: 'Ratmalana · Maharagama'
+};
+
+let currentScreen = 'home';
+let screenHistory = ['home'];
+let selectedRoute = null;
+let selectedStop = null;      // { name, lat, lng, index, direction }
+let userLocation = null;      // { lat, lng }
+
+let busAdminData = {};        // busId → admin data (stops, schedule)
+let liveBuses = {};           // busId → live data
+let liveUnsubscribe = null;
+let adminUnsubscribe = null;
+
+let trackMap = null;
+let trackBusId = null;
+let trackBusMarker = null;
+let trackRouteStopLayers = [];
+let trackUserMarker = null;
+let trackInterval = null;
+
+// ══════════════════════════════════════════════
+//  FIREBASE INIT
+// ══════════════════════════════════════════════
+function waitForFirebase(cb) {
+    if (window._firebaseReady) { cb(); return; }
+    document.addEventListener('firebaseReady', cb, { once: true });
+}
+
+waitForFirebase(() => {
+    initHomeMap();
+    getUserLocation();
+    startAdminListener();
+    startLiveListener();
+});
+
+// ══════════════════════════════════════════════
+//  FIREBASE LISTENERS
+// ══════════════════════════════════════════════
+function startAdminListener() {
+    const ref = window._dbRef(window._db, 'busAdmin');
+    adminUnsubscribe = window._onValue(ref, snap => {
+        busAdminData = snap.val() || {};
+    });
+}
+
+function startLiveListener() {
+    const ref = window._dbRef(window._db, 'buses');
+    liveUnsubscribe = window._onValue(ref, snap => {
+        liveBuses = snap.val() || {};
+        if (currentScreen === 'route') renderRouteContent();
+        if (currentScreen === 'track' && trackBusId) updateTrackingView();
+    });
+}
+
+// ══════════════════════════════════════════════
+//  LOCATION
+// ══════════════════════════════════════════════
+function getUserLocation() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(pos => {
+        userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        // Auto-detect nearest stop if on route screen
+        if (currentScreen === 'route' && selectedRoute && !selectedStop) autoDetectStop();
+    }, null, { enableHighAccuracy: true, timeout: 8000 });
+}
+
+function autoDetectStop() {
+    if (!userLocation || !selectedRoute) return;
+    const admin = getRouteAdmin();
+    if (!admin) return;
+    const allStops = [...(admin.stopsR2M || []), ...(admin.stopsM2R || [])];
+    if (!allStops.length) return;
+    let nearest = null, minDist = Infinity;
+    allStops.forEach((s, i) => {
+        const d = haversine(userLocation.lat, userLocation.lng, s.lat, s.lng);
+        if (d < minDist) { minDist = d; nearest = s; }
+    });
+    if (nearest && minDist < 500) {
+        selectedStop = nearest;
+        document.getElementById('stop-selector-text').textContent = nearest.name;
+        document.getElementById('stop-selector-text').classList.remove('placeholder');
+        renderRouteContent();
+    }
+}
+
+// ══════════════════════════════════════════════
+//  HOME MAP
+// ══════════════════════════════════════════════
+function initHomeMap() {
+    const map = L.map('home-map-bg', {
+        zoomControl: false, attributionControl: false,
+        dragging: false, scrollWheelZoom: false,
+        doubleClickZoom: false, keyboard: false,
+        touchZoom: false
+    }).setView([6.83, 79.90], 13);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+}
+
+// ══════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════
+function showScreen(id, direction = 'right') {
+    const prev = document.getElementById(`screen-${currentScreen}`);
+    const next = document.getElementById(`screen-${id}`);
+
+    prev.classList.add(direction === 'right' ? 'slide-left' : 'slide-right');
+    next.classList.remove('hidden', 'slide-left', 'slide-right');
+
+    currentScreen = id;
+    screenHistory.push(id);
+}
+
+function goBack() {
+    if (screenHistory.length < 2) return;
+    screenHistory.pop();
+    const prev = screenHistory[screenHistory.length - 1];
+
+    const curr = document.getElementById(`screen-${currentScreen}`);
+    const prevEl = document.getElementById(`screen-${prev}`);
+
+    curr.classList.add('hidden');
+    prevEl.classList.remove('hidden', 'slide-left', 'slide-right');
+    currentScreen = prev;
+}
+
+// ══════════════════════════════════════════════
+//  HOME ACTIONS
+// ══════════════════════════════════════════════
+function selectQuickRoute(routeId) {
+    selectedRoute = PILOT_ROUTE;
+    selectedStop = null;
+    document.getElementById('stop-selector-text').textContent = 'Select your stop for ETA';
+    document.getElementById('stop-selector-text').classList.add('placeholder');
+    document.getElementById('route-screen-title').textContent = `Route ${PILOT_ROUTE.number}`;
+    document.getElementById('route-screen-sub').textContent = PILOT_ROUTE.name;
+    showScreen('route');
+    renderRouteContent();
+    if (userLocation) autoDetectStop();
+}
+
+function openSearch(field) {
+    showScreen('search');
+    setTimeout(() => {
+        document.getElementById(field === 'from' ? 'search-from-input' : 'search-to-input').focus();
+    }, 400);
+    renderSearchResults('');
+}
+
+function searchBuses() {
+    showScreen('search');
+    renderSearchResults('');
+}
+
+// ══════════════════════════════════════════════
+//  SEARCH SCREEN
+// ══════════════════════════════════════════════
+function filterResults() {
+    const q = (document.getElementById('search-to-input').value || document.getElementById('search-from-input').value || '').toLowerCase();
+    renderSearchResults(q);
+}
+
+function renderSearchResults(query) {
+    const el = document.getElementById('search-results');
+    const routes = [PILOT_ROUTE];
+    const filtered = query ? routes.filter(r =>
+        r.number.toLowerCase().includes(query) ||
+        r.name.toLowerCase().includes(query)
+    ) : routes;
+
+    if (!filtered.length) {
+        el.innerHTML = `<div class="no-buses" style="margin-top:40px;">
+            <svg width="40" height="40" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 12px;display:block;"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
+            No routes found
+        </div>`;
+        return;
+    }
+
+    el.innerHTML = `<div class="search-section-label">Routes</div>` +
+        filtered.map(r => {
+            const busCount = getBusesOnRoute(r.id).length;
+            return `<div class="route-result-item" onclick="selectRoute('${r.id}')">
+                <div class="route-badge"><span>${r.number}</span></div>
+                <div class="route-info">
+                    <div class="route-name">Route ${r.number}</div>
+                    <div class="route-sub">${r.name}</div>
+                </div>
+                ${busCount > 0 ? `<div class="route-live-dot"></div>` : ''}
+            </div>`;
+        }).join('');
+}
+
+function selectRoute(routeId) {
+    selectedRoute = PILOT_ROUTE;
+    selectedStop = null;
+    document.getElementById('stop-selector-text').textContent = 'Select your stop for ETA';
+    document.getElementById('stop-selector-text').classList.add('placeholder');
+    document.getElementById('route-screen-title').textContent = `Route ${PILOT_ROUTE.number}`;
+    document.getElementById('route-screen-sub').textContent = PILOT_ROUTE.name;
+    showScreen('route');
+    renderRouteContent();
+    if (userLocation) autoDetectStop();
+}
+
+// ══════════════════════════════════════════════
+//  ROUTE SCREEN
+// ══════════════════════════════════════════════
+function getRouteAdmin() {
+    // Find a bus with admin data for this route
+    for (const [busId, admin] of Object.entries(busAdminData)) {
+        if (admin.routeNo && PILOT_ROUTE.number.includes(admin.routeNo)) return admin;
+        if (admin.stopsR2M || admin.stopsM2R || admin.schedule) return admin;
+    }
+    return null;
+}
+
+function getBusesOnRoute(routeId) {
+    return Object.entries(liveBuses).filter(([busId, bus]) => {
+        const admin = busAdminData[busId] || {};
+        return admin.active !== false && (admin.stopsR2M || admin.stopsM2R);
+    });
+}
+
+function renderRouteContent() {
+    const el = document.getElementById('route-content');
+    const admin = getRouteAdmin();
+    const buses = getBusesOnRoute(selectedRoute?.id);
+
+    let html = '';
+
+    // ── Timetable ──
+    if (admin?.schedule) {
+        const now = new Date();
+        const nowMins = now.getHours() * 60 + now.getMinutes();
+
+        const nextTime = (times) => {
+            if (!times) return null;
+            return times.find(t => {
+                const [h, m] = t.split(':').map(Number);
+                return (h * 60 + m) > nowMins;
+            });
+        };
+
+        const nextR2M = nextTime(admin.schedule.ratmalana);
+        const nextM2R = nextTime(admin.schedule.maharagama);
+
+        const sheetNames = admin.stopsSheetNames || {};
+        const label1 = sheetNames.outbound || 'Outbound';
+        const label2 = sheetNames.return || 'Return';
+
+        html += `<div class="section-header">
+            <span class="section-title">Today's Timetable</span>
+            <span class="section-sub">${new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>
+        </div>
+        <div class="timetable-grid">
+            <div class="timetable-col">
+                <div class="timetable-col-label">↑ ${label1}</div>
+                ${(admin.schedule.ratmalana || []).map(t => `<span class="time-chip${t === nextR2M ? ' next' : ''}">${t}</span>`).join('')}
+            </div>
+            <div class="timetable-col">
+                <div class="timetable-col-label">↓ ${label2}</div>
+                ${(admin.schedule.maharagama || []).map(t => `<span class="time-chip${t === nextM2R ? ' next' : ''}">${t}</span>`).join('')}
+            </div>
+        </div>
+        <div class="divider"></div>`;
+    }
+
+    // ── Live Buses ──
+    html += `<div class="section-header">
+        <span class="section-title">Live Buses</span>
+        <span class="section-sub">${buses.length} on route</span>
+    </div>`;
+
+    if (!buses.length) {
+        html += `<div class="no-buses">
+            <svg width="36" height="36" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 10px;display:block;"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10z"/></svg>
+            No buses currently on this route
+        </div>`;
+    } else {
+        buses.forEach(([busId, bus]) => {
+            const admin = busAdminData[busId] || {};
+            const name = admin.plate || bus.customName || busId;
+            const speed = ((bus.speed || 0) * 3.6).toFixed(0);
+            const isInTrip = bus.inTrip === true;
+            const color = isInTrip ? '#a855f7' : '#eab308';
+            const statusText = isInTrip ? 'In Trip' : 'Online';
+
+            // ETA to selected stop
+            let etaHTML = '';
+            if (selectedStop && isInTrip) {
+                const eta = estimateETA(busId, bus, selectedStop);
+                if (eta !== null) {
+                    const etaColor = eta <= 5 ? '#7ee85a' : eta <= 15 ? '#eab308' : '#38bdf8';
+                    etaHTML = `<div class="eta-badge">
+                        <div class="eta-mins" style="color:${etaColor};">${eta}</div>
+                        <div class="eta-label">mins</div>
+                    </div>`;
+                }
+            } else if (!selectedStop) {
+                etaHTML = `<div class="eta-badge" style="opacity:0.4;">
+                    <div style="font-size:11px;color:var(--text-dim);text-align:right;">Pick<br>stop</div>
+                </div>`;
+            }
+
+            // Progress along route
+            const progress = getRouteProgress(busId, bus);
+
+            html += `<div class="live-bus-card" onclick="openTracking('${busId}')">
+                <div class="live-bus-card-top">
+                    <div class="live-bus-icon" style="background:${color}22;border:1px solid ${color}44;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="${color}">
+                            <path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+                        </svg>
+                    </div>
+                    <div class="live-bus-info">
+                        <div class="live-bus-name">${name}</div>
+                        <div class="live-bus-status" style="color:${color};">● ${statusText} · ${speed} km/h</div>
+                    </div>
+                    ${etaHTML}
+                </div>
+                ${progress !== null ? `
+                <div class="live-bus-progress">
+                    <div class="live-bus-progress-bar" style="width:${progress}%;background:${color};"></div>
+                </div>` : ''}
+                <div class="live-bus-footer">
+                    <span>${getNextStopName(busId, bus) || 'Calculating...'}</span>
+                    <span style="color:var(--cyan);">Tap to track →</span>
+                </div>
+            </div>`;
+        });
+    }
+
+    el.innerHTML = html;
+}
+
+function getRouteProgress(busId, bus) {
+    const admin = busAdminData[busId] || {};
+    const dir = detectDir(bus, admin);
+    if (!dir) return null;
+    const stops = dir === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
+    if (!stops.length) return null;
+    const dists = stops.map(s => haversine(bus.lat, bus.lng, s.lat, s.lng));
+    const minIdx = dists.indexOf(Math.min(...dists));
+    return Math.round((minIdx / (stops.length - 1)) * 100);
+}
+
+function getNextStopName(busId, bus) {
+    const admin = busAdminData[busId] || {};
+    const dir = detectDir(bus, admin);
+    if (!dir) return null;
+    const stops = dir === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
+    if (!stops.length) return null;
+    const withDist = stops.map((s, i) => ({ ...s, i, dist: haversine(bus.lat, bus.lng, s.lat, s.lng) }));
+    withDist.sort((a, b) => a.dist - b.dist);
+    const next = withDist[0];
+    return next ? `→ ${next.name}` : null;
+}
+
+function estimateETA(busId, bus, targetStop) {
+    if (!bus.lat || !bus.lng) return null;
+    const admin = busAdminData[busId] || {};
+    const dir = detectDir(bus, admin);
+    if (!dir) return null;
+    const stops = dir === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
+    if (!stops.length) return null;
+
+    // Distance from bus to target stop (straight line as approximation)
+    const distToStop = haversine(bus.lat, bus.lng, targetStop.lat, targetStop.lng);
+    const speedMs = (bus.speed || 0);
+    const avgSpeedMs = speedMs > 0.5 ? speedMs : 5; // assume 5 m/s if stopped
+    const etaSecs = distToStop / avgSpeedMs;
+    return Math.max(1, Math.round(etaSecs / 60));
+}
+
+// ══════════════════════════════════════════════
+//  STOP PICKER
+// ══════════════════════════════════════════════
+function openStopPicker() {
+    const admin = getRouteAdmin();
+    if (!admin) return;
+
+    const stops = admin.stopsR2M || admin.stopsM2R || [];
+    const list = document.getElementById('sheet-list');
+
+    list.innerHTML = stops.map((s, i) => {
+        const isFirst = i === 0, isLast = i === stops.length - 1;
+        const dotColor = isFirst ? '#7ee85a' : isLast ? '#a855f7' : '#38bdf8';
+        const isSelected = selectedStop?.name === s.name;
+        return `<div class="sheet-item${isSelected ? ' selected' : ''}" onclick="selectStop(${i})">
+            <div class="sheet-item-dot" style="background:${dotColor};"></div>
+            <div class="sheet-item-name">${s.name}</div>
+            <div class="sheet-item-num">${i + 1}</div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('stop-sheet').classList.add('open');
+}
+
+function selectStop(idx) {
+    const admin = getRouteAdmin();
+    if (!admin) return;
+    const stops = admin.stopsR2M || admin.stopsM2R || [];
+    selectedStop = stops[idx];
+    document.getElementById('stop-selector-text').textContent = selectedStop.name;
+    document.getElementById('stop-selector-text').classList.remove('placeholder');
+    closeStopPicker();
+    renderRouteContent();
+}
+
+function closeStopPicker(e) {
+    if (e && e.target !== document.getElementById('stop-sheet')) return;
+    document.getElementById('stop-sheet').classList.remove('open');
+}
+
+// ══════════════════════════════════════════════
+//  TRACKING SCREEN
+// ══════════════════════════════════════════════
+function openTracking(busId) {
+    trackBusId = busId;
+    showScreen('track');
+
+    const bus = liveBuses[busId] || {};
+    const admin = busAdminData[busId] || {};
+    const name = admin.plate || bus.customName || busId;
+
+    document.getElementById('track-bus-name').textContent = name;
+    document.getElementById('track-bus-route').textContent = `Route ${admin.routeNo || PILOT_ROUTE.number}`;
+
+    setTimeout(() => initTrackMap(busId), 100);
+}
+
+function initTrackMap(busId) {
+    if (trackMap) {
+        trackMap.remove();
+        trackMap = null;
+        trackBusMarker = null;
+        trackRouteStopLayers = [];
+    }
+
+    const bus = liveBuses[busId] || {};
+    const center = bus.lat && bus.lng ? [bus.lat, bus.lng] : [6.83, 79.90];
+
+    trackMap = L.map('track-map', { zoomControl: false, attributionControl: false }).setView(center, 15);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(trackMap);
+
+    // User location
+    if (userLocation) {
+        const userIcon = L.divIcon({
+            className: '', iconSize: [14, 14], iconAnchor: [7, 7],
+            html: '<div class="user-location-dot"></div>'
+        });
+        trackUserMarker = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon }).addTo(trackMap);
+    }
+
+    updateTrackingView();
+}
+
+function updateTrackingView() {
+    if (!trackMap || !trackBusId) return;
+    const bus = liveBuses[trackBusId];
+    if (!bus?.lat || !bus?.lng) return;
+
+    const admin = busAdminData[trackBusId] || {};
+    const speed = ((bus.speed || 0) * 3.6).toFixed(0);
+
+    // Update/create bus marker
+    const color = bus.inTrip ? '#a855f7' : '#eab308';
+    const busIcon = L.divIcon({
+        className: '', iconSize: [38, 38], iconAnchor: [19, 19],
+        html: `<div style="width:38px;height:38px;border-radius:50%;background:rgba(8,8,8,0.9);border:2.5px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px ${color}55;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="${color}">
+                <path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+            </svg>
+        </div>`
+    });
+
+    if (trackBusMarker) {
+        trackBusMarker.setLatLng([bus.lat, bus.lng]).setIcon(busIcon);
+    } else {
+        trackBusMarker = L.marker([bus.lat, bus.lng], { icon: busIcon }).addTo(trackMap);
+    }
+
+    trackMap.setView([bus.lat, bus.lng], trackMap.getZoom(), { animate: true, duration: 0.5 });
+
+    // Draw route stops
+    drawTrackStops(trackBusId, bus);
+
+    // Update stats
+    const dir = detectDir(bus, admin);
+    const stops = dir === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
+
+    if (stops.length) {
+        const withDist = stops.map((s, i) => ({ ...s, i, dist: haversine(bus.lat, bus.lng, s.lat, s.lng) }));
+        withDist.sort((a, b) => a.dist - b.dist);
+        const nextStop = withDist[0];
+        const nextIdx = nextStop.i;
+
+        document.getElementById('track-next-stop').textContent = nextStop.name;
+        document.getElementById('track-speed').textContent = speed;
+
+        // Stops remaining
+        const stopsLeft = stops.length - nextIdx - 1;
+        document.getElementById('track-stops-away').textContent = stopsLeft >= 0 ? stopsLeft : '--';
+
+        // ETA
+        if (selectedStop) {
+            const eta = estimateETA(trackBusId, bus, selectedStop);
+            document.getElementById('track-eta').textContent = eta !== null ? eta : '--';
+        } else {
+            const distM = nextStop.dist;
+            const speedMs = bus.speed > 0.5 ? bus.speed : 5;
+            document.getElementById('track-eta').textContent = Math.max(1, Math.round(distM / speedMs / 60));
+        }
+    }
+}
+
+function drawTrackStops(busId, bus) {
+    // Clear old layers
+    trackRouteStopLayers.forEach(l => trackMap.removeLayer(l));
+    trackRouteStopLayers = [];
+
+    const admin = busAdminData[busId] || {};
+    const dir = detectDir(bus, admin);
+    if (!dir) return;
+
+    const stops = dir === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
+    if (!stops.length) return;
+
+    const withDist = stops.map((s, i) => ({ ...s, i, dist: haversine(bus.lat, bus.lng, s.lat, s.lng) }));
+    withDist.sort((a, b) => a.dist - b.dist);
+    const nextIdx = withDist[0].i;
+
+    // Route line
+    const line = L.polyline(stops.map(s => [s.lat, s.lng]), {
+        color: 'rgba(255,255,255,0.07)', weight: 3, dashArray: '6 6'
+    }).addTo(trackMap);
+    trackRouteStopLayers.push(line);
+
+    // Stop markers
+    stops.forEach((stop, i) => {
+        const isPassed = i < nextIdx;
+        const isNext = i === nextIdx;
+        const isTerminal = i === 0 || i === stops.length - 1;
+        const color = isPassed ? '#f97316' : '#38bdf8';
+        const size = (isTerminal || isNext) ? 30 : 22;
+        const opacity = isPassed ? (isTerminal ? 1 : 0.75) : (isNext ? 1 : isTerminal ? 0.7 : 0.4);
+
+        const icon = L.divIcon({
+            className: '', iconSize: [size, size], iconAnchor: [size/2, size/2],
+            html: `<div style="width:${size}px;height:${size}px;background:rgba(8,8,8,0.85);border:1.5px solid ${color};border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:${opacity};box-shadow:0 0 ${isNext?'10px':'4px'} ${color}66;">
+                <svg width="${size*0.55}" height="${size*0.55}" viewBox="0 0 24 24" fill="${color}">
+                    <path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+                </svg>
+            </div>`
+        });
+
+        // Highlight selected stop
+        const isSelected = selectedStop?.name === stop.name;
+        const marker = L.marker([stop.lat, stop.lng], { icon }).addTo(trackMap);
+
+        if (isSelected) {
+            const pulse = L.circleMarker([stop.lat, stop.lng], {
+                radius: size/2 + 6, color: '#38bdf8', weight: 2,
+                fillOpacity: 0, opacity: 0.5
+            }).addTo(trackMap);
+            trackRouteStopLayers.push(pulse);
+        }
+
+        marker.bindTooltip(`<div style="font-family:'Sora',sans-serif;font-size:11px;font-weight:600;color:#fff;background:rgba(8,8,8,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 9px;white-space:nowrap;">${isNext ? '▸ ' : ''}${stop.name}<span style="font-size:10px;font-weight:400;color:${color};margin-left:5px;">${isPassed?'Passed':isNext?'Next':'Upcoming'}</span></div>`,
+            { permanent: false, direction: 'top', className: 'route-stop-tooltip', offset: [0, -4] });
+
+        trackRouteStopLayers.push(marker);
+    });
+}
+
+function stopTracking() {
+    goBack();
+    if (trackMap) { trackMap.remove(); trackMap = null; }
+    trackBusMarker = null;
+    trackRouteStopLayers = [];
+    trackBusId = null;
+}
+
+// ══════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════
+function haversine(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function toMins(t) { const [h, m] = t.split(':').map(Number); return h*60+m; }
+
+function detectDir(bus, admin) {
+    const schedule = admin.schedule;
+    if (schedule?.ratmalana?.length || schedule?.maharagama?.length) {
+        const now = new Date();
+        const nowMins = now.getHours() * 60 + now.getMinutes();
+        const all = [
+            ...(schedule.ratmalana||[]).map(t=>({dir:'R2M',mins:toMins(t)})),
+            ...(schedule.maharagama||[]).map(t=>({dir:'M2R',mins:toMins(t)}))
+        ].sort((a,b)=>a.mins-b.mins);
+        let cur = null;
+        for (const t of all) { if (t.mins <= nowMins) cur = t; }
+        if (cur) return cur.dir;
+        if (all.length) return all[0].dir;
+    }
+    return admin.stopsR2M?.length ? 'R2M' : admin.stopsM2R?.length ? 'M2R' : null;
+}
+</script>
+</body>
+</html>
