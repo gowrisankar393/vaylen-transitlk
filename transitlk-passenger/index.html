@@ -1135,6 +1135,9 @@ function showScreen(id, direction = 'right') {
 
     currentScreen = id;
     screenHistory.push(id);
+
+    // Push browser history state so native back button works
+    history.pushState({ screen: id }, '', `#${id}`);
 }
 
 function goBack() {
@@ -1149,6 +1152,33 @@ function goBack() {
     prevEl.classList.remove('hidden', 'slide-left', 'slide-right');
     currentScreen = prev;
 }
+
+// Handle native back button / browser back
+window.addEventListener('popstate', (e) => {
+    // If a bottom sheet is open, close it first
+    if (document.getElementById('stop-sheet').classList.contains('open')) {
+        document.getElementById('stop-sheet').classList.remove('open');
+        history.pushState({ screen: currentScreen }, '', `#${currentScreen}`);
+        return;
+    }
+    if (screenHistory.length > 1) {
+        screenHistory.pop();
+        const prev = screenHistory[screenHistory.length - 1];
+        const curr = document.getElementById(`screen-${currentScreen}`);
+        const prevEl = document.getElementById(`screen-${prev}`);
+        curr.classList.add('hidden');
+        prevEl.classList.remove('hidden', 'slide-left', 'slide-right');
+        // Special cleanup for tracking screen
+        if (currentScreen === 'track') {
+            if (trackMap) { trackMap.remove(); trackMap = null; }
+            trackBusMarker = null; trackRouteStopLayers = []; trackBusId = null;
+        }
+        currentScreen = prev;
+    }
+});
+
+// Push initial state so first back press doesn't leave the app
+history.replaceState({ screen: 'home' }, '', '#home');
 
 // ══════════════════════════════════════════════
 //  HOME ACTIONS
