@@ -1771,21 +1771,15 @@ function detectDir(bus, admin) {
 // ══════════════════════════════════════════════
 //  GOOGLE PLACES SEARCH
 // ══════════════════════════════════════════════
-let autocompleteService = null;
+let autocompleteService = null; // kept for compat ref
 let placesService = null;
 let placesMap = null;
 let placesMapLayers = [];
 let placesMapBusMarkers = {};
-
-// Place state
 let fromPlace = null; // { name, lat, lng }
 let toPlace = null;
+const SRI_LANKA_BOUNDS = { north: 9.9, south: 5.9, east: 81.9, west: 79.7 };
 
-const SRI_LANKA_BOUNDS = {
-    north: 9.9, south: 5.9, east: 81.9, west: 79.7
-};
-
-let autocompleteService = null; // kept for compat ref
 document.addEventListener('gmapsReady', () => {
     window._gmapsReady = true;
 });
