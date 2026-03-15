@@ -645,8 +645,7 @@ function renderSheet(){
     if(!match)return;
     const {admin:a,dir,boardStop:bo,alightStop:al,walkToBoard:wtb,walkFromAlight:wfa}=match;
     const stops=dir==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);
-    const sn=a.stopsSheetNames||{};
-    const dl=dir==='R2M'?(sn.outbound||'Outbound'):(sn.return||'Return');
+    const dl=getDirLabel(a,dir);
     const rbs=getRouteBuses();
     const now=new Date(),nm=now.getHours()*60+now.getMinutes();
 
@@ -665,7 +664,7 @@ function renderSheet(){
 
     h+=`<div class="stsel" onclick="openSS()">
         <svg width="14" height="14" fill="none" stroke="var(--cyan)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
-        <span class="stsel-txt" style="color:${selStop?'var(--txt)':'var(--dim)'};">${selStop?selStop.name+' · '+dl:'Select your stop for ETA'}</span>
+        <span class="stsel-txt" style="color:${selStop?'var(--txt)':'var(--dim)'};">${selStop?selStop.name+' · '+getOriginName(a,selStop.direction):'Select your stop for ETA'}</span>
         <svg width="13" height="13" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
     </div>`;
 
@@ -704,7 +703,7 @@ function renderSheet(){
 
     if(a.schedule){
         const t1=a.schedule.ratmalana||[],t2=a.schedule.maharagama||[];
-        const l1=sn.outbound||'From Ratmalana',l2=sn.return||'From Maharagama';
+        const l1=`From ${getOriginName(a,'R2M')}`,l2=`From ${getOriginName(a,'M2R')}`;
         const trow=(ts,lbl)=>{
             if(!ts.length)return'';
             const chips=ts.map(t=>{
@@ -805,9 +804,8 @@ function stopTrack(){
 // ═══════════════════════════════════════════════
 function openSS(){
     const a=getAdmin();if(!a)return;
-    const sn=a.stopsSheetNames||{};
-    document.getElementById('dr2m').textContent=`↑ ${sn.outbound||'Outbound'}`;
-    document.getElementById('dm2r').textContent=`↓ ${sn.return||'Return'}`;
+    document.getElementById('dr2m').textContent=`↑ ${getOriginName(a,'R2M')}`;
+    document.getElementById('dm2r').textContent=`↑ ${getOriginName(a,'M2R')}`;
     if(!a.stopsR2M?.length&&a.stopsM2R?.length)selDir='M2R';
     udbtns();
     document.getElementById('ss-inp').value='';document.getElementById('ss-x').style.display='none';
@@ -848,7 +846,20 @@ function closeSS(){document.getElementById('ssheet').classList.remove('open');}
 // ═══════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════
-function getAdmin(){for(const a of Object.values(admins)){if(a.stopsR2M?.length||a.stopsM2R?.length)return a;}return null;}
+function getDirLabel(a, dir) {
+    const stops = dir === 'R2M' ? (a.stopsR2M||[]) : (a.stopsM2R||[]);
+    if (stops.length >= 2) return `${stops[0].name} → ${stops[stops.length-1].name}`;
+    if (stops.length === 1) return stops[0].name;
+    return dir === 'R2M' ? 'Outbound' : 'Return';
+}
+function getOriginName(a, dir) {
+    const stops = dir === 'R2M' ? (a.stopsR2M||[]) : (a.stopsM2R||[]);
+    return stops[0]?.name || (dir === 'R2M' ? 'Outbound' : 'Return');
+}
+function getDestName(a, dir) {
+    const stops = dir === 'R2M' ? (a.stopsR2M||[]) : (a.stopsM2R||[]);
+    return stops[stops.length-1]?.name || '';
+}
 function getRouteBuses(){return Object.entries(buses).filter(([id,b])=>{const a=admins[id]||{};return a.active!==false&&(a.stopsR2M||a.stopsM2R);});}
 function gprog(b,a){const d=ddir(b,a);const s=d==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);if(!s.length||!b.lat)return null;const ds=s.map(st=>hav(b.lat,b.lng,st.lat,st.lng));return Math.round((ds.indexOf(Math.min(...ds))/(s.length-1))*100);}
 function gnxt(b,a){const d=ddir(b,a);const s=d==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);if(!s.length||!b.lat)return null;return s.map(st=>({...st,dist:hav(b.lat,b.lng,st.lat,st.lng)})).sort((a2,b2)=>a2.dist-b2.dist)[0]?.name||null;}
