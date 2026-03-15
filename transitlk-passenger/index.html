@@ -1908,27 +1908,31 @@ function selectGooglePlace(field, placeId, name) {
     document.getElementById(`${field}-clear-btn`).classList.add('visible');
     hideSuggestions(field);
 
-    // Show loading in results
+    console.log(`[Places] Resolving ${field}: ${name} (${placeId})`);
+
     document.getElementById('places-search-results').innerHTML =
         `<div style="text-align:center;padding:40px;"><span class="spinner"></span><p style="color:var(--text-dim);font-size:12px;margin-top:12px;">Getting location...</p></div>`;
 
-    // Resolve place_id to lat/lng using Geocoder (more reliable than PlacesService with detached div)
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ placeId }, (results, status) => {
+        console.log(`[Geocoder] status=${status}`, results);
         if (status === 'OK' && results[0]?.geometry) {
             const place = {
                 name,
                 lat: results[0].geometry.location.lat(),
                 lng: results[0].geometry.location.lng()
             };
+            console.log(`[Geocoder] resolved ${field}:`, place);
             if (field === 'from') fromPlace = place;
             else toPlace = place;
+            console.log(`[Places] fromPlace=${JSON.stringify(fromPlace)} toPlace=${JSON.stringify(toPlace)}`);
             checkAndSearchRoute();
         } else {
-            // Fallback to PlacesService with a real DOM element
+            console.warn(`[Geocoder] failed: ${status}, trying PlacesService`);
             const mapDiv = document.getElementById('places-map');
             if (!placesService) placesService = new google.maps.places.PlacesService(mapDiv);
             placesService.getDetails({ placeId, fields: ['geometry', 'name'] }, (result, status2) => {
+                console.log(`[PlacesService] status=${status2}`, result);
                 if (status2 === google.maps.places.PlacesServiceStatus.OK && result?.geometry) {
                     const place = {
                         name,
@@ -1939,8 +1943,9 @@ function selectGooglePlace(field, placeId, name) {
                     else toPlace = place;
                     checkAndSearchRoute();
                 } else {
+                    console.error(`[PlacesService] also failed: ${status2}`);
                     document.getElementById('places-search-results').innerHTML =
-                        `<div class="no-buses" style="margin-top:40px;">Could not resolve location. Try a different search.</div>`;
+                        `<div class="no-buses" style="margin-top:40px;">Could not resolve location.<br><span style="font-size:11px;color:var(--text-muted);">Error: ${status2}</span></div>`;
                 }
             });
         }
