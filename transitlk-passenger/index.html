@@ -1741,6 +1741,10 @@ function stopTracking() {
 // ══════════════════════════════════════════════
 //  HELPERS
 // ══════════════════════════════════════════════
+function formatDist(m) {
+    return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
+}
+
 function haversine(lat1, lng1, lat2, lng2) {
     const R = 6371000;
     const dLat = (lat2 - lat1) * Math.PI / 180;
