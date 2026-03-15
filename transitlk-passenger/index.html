@@ -707,7 +707,13 @@ function renderSheet(){
         const l1=sn.outbound||'From Ratmalana',l2=sn.return||'From Maharagama';
         const trow=(ts,lbl)=>{
             if(!ts.length)return'';
-            const chips=ts.map(t=>{const[hh,mm]=t.split(':').map(Number);const mins=hh*60+mm;const past=mins<nm;const isN=!past&&ts.find(tt=>{const[a2,b2]=tt.split(':').map(Number);return a2*60+b2>nm;}===t);return`<span class="tpill${isN?' next':past?' past':''}">${t}</span>`;}).join('');
+            const chips=ts.map(t=>{
+                const[hh,mm]=t.split(':').map(Number);
+                const mins=hh*60+mm;
+                const past=mins<nm;
+                const isN=!past&&ts.find(tt=>{const[a2,b2]=tt.split(':').map(Number);return a2*60+b2>nm;})=== t;
+                return`<span class="tpill${isN?' next':past?' past':''}">${t}</span>`;
+            }).join('');
             return`<div style="margin-bottom:12px;"><div class="tmlbl">${lbl}</div><div class="tmgrid">${chips}</div></div>`;
         };
         h+=`<div class="tmsec">${trow(t1,l1)}${trow(t2,l2)}</div>`;
