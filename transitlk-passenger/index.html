@@ -880,14 +880,18 @@
     </div>
 </div>
 
-<!-- Google Maps API — replace YOUR_KEY with your actual key -->
+<!-- Google Maps API -->
 <script>
     window.GMAPS_KEY = 'AIzaSyDSSAoB1lo6WslQZrVYY83r77nr9uyP4DI';
-    function loadGoogleMaps() {
-        const s = document.createElement('script');
-        s.src = `https://maps.googleapis.com/maps/api/js?key=${window.GMAPS_KEY}&libraries=places,geocoding&callback=onGoogleMapsReady`;
-        s.async = true; s.defer = true;
-        document.head.appendChild(s);
+    (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a);d[q]=f}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({key: window.GMAPS_KEY, v: "weekly"});
+
+    async function loadGoogleMaps() {
+        const { AutocompleteSuggestion } = await google.maps.importLibrary("places");
+        const { Geocoder } = await google.maps.importLibrary("geocoding");
+        window._AutocompleteSuggestion = AutocompleteSuggestion;
+        window._Geocoder = Geocoder;
+        window._gmapsReady = true;
+        document.dispatchEvent(new Event('gmapsReady'));
     }
     loadGoogleMaps();
 </script>
@@ -1781,10 +1785,12 @@ const SRI_LANKA_BOUNDS = {
     north: 9.9, south: 5.9, east: 81.9, west: 79.7
 };
 
-function onGoogleMapsReady() {
-    autocompleteService = new google.maps.places.AutocompleteService();
+let autocompleteService = null; // kept for compat ref
+document.addEventListener('gmapsReady', () => {
     window._gmapsReady = true;
-}
+});
+
+function onGoogleMapsReady() {} // legacy no-op, kept in case Maps calls it
 
 function openPlacesSearch(focusField) {
     showScreen('places');
@@ -1818,61 +1824,64 @@ function onPlacesInput(field) {
     showSuggestions(field, val);
 }
 
-function showSuggestions(field, query) {
+async function showSuggestions(field, query) {
     const el = document.getElementById(`${field}-suggestions`);
-
-    // First: match against route stops locally (instant, no API)
-    const localMatches = getLocalStopMatches(query);
-
     el.style.display = 'block';
+
+    // Immediately show local stop matches
+    const localMatches = getLocalStopMatches(query);
+    const stopItemsHTML = (matches) => matches.map(s => `
+        <div class="suggestion-item" onmousedown="selectSuggestion('${field}', ${JSON.stringify(s).replace(/"/g, '&quot;')})">
+            <div class="suggestion-icon">
+                <svg width="14" height="14" fill="none" stroke="var(--cyan)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
+            </div>
+            <div>
+                <div class="suggestion-main">${s.name}</div>
+                <div class="suggestion-sub">Bus stop · Route ${PILOT_ROUTE.number}</div>
+            </div>
+        </div>`).join('');
+
     el.innerHTML = localMatches.length
-        ? localMatches.map(s => `
-            <div class="suggestion-item" onmousedown="selectSuggestion('${field}', ${JSON.stringify(s).replace(/"/g, '&quot;')})">
-                <div class="suggestion-icon">
-                    <svg width="14" height="14" fill="none" stroke="var(--cyan)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
-                </div>
-                <div>
-                    <div class="suggestion-main">${s.name}</div>
-                    <div class="suggestion-sub">Bus stop · Route ${PILOT_ROUTE.number}</div>
-                </div>
-            </div>`).join('')
+        ? stopItemsHTML(localMatches)
         : `<div style="padding:14px;text-align:center;color:var(--text-dim);font-size:12px;"><span class="spinner"></span></div>`;
 
-    // Then fetch Google Places suggestions
-    if (!autocompleteService) return;
-    autocompleteService.getPlacePredictions({
-        input: query,
-        locationBias: new google.maps.LatLngBounds(
-            new google.maps.LatLng(SRI_LANKA_BOUNDS.south, SRI_LANKA_BOUNDS.west),
-            new google.maps.LatLng(SRI_LANKA_BOUNDS.north, SRI_LANKA_BOUNDS.east)
-        ),
-        componentRestrictions: { country: 'lk' }
-    }, (predictions, status) => {
-        if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) return;
-        const combined = [
-            ...localMatches.map(s => `
-                <div class="suggestion-item" onmousedown="selectSuggestion('${field}', ${JSON.stringify(s).replace(/"/g, '&quot;')})">
-                    <div class="suggestion-icon">
-                        <svg width="14" height="14" fill="none" stroke="var(--cyan)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
-                    </div>
-                    <div>
-                        <div class="suggestion-main">${s.name}</div>
-                        <div class="suggestion-sub">Bus stop · Route ${PILOT_ROUTE.number}</div>
-                    </div>
-                </div>`),
-            ...predictions.slice(0, 4).map(p => `
-                <div class="suggestion-item" onmousedown="selectGooglePlace('${field}', '${p.place_id}', '${p.structured_formatting.main_text.replace(/'/g, "\\'")}')">
+    // Fetch Google Places suggestions using new API
+    if (!window._AutocompleteSuggestion) return;
+    try {
+        const { suggestions } = await window._AutocompleteSuggestion.fetchAutocompleteSuggestions({
+            input: query,
+            locationBias: {
+                west: SRI_LANKA_BOUNDS.west, south: SRI_LANKA_BOUNDS.south,
+                east: SRI_LANKA_BOUNDS.east, north: SRI_LANKA_BOUNDS.north
+            },
+            includedRegionCodes: ['lk']
+        });
+
+        const placeSuggestionsHTML = suggestions
+            .filter(s => s.placePrediction)
+            .slice(0, 4)
+            .map(s => {
+                const p = s.placePrediction;
+                const mainText = p.mainText?.toString() || p.text?.toString() || '';
+                const secText = p.secondaryText?.toString() || '';
+                const placeId = p.placeId;
+                return `<div class="suggestion-item" onmousedown="selectGooglePlace('${field}', '${placeId}', '${mainText.replace(/'/g, "\\'")}')">
                     <div class="suggestion-icon">
                         <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
                     </div>
                     <div>
-                        <div class="suggestion-main">${p.structured_formatting.main_text}</div>
-                        <div class="suggestion-sub">${p.structured_formatting.secondary_text || ''}</div>
+                        <div class="suggestion-main">${mainText}</div>
+                        <div class="suggestion-sub">${secText}</div>
                     </div>
-                </div>`)
-        ];
-        el.innerHTML = combined.join('') || `<div style="padding:14px;text-align:center;color:var(--text-dim);font-size:12px;">No results found</div>`;
-    });
+                </div>`;
+            }).join('');
+
+        el.innerHTML = stopItemsHTML(localMatches) + placeSuggestionsHTML
+            || `<div style="padding:14px;text-align:center;color:var(--text-dim);font-size:12px;">No results found</div>`;
+    } catch(e) {
+        console.error('[Autocomplete]', e);
+        if (localMatches.length) el.innerHTML = stopItemsHTML(localMatches);
+    }
 }
 
 function hideSuggestions(field) {
@@ -1903,53 +1912,57 @@ function selectSuggestion(field, place) {
     checkAndSearchRoute();
 }
 
-function selectGooglePlace(field, placeId, name) {
+async function selectGooglePlace(field, placeId, name) {
     document.getElementById(`${field}-place-input`).value = name;
     document.getElementById(`${field}-clear-btn`).classList.add('visible');
     hideSuggestions(field);
 
-    console.log(`[Places] Resolving ${field}: ${name} (${placeId})`);
-
     document.getElementById('places-search-results').innerHTML =
         `<div style="text-align:center;padding:40px;"><span class="spinner"></span><p style="color:var(--text-dim);font-size:12px;margin-top:12px;">Getting location...</p></div>`;
 
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ placeId }, (results, status) => {
-        console.log(`[Geocoder] status=${status}`, results);
-        if (status === 'OK' && results[0]?.geometry) {
-            const place = {
+    try {
+        // Use new Places API to get lat/lng from place_id
+        const { Place } = await google.maps.importLibrary('places');
+        const place = new Place({ id: placeId, requestedLanguage: 'en' });
+        await place.fetchFields({ fields: ['location', 'displayName'] });
+
+        if (place.location) {
+            const resolved = {
                 name,
-                lat: results[0].geometry.location.lat(),
-                lng: results[0].geometry.location.lng()
+                lat: place.location.lat(),
+                lng: place.location.lng()
             };
-            console.log(`[Geocoder] resolved ${field}:`, place);
-            if (field === 'from') fromPlace = place;
-            else toPlace = place;
-            console.log(`[Places] fromPlace=${JSON.stringify(fromPlace)} toPlace=${JSON.stringify(toPlace)}`);
+            console.log(`[Places] resolved ${field}:`, resolved);
+            if (field === 'from') fromPlace = resolved;
+            else toPlace = resolved;
             checkAndSearchRoute();
         } else {
-            console.warn(`[Geocoder] failed: ${status}, trying PlacesService`);
-            const mapDiv = document.getElementById('places-map');
-            if (!placesService) placesService = new google.maps.places.PlacesService(mapDiv);
-            placesService.getDetails({ placeId, fields: ['geometry', 'name'] }, (result, status2) => {
-                console.log(`[PlacesService] status=${status2}`, result);
-                if (status2 === google.maps.places.PlacesServiceStatus.OK && result?.geometry) {
-                    const place = {
-                        name,
-                        lat: result.geometry.location.lat(),
-                        lng: result.geometry.location.lng()
-                    };
-                    if (field === 'from') fromPlace = place;
-                    else toPlace = place;
-                    checkAndSearchRoute();
-                } else {
-                    console.error(`[PlacesService] also failed: ${status2}`);
-                    document.getElementById('places-search-results').innerHTML =
-                        `<div class="no-buses" style="margin-top:40px;">Could not resolve location.<br><span style="font-size:11px;color:var(--text-muted);">Error: ${status2}</span></div>`;
-                }
-            });
+            throw new Error('No location returned');
         }
-    });
+    } catch(e) {
+        console.warn('[Places new API] failed, trying Geocoder:', e);
+        // Fallback to Geocoder
+        try {
+            const { Geocoder } = await google.maps.importLibrary('geocoding');
+            const geocoder = new Geocoder();
+            const result = await geocoder.geocode({ placeId });
+            if (result.results[0]?.geometry) {
+                const resolved = {
+                    name,
+                    lat: result.results[0].geometry.location.lat(),
+                    lng: result.results[0].geometry.location.lng()
+                };
+                console.log(`[Geocoder] resolved ${field}:`, resolved);
+                if (field === 'from') fromPlace = resolved;
+                else toPlace = resolved;
+                checkAndSearchRoute();
+            } else throw new Error('Geocoder no results');
+        } catch(e2) {
+            console.error('[Geocoder] also failed:', e2);
+            document.getElementById('places-search-results').innerHTML =
+                `<div class="no-buses" style="margin-top:40px;">Could not resolve location.<br><span style="font-size:11px;color:var(--text-muted);">${e2.message}</span></div>`;
+        }
+    }
 }
 
 function clearPlacesInput(field) {
