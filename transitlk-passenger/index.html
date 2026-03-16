@@ -346,24 +346,6 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Sora',s
 </div>
 
 <!-- Stop picker -->
-<div id="ssheet" onclick="ssclick(event)">
-    <div class="ssi">
-        <div class="ssh"></div>
-        <div class="sshdr">
-            <div class="sstitle">Your Stop</div>
-            <div class="ssearch">
-                <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
-                <input id="ss-inp" placeholder="Search stops..." oninput="fstops()">
-                <span id="ss-x" onclick="document.getElementById('ss-inp').value='';fstops();" style="display:none;cursor:pointer;color:var(--muted);">✕</span>
-            </div>
-        </div>
-        <div class="dtog">
-            <button class="dbtn on" id="dr2m" onclick="sdir('R2M')"></button>
-            <button class="dbtn" id="dm2r" onclick="sdir('M2R')"></button>
-        </div>
-        <div class="slist" id="slist"></div>
-    </div>
-</div>
 
 <script>
 // ═══════════════════════════════════════════════
@@ -379,7 +361,6 @@ let uloc=null;
 let admins={},buses={};
 let fp=null,tp=null;
 let match=null;
-let selStop=null,selDir='R2M';
 let sstate='hidden';
 let tBusId=null;
 
@@ -644,12 +625,6 @@ function renderSheet(){
         </div>`;
     }
 
-    h+=`<div class="stsel" onclick="openSS()">
-        <svg width="14" height="14" fill="none" stroke="var(--cyan)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
-        <span class="stsel-txt" style="color:${selStop?'var(--txt)':'var(--dim)'};">${selStop?selStop.name+' · '+getOriginName(a,selStop.direction):'Select your stop for ETA'}</span>
-        <svg width="13" height="13" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-    </div>`;
-
     h+=`<div class="slbl">Live Buses</div>`;
 
     if(rbs.length){
@@ -661,11 +636,11 @@ function renderSheet(){
             const st2=iT?'In Trip':iO?'Offline':'Trip not started';
             const sp=((b.speed||0)*3.6).toFixed(0);
             let etaH='';
-            if(iT&&selStop){
-                const bd=ddir(b,ba);
-                if(bd===selStop.direction){const eta=eta2(b,selStop);const ec=eta<=5?'#7ee85a':eta<=15?'#eab308':'#38bdf8';etaH=`<div class="beta"><div class="etanum" style="color:${ec};">${eta}</div><div class="etaunit">min</div></div>`;}
-                else etaH=`<div class="beta"><div style="font-size:10px;color:var(--dim);text-align:right;line-height:1.4;">Wrong<br>way</div></div>`;
-            } else if(iT){etaH=`<div class="beta"><div style="font-size:10px;color:var(--dim);line-height:1.4;">Pick<br>stop</div></div>`;}
+            if(iT){
+                // Auto-ETA to board stop or next stop in route
+                const target=match.boardStop||gnxtStop(b,ba);
+                if(target){const eta=eta2(b,target);const ec=eta<=5?'#7ee85a':eta<=15?'#eab308':'#38bdf8';etaH=`<div class="beta"><div class="etanum" style="color:${ec};">${eta}</div><div class="etaunit">min</div></div>`;}
+            }
             const prog=iT?gprog(b,ba):null;
             const nxt=iT?gnxt(b,ba):null;
             let fl=nxt?`→ ${nxt}`:(iT?'Calculating…':ndep(ba,nm)||'No trips today');
@@ -727,6 +702,7 @@ function getDestName(a, dir) {
 function getRouteBuses(){return Object.entries(buses).filter(([id,b])=>{const a=admins[id]||{};return a.active!==false&&(a.stopsR2M||a.stopsM2R);});}
 function gprog(b,a){const d=ddir(b,a);const s=d==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);if(!s.length||!b.lat)return null;const ds=s.map(st=>hav(b.lat,b.lng,st.lat,st.lng));return Math.round((ds.indexOf(Math.min(...ds))/(s.length-1))*100);}
 function gnxt(b,a){const d=ddir(b,a);const s=d==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);if(!s.length||!b.lat)return null;return s.map(st=>({...st,dist:hav(b.lat,b.lng,st.lat,st.lng)})).sort((a2,b2)=>a2.dist-b2.dist)[0]?.name||null;}
+function gnxtStop(b,a){const d=ddir(b,a);const s=d==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);if(!s.length||!b.lat)return null;return s.map(st=>({...st,dist:hav(b.lat,b.lng,st.lat,st.lng)})).sort((a2,b2)=>a2.dist-b2.dist)[0]||null;}
 function eta2(b,t){if(!b.lat||!b.lng)return null;return Math.max(1,Math.round(hav(b.lat,b.lng,t.lat,t.lng)/(b.speed>0.5?b.speed:5)/60));}
 function ndep(a,nm){if(!a.schedule)return null;const all=[...(a.schedule.ratmalana||[]),...(a.schedule.maharagama||[])].map(t=>{const[hh,mm]=t.split(':').map(Number);return{t,m:hh*60+mm};}).sort((a2,b2)=>a2.m-b2.m);const n=all.find(t=>t.m>nm);return n?`Next at ${n.t}`:null;}
 function ddir(b,a){const sc=a.schedule;if(sc?.ratmalana?.length||sc?.maharagama?.length){const now=new Date(),nm=now.getHours()*60+now.getMinutes();const all=[...(sc.ratmalana||[]).map(t=>({d:'R2M',m:tm(t)})),...(sc.maharagama||[]).map(t=>({d:'M2R',m:tm(t)}))].sort((a2,b2)=>a2.m-b2.m);let c=null;for(const t of all)if(t.m<=nm)c=t;if(c)return c.d;if(all.length)return all[0].d;}return a.stopsR2M?.length?'R2M':'M2R';}
@@ -914,27 +890,9 @@ function closeSearch() {
     // popstate handles history
 }
 
-function openSS() {
-    const a = getAdmin(); if (!a) return;
-    document.getElementById('dr2m').textContent = `↑ ${getOriginName(a,'R2M')}`;
-    document.getElementById('dm2r').textContent = `↓ ${getOriginName(a,'M2R')}`;
-    if (!a.stopsR2M?.length && a.stopsM2R?.length) selDir = 'M2R';
-    udbtns();
-    document.getElementById('ss-inp').value = '';
-    document.getElementById('ss-x').style.display = 'none';
-    rsl('');
-    document.getElementById('ssheet').classList.add('open');
-    // Push a history entry so back closes the sheet
-    history.pushState({ nav: 'stops', depth: NAV.stack.length }, '');
-    setTimeout(() => document.getElementById('ss-inp').focus(), 350);
-}
-
-function _closeStopSheet(pushHistory) {
-    document.getElementById('ssheet').classList.remove('open');
-}
-
-function closeSS() { _closeStopSheet(false); }
-function ssclick(e) { if (e.target === document.getElementById('ssheet')) { closeSS(); history.go(-1); } }
+function _closeStopSheet() {} // no-op, stop sheet removed
+function closeSS() {}
+function ssclick() {}
 
 function qroute() {
     _closeSearch(false);
