@@ -1081,6 +1081,19 @@
                         <label class="section-label block mb-1.5">Notes</label>
                         <textarea id="bus-field-notes" placeholder="Any additional notes..." rows="2" class="w-full px-3 py-2.5 text-sm resize-none" style="border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#fff;font-family:'Sora',sans-serif;"></textarea>
                     </div>
+
+                    <!-- Official Trip Toggle -->
+                    <div class="flex items-center justify-between px-4 py-3 rounded-xl" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);">
+                        <div>
+                            <p class="text-sm font-semibold">Official Trip Mode</p>
+                            <p class="text-xs mt-0.5" style="color:rgba(255,255,255,0.35);">When off, ETA and next stop tracking are disabled even if the bus is moving</p>
+                        </div>
+                        <button onclick="toggleOfficialTrip()" id="official-trip-toggle"
+                            class="relative flex-shrink-0 w-11 h-6 rounded-full transition-all duration-200"
+                            style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.12);">
+                            <span id="official-trip-knob" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-all duration-200" style="background:rgba(255,255,255,0.4);"></span>
+                        </button>
+                    </div>
                 </div>
 
                 </div><!-- /bus-tabpanel-details -->
@@ -1374,12 +1387,43 @@
         let busAdminData = {}; // cache of admin metadata keyed by busId
         let currentBusModalId = null;
         let busMarkers = {};
-        const busLastHeading = {}; // persist last valid heading per bus
+        let busLastHeading = {};
+        try { busLastHeading = JSON.parse(localStorage.getItem('busLastHeading') || '{}'); } catch(e) { busLastHeading = {}; }
+        let busLastDirection = {};
+        try { busLastDirection = JSON.parse(localStorage.getItem('busLastDirection') || '{}'); } catch(e) { busLastDirection = {}; }
+        let busLastPos = {};       // { busId: { lat, lng } } — last known position per bus
+        let busStoppedSince = {};  // { busId: timestamp } — when bus stopped moving
+        try { busStoppedSince = JSON.parse(localStorage.getItem('busStoppedSince') || '{}'); } catch(e) { busStoppedSince = {}; }
+        const expandedETAPanels = new Set(); // buses with ETA panel open — survives re-renders
         let liveUnsubscribe = null;
         let trackedBusId = null;
         // Two separate stores: last known position (updated every Firebase tick) and when it stopped moving
         function isParkedByLastSeen() { return false; } // kept for compat
-        function updateParkedState() {}                 // no-op, handled by Cloud Function
+
+        function updateParkedState(busId, busData) {
+            if (busData.inTrip || !busData.online) {
+                if (busStoppedSince[busId]) { delete busStoppedSince[busId]; try { localStorage.setItem('busStoppedSince', JSON.stringify(busStoppedSince)); } catch(e){} }
+                busLastPos[busId] = { lat: busData.lat, lng: busData.lng };
+                return;
+            }
+            const last = busLastPos[busId];
+            const moved = !last ||
+                Math.abs(busData.lat - last.lat) > 0.0001 ||
+                Math.abs(busData.lng - last.lng) > 0.0001;
+            if (moved) {
+                if (busStoppedSince[busId]) { delete busStoppedSince[busId]; try { localStorage.setItem('busStoppedSince', JSON.stringify(busStoppedSince)); } catch(e){} }
+            } else if (!busStoppedSince[busId]) {
+                busStoppedSince[busId] = Date.now();
+                try { localStorage.setItem('busStoppedSince', JSON.stringify(busStoppedSince)); } catch(e){}
+            }
+            busLastPos[busId] = { lat: busData.lat, lng: busData.lng };
+        }
+
+        function checkParked(busId, busData, threshold = 30 * 60 * 1000) {
+            if (busData.inTrip || !busData.online) return false;
+            const since = busStoppedSince[busId];
+            return since && (Date.now() - since) >= threshold;
+        }
 
         function checkParked(busId, busData, threshold = 30 * 60 * 1000) {
             if (busData.inTrip || !busData.online) return false;
@@ -2023,9 +2067,14 @@
             updateBusListCards(busArray);
         }
 
+        function saveLastDirection() {
+            try { localStorage.setItem('busLastDirection', JSON.stringify(busLastDirection)); } catch(e) {}
+        }
+
         function getBusHeading(busId, heading) {
             if (heading && heading !== 0) {
                 busLastHeading[busId] = heading;
+                try { localStorage.setItem('busLastHeading', JSON.stringify(busLastHeading)); } catch(e) {}
                 return heading;
             }
             return busLastHeading[busId] || 0;
@@ -2118,7 +2167,6 @@
                     <p style="margin:0 0 4px 0;font-size:11px;font-weight:600;color:${color};">${statusText}</p>
                     ${busData.inTrip === true ? `<p style="margin:0 0 4px 0;font-size:11px;color:rgba(255,255,255,0.6);">Speed: <span style="color:#fff;font-weight:600;">${speed} km/h</span></p>` : ''}
                     ${busData.inTrip === true ? nextStopPopupHTML(busId) : ''}
-                    ${busData.inTrip === true ? etaPopupHTML(busId, busData) : ''}
                     <p style="margin:${busData.inTrip ? '6px' : '0'} 0 2px 0;font-size:10px;color:rgba(255,255,255,0.35);">${lastSeen}</p>
                     ${busData.battery != null && busData.battery >= 0 ? `<p style="margin:3px 0 0 0;font-size:10px;color:${batteryColor(busData.battery)};">⬡ Battery: <span style="font-weight:600;">${busData.battery}%</span>${busData.charging ? ' <span style="color:#7ee85a;">⚡</span>' : ''}</p>` : ''}
                     <p style="margin:0;font-size:10px;color:rgba(255,255,255,0.2);font-family:monospace;">${busData.lat?.toFixed(4)}, ${busData.lng?.toFixed(4)}</p>
@@ -2547,34 +2595,16 @@
 
         function detectDirection(busId, busData) {
             const admin = busAdminData[busId] || {};
-            const schedule = admin.schedule;
             const r2m = admin.stopsR2M || [];
             const m2r = admin.stopsM2R || [];
             if (!r2m.length && !m2r.length) return null;
 
-            // Build extended start point lists including alternates
             const alts = admin.alternateStarts || {};
             const r2mStarts = [r2m[0], ...(alts.outbound || []).map(a => r2m[a.stopIdx]).filter(Boolean)];
             const m2rStarts = [m2r[0], ...(alts.return  || []).map(a => m2r[a.stopIdx]).filter(Boolean)];
 
-            // Use timetable — find the most recent departure and its direction
-            if (schedule?.ratmalana?.length || schedule?.maharagama?.length) {
-                const now = new Date();
-                const nowMins = now.getHours() * 60 + now.getMinutes();
-                const allTrips = [
-                    ...(schedule.ratmalana || []).map(t => ({ dir: 'R2M', mins: toMins(t) })),
-                    ...(schedule.maharagama || []).map(t => ({ dir: 'M2R', mins: toMins(t) }))
-                ].sort((a, b) => a.mins - b.mins);
-                let current = null;
-                for (const trip of allTrips) {
-                    if (trip.mins <= nowMins) current = trip;
-                }
-                if (current) return current.dir;
-                if (allTrips.length) return allTrips[0].dir;
-            }
-
-            // Fallback: check if bus is near any alternate start point first
-            const nearThreshold = 300; // 300m — close to a known start point
+            // 1. Bus is near a known origin — definitive
+            const nearThreshold = 300;
             for (const s of r2mStarts) {
                 if (s && haversineDistance(busData.lat, busData.lng, s.lat, s.lng) < nearThreshold) return 'R2M';
             }
@@ -2582,12 +2612,45 @@
                 if (s && haversineDistance(busData.lat, busData.lng, s.lat, s.lng) < nearThreshold) return 'M2R';
             }
 
-            // Fallback: heading
+            // 2. Use GPS movement — compare distance to each terminal on consecutive updates.
+            //    If the bus is getting closer to Maharagama's terminal → R2M, and vice versa.
+            const hist = busLastPos[busId];
+            if (hist && (Math.abs(busData.lat - hist.lat) > 0.00005 || Math.abs(busData.lng - hist.lng) > 0.00005)) {
+                const r2mDest = r2m[r2m.length - 1];
+                const m2rDest = m2r[m2r.length - 1];
+
+                const prevDistR2M = haversineDistance(hist.lat, hist.lng, r2mDest.lat, r2mDest.lng);
+                const currDistR2M = haversineDistance(busData.lat, busData.lng, r2mDest.lat, r2mDest.lng);
+                const prevDistM2R = haversineDistance(hist.lat, hist.lng, m2rDest.lat, m2rDest.lng);
+                const currDistM2R = haversineDistance(busData.lat, busData.lng, m2rDest.lat, m2rDest.lng);
+
+                const movingTowardR2M = currDistR2M < prevDistR2M;
+                const movingTowardM2R = currDistM2R < prevDistM2R;
+
+                if (movingTowardR2M && !movingTowardM2R) return 'R2M';
+                if (movingTowardM2R && !movingTowardR2M) return 'M2R';
+            }
+
+            // 3. Heading fallback
             if (busData.heading != null && busData.heading !== 0) {
                 const r2mBearing = r2m.length >= 2 ? bearingBetween(r2m[0].lat, r2m[0].lng, r2m[r2m.length-1].lat, r2m[r2m.length-1].lng) : null;
                 const m2rBearing = m2r.length >= 2 ? bearingBetween(m2r[0].lat, m2r[0].lng, m2r[m2r.length-1].lat, m2r[m2r.length-1].lng) : null;
                 if (r2mBearing !== null && m2rBearing !== null)
                     return angleDiff(busData.heading, r2mBearing) <= angleDiff(busData.heading, m2rBearing) ? 'R2M' : 'M2R';
+            }
+
+            // 4. Timetable as last resort
+            const schedule = admin.schedule;
+            if (schedule?.ratmalana?.length || schedule?.maharagama?.length) {
+                const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+                const allTrips = [
+                    ...(schedule.ratmalana || []).map(t => ({ dir: 'R2M', mins: toMins(t) })),
+                    ...(schedule.maharagama || []).map(t => ({ dir: 'M2R', mins: toMins(t) }))
+                ].sort((a, b) => a.mins - b.mins);
+                let current = null;
+                for (const trip of allTrips) { if (trip.mins <= nowMins) current = trip; }
+                if (current) return current.dir;
+                if (allTrips.length) return allTrips[0].dir;
             }
 
             return r2m.length ? 'R2M' : 'M2R';
@@ -2626,6 +2689,12 @@
             if (!busData.inTrip || !busData.lat || !busData.lng) {
                 delete busNextStop[busId]; return;
             }
+            // Block if admin has marked this as unofficial
+            if (busAdminData[busId]?.officialTrip === false) {
+                delete busNextStop[busId]; return;
+            }
+            // Once reached, stay reached until trip ends
+            if (busNextStop[busId]?.reached) return;
             const admin = busAdminData[busId] || {};
             const direction = detectDirection(busId, busData);
             if (!direction) { delete busNextStop[busId]; return; }
@@ -2796,6 +2865,7 @@
             document.getElementById('bus-field-depot').value = admin.depot || '';
             document.getElementById('bus-field-routeno').value = admin.routeNo || '';
             document.getElementById('bus-field-notes').value = admin.notes || '';
+            setOfficialTripUI(admin.officialTrip !== false);
 
             // Render stops — always start with at least origin + destination
             const stops = admin.stops?.length >= 2 ? admin.stops : ['', ''];
@@ -2933,15 +3003,16 @@
         async function saveBusDetails() {
             if (!currentBusModalId) return;
             const { dbRef, update } = window.firebaseDbFns;
-            const stops = getBusStops().filter(s => s); // remove empty
+            const stops = getBusStops().filter(s => s);
             const data = {
                 plate: document.getElementById('bus-field-plate').value.trim(),
                 depot: document.getElementById('bus-field-depot').value.trim(),
                 routeNo: document.getElementById('bus-field-routeno').value.trim(),
-                stops: getBusStops(), // keep all including empties to preserve order in UI
-                route: stops.join(' → '), // derived summary for search/display
+                stops: getBusStops(),
+                route: stops.join(' → '),
                 notes: document.getElementById('bus-field-notes').value.trim(),
                 active: busAdminData[currentBusModalId]?.active !== false,
+                officialTrip: busAdminData[currentBusModalId]?.officialTrip !== false,
                 updatedAt: Date.now()
             };
             await update(dbRef(window.firebaseDatabase, `busAdmin/${currentBusModalId}`), data);
@@ -2949,6 +3020,32 @@
             const msg = document.getElementById('bus-modal-save-msg');
             msg.style.opacity = '1';
             setTimeout(() => msg.style.opacity = '0', 2000);
+        }
+
+        function setOfficialTripUI(isOfficial) {
+            const toggle = document.getElementById('official-trip-toggle');
+            const knob   = document.getElementById('official-trip-knob');
+            if (isOfficial) {
+                toggle.style.background = 'rgba(126,232,90,0.35)';
+                toggle.style.borderColor = 'rgba(126,232,90,0.5)';
+                knob.style.background = '#7ee85a';
+                knob.style.transform = 'translateX(20px)';
+            } else {
+                toggle.style.background = 'rgba(255,255,255,0.1)';
+                toggle.style.borderColor = 'rgba(255,255,255,0.12)';
+                knob.style.background = 'rgba(255,255,255,0.4)';
+                knob.style.transform = 'translateX(0)';
+            }
+        }
+
+        async function toggleOfficialTrip() {
+            if (!currentBusModalId) return;
+            const current = busAdminData[currentBusModalId]?.officialTrip !== false;
+            const newVal = !current;
+            const { dbRef, update } = window.firebaseDbFns;
+            await update(dbRef(window.firebaseDatabase, `busAdmin/${currentBusModalId}`), { officialTrip: newVal });
+            busAdminData[currentBusModalId] = { ...busAdminData[currentBusModalId], officialTrip: newVal };
+            setOfficialTripUI(newVal);
         }
 
         async function toggleBusActive() {
@@ -3000,6 +3097,7 @@
                 container.innerHTML = `<p class="text-gray-500 text-center col-span-3 py-8">${query || activeBusFilter !== 'all' ? 'No buses match your search' : 'No buses found'}</p>`;
                 return;
             }
+            try {
             
             container.innerHTML = busArray.map(([busId, bus]) => {
                 const displayName = bus.customName || busId;
@@ -3049,6 +3147,43 @@
                     glowClass = 'glow-grey';
                 }
 
+                // Compute ETA once — used in both panel and button
+                let cachedEtas = null;
+                try {
+                    if (bus.inTrip && !busNextStop[busId]?.reached) {
+                        cachedEtas = computeETAForAllStops(busId, bus);
+                    }
+                } catch(e) { cachedEtas = null; }
+
+                const etaPanelHTML = cachedEtas ? `
+                    <div id="eta-panel-${busId}" class="hidden mt-3 rounded-xl overflow-hidden" style="border:1px solid rgba(99,102,241,0.25);background:rgba(99,102,241,0.06);">
+                        <div class="px-4 py-2 flex items-center justify-between" style="border-bottom:1px solid rgba(99,102,241,0.15);">
+                            <p class="text-xs font-bold" style="color:#a5b4fc;">ETA — All Stops</p>
+                            <p class="text-[10px]" style="color:rgba(165,180,252,0.5);">${busNextStop[busId]?.direction === 'R2M' ? (busAdminData[busId]?.etaLabelOutbound || 'Outbound') : (busAdminData[busId]?.etaLabelReturn || 'Return')}</p>
+                        </div>
+                        <div class="px-4 py-3 space-y-1.5 overflow-y-auto" style="max-height:220px;">
+                            ${cachedEtas.map((e, i) => `
+                                <div class="flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <div style="width:6px;height:6px;border-radius:50%;flex-shrink:0;background:${i===0?'#a5b4fc':'rgba(165,180,252,0.3)'};"></div>
+                                        <p class="text-xs truncate" style="color:${i===0?'#fff':'rgba(255,255,255,0.5)'};">${e.stopName}</p>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                        <p class="text-xs font-bold font-mono" style="color:${i===0?'#a5b4fc':'rgba(165,180,252,0.6)'};">${e.arrival}</p>
+                                        <p class="text-[10px]" style="color:rgba(255,255,255,0.2);">${e.etaMins < 1 ? '<1m' : Math.round(e.etaMins)+'m'}</p>
+                                    </div>
+                                </div>`).join('')}
+                        </div>
+                    </div>` : '';
+
+                const etaBtnHTML = cachedEtas ? `
+                    <button onclick="toggleETAPanel('${busId}')" id="eta-btn-${busId}"
+                        class="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+                        style="border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;background:rgba(99,102,241,0.08);cursor:pointer;">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"/></svg>
+                        View ETA
+                    </button>` : '<div></div>';
+
                 return `
                 <div class="glass-panel ${glowClass} p-4 transition-all flex flex-col" style="${isTracked ? 'border-color: rgba(126,232,90,0.45); box-shadow: 0 0 18px -4px rgba(126,232,90,0.2);' : ''}">
                     <div class="flex items-center gap-3 mb-3">
@@ -3069,7 +3204,6 @@
                             </div>` : ''}
                             ${batteryBadgeHTML(bus.battery)}
                             ${nextStopBadgeHTML(busId)}
-                            ${bus.inTrip ? etaBadgeHTML(busId, bus) : ''}
                         </div>
                     </div>
                     <div class="space-y-1 text-xs text-gray-400 flex-1 cursor-pointer" onclick="focusOnBus('${busId}')">
@@ -3083,13 +3217,52 @@
                         <p>Updated: <span class="text-white">${bus.lastSeen || 'Unknown'}</span></p>
                         <p class="font-mono text-[10px] opacity-70">${bus.lat?.toFixed(4)}, ${bus.lng?.toFixed(4)}</p>
                     </div>
-                    <div class="flex justify-end mt-2">
+
+                    ${etaPanelHTML}
+                    <div class="flex items-center justify-between mt-2">
+                        ${etaBtnHTML}
                         <button onclick="openBusModal('${busId}')" class="glass-button p-1.5" style="border-radius:7px;" title="Edit bus details">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:rgba(255,255,255,0.4)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         </button>
                     </div>
                 </div>
             `}).join('');
+
+            // Restore expanded ETA panels after re-render
+            expandedETAPanels.forEach(busId => {
+                const panel = document.getElementById(`eta-panel-${busId}`);
+                const btn   = document.getElementById(`eta-btn-${busId}`);
+                if (panel) {
+                    panel.classList.remove('hidden');
+                    if (btn) {
+                        btn.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"/></svg> Hide ETA`;
+                        btn.style.background = 'rgba(99,102,241,0.18)';
+                    }
+                } else {
+                    // Bus no longer in list — remove from set
+                    expandedETAPanels.delete(busId);
+                }
+            });
+            } catch(err) {
+                console.error('renderBusCards error:', err);
+                container.innerHTML = `<p class="text-gray-500 text-center col-span-3 py-8">Error rendering cards: ${err.message}</p>`;
+            }
+        }
+
+        function toggleETAPanel(busId) {
+            const panel = document.getElementById(`eta-panel-${busId}`);
+            const btn   = document.getElementById(`eta-btn-${busId}`);
+            if (!panel) return;
+            const isOpen = !panel.classList.contains('hidden');
+            panel.classList.toggle('hidden', isOpen);
+            if (isOpen) expandedETAPanels.delete(busId);
+            else expandedETAPanels.add(busId);
+            if (btn) {
+                btn.innerHTML = isOpen
+                    ? `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"/></svg> View ETA`
+                    : `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"/></svg> Hide ETA`;
+                btn.style.background = isOpen ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.18)';
+            }
         }
 
         let activeBusFilter = 'all';
@@ -3192,9 +3365,37 @@
                 const isTerminal = i === 0 || i === stops.length - 1;
 
                 const color = isPassed ? '#f97316' : '#38bdf8';
-                // Size: terminals and next stop slightly bigger
                 const size = (isTerminal || isNext) ? 32 : 24;
                 const opacity = isPassed ? (isTerminal ? 1 : 0.8) : (isNext ? 1 : isTerminal ? 0.75 : 0.45);
+
+                // Build time label for tooltip
+                let timeLabel = '';
+                const etas = computeETAForAllStops(busId, busData);
+                if (isPassed) {
+                    // Estimate passed time: work backwards from current time using avg travel times
+                    const admin = busAdminData[busId] || {};
+                    const dirKey = n.direction === 'R2M' ? 'OUTBOUND' : 'RETURN';
+                    const times = admin.etaAvgTimes?.[dirKey];
+                    if (times) {
+                        let minsAgo = 0;
+                        for (let j = i; j < nextIdx; j++) {
+                            minsAgo += times[`${j}→${j+1}`] || 1;
+                        }
+                        const passedAt = new Date(Date.now() - minsAgo * 60 * 1000);
+                        timeLabel = `Passed ~${passedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+                    } else {
+                        timeLabel = 'Passed';
+                    }
+                } else if (etas) {
+                    const etaEntry = etas.find(e => e.stopIdx === i);
+                    if (etaEntry) {
+                        timeLabel = isNext ? `Next · ETA ${etaEntry.arrival}` : `ETA ${etaEntry.arrival}`;
+                    } else {
+                        timeLabel = isNext ? 'Next stop' : 'Upcoming';
+                    }
+                } else {
+                    timeLabel = isNext ? 'Next stop' : 'Upcoming';
+                }
 
                 const busIcon = L.divIcon({
                     className: '',
@@ -3218,9 +3419,9 @@
                 const marker = L.marker([stop.lat, stop.lng], { icon: busIcon, interactive: true }).addTo(liveMap);
 
                 marker.bindTooltip(`
-                    <div style="font-family:'Sora',sans-serif;font-size:11px;font-weight:600;color:#fff;background:rgba(8,8,8,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 9px;white-space:nowrap;">
-                        ${isNext ? '▸ ' : ''}${stop.name}
-                        <span style="font-size:10px;font-weight:400;color:${color};margin-left:5px;">${isPassed ? 'Passed' : isNext ? 'Next stop' : 'Upcoming'}</span>
+                    <div style="font-family:'Sora',sans-serif;background:rgba(8,8,8,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;white-space:nowrap;">
+                        <p style="margin:0 0 2px 0;font-size:11px;font-weight:600;color:#fff;">${isNext ? '▸ ' : ''}${stop.name}</p>
+                        <p style="margin:0;font-size:10px;font-weight:500;color:${color};">${timeLabel}</p>
                     </div>
                 `, { permanent: false, direction: 'top', className: 'route-stop-tooltip', offset: [0, -4] });
 
