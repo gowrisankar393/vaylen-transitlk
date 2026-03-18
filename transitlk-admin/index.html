@@ -436,6 +436,45 @@
         }
         .login-btn:hover svg { stroke: #96d46c; }
 
+        .modal-btn {
+            background: linear-gradient(135deg, #0598B1, #26A38C, #96d46c);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            position: relative;
+            isolation: isolate;
+            padding: 2px;
+            font-family: 'Sora', sans-serif;
+        }
+        .modal-btn-inner {
+            position: relative;
+            z-index: 1;
+            border-radius: 10px;
+            padding: 9px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: transparent;
+            font-weight: 700;
+            font-size: 0.875rem;
+            transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .modal-btn:hover .modal-btn-inner { background: #000; }
+        .modal-btn-inner span {
+            position: relative; z-index: 1;
+            transition: -webkit-text-fill-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #000;
+            -webkit-text-fill-color: #000;
+        }
+        .modal-btn:hover .modal-btn-inner span {
+            background: linear-gradient(135deg, #0598B1, #26A38C, #96d46c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
         /* ── LOGIN SCREEN ── */
 
         .login-card {
@@ -993,10 +1032,12 @@
                 </div>
 
                 <!-- Modal Tabs -->
-                <div class="flex border-b" style="border-color:rgba(255,255,255,0.06);">
-                    <button onclick="switchBusTab('details')" id="bus-tab-details" class="bus-modal-tab bus-modal-tab-active px-5 py-3 text-xs font-semibold">Details</button>
-                    <button onclick="switchBusTab('route')" id="bus-tab-route" class="bus-modal-tab px-5 py-3 text-xs font-semibold">Route Data</button>
-                    <button onclick="switchBusTab('schedule')" id="bus-tab-schedule" class="bus-modal-tab px-5 py-3 text-xs font-semibold">Schedule</button>
+                <div class="flex border-b overflow-x-auto" style="border-color:rgba(255,255,255,0.06);">
+                    <button onclick="switchBusTab('details')" id="bus-tab-details" class="bus-modal-tab bus-modal-tab-active px-5 py-3 text-xs font-semibold flex-shrink-0">Details</button>
+                    <button onclick="switchBusTab('route')" id="bus-tab-route" class="bus-modal-tab px-5 py-3 text-xs font-semibold flex-shrink-0">Route Data</button>
+                    <button onclick="switchBusTab('schedule')" id="bus-tab-schedule" class="bus-modal-tab px-5 py-3 text-xs font-semibold flex-shrink-0">Schedule</button>
+                    <button onclick="switchBusTab('eta')" id="bus-tab-eta" class="bus-modal-tab px-5 py-3 text-xs font-semibold flex-shrink-0">ETA Model</button>
+                    <button onclick="switchBusTab('alternates')" id="bus-tab-alternates" class="bus-modal-tab px-5 py-3 text-xs font-semibold flex-shrink-0">Other</button>
                 </div>
 
                 <!-- Tab: Details -->
@@ -1066,7 +1107,7 @@
                             <div id="stops-m2r-table"></div>
                         </div>
                     </div>
-                    <button onclick="saveRouteData()" class="w-full py-2.5 text-sm font-bold rounded-xl" style="background:linear-gradient(135deg,#0598B1,#26A38C,#96d46c);color:#000;border:none;cursor:pointer;">Save Route Data</button>
+                    <button onclick="saveRouteData()" class="modal-btn w-full"><div class="modal-btn-inner"><span>Save Route Data</span></div></button>
                     <p id="route-save-msg" class="text-xs text-center" style="color:rgba(126,232,90,0.8);opacity:0;transition:opacity 0.3s ease;">Saved!</p>
                 </div>
 
@@ -1094,17 +1135,95 @@
                             </div>
                         </div>
                     </div>
-                    <button onclick="saveScheduleData()" class="w-full py-2.5 text-sm font-bold rounded-xl" style="background:linear-gradient(135deg,#0598B1,#26A38C,#96d46c);color:#000;border:none;cursor:pointer;">Save Schedule</button>
+                    <button onclick="saveScheduleData()" class="modal-btn w-full"><div class="modal-btn-inner"><span>Save Schedule</span></div></button>
                     <p id="schedule-save-msg" class="text-xs text-center" style="color:rgba(126,232,90,0.8);opacity:0;transition:opacity 0.3s ease;">Saved!</p>
                 </div>
 
-                <!-- Footer -->
-                <div class="px-6 pb-6 flex items-center justify-between gap-3">
-                    <p id="bus-modal-save-msg" class="text-xs" style="color:rgba(126,232,90,0.8);opacity:0;transition:opacity 0.3s ease;">Saved!</p>
-                    <div class="flex gap-2 ml-auto">
-                        <button onclick="closeBusModal()" class="glass-button px-4 py-2 text-sm font-semibold" style="border-radius:10px;">Cancel</button>
-                        <button onclick="saveBusDetails()" class="px-4 py-2 text-sm font-bold rounded-xl" style="background:linear-gradient(135deg,#0598B1,#26A38C,#96d46c);color:#000;border:none;cursor:pointer;">Save Details</button>
+                <!-- Tab: ETA Model -->
+                <div id="bus-tabpanel-eta" class="hidden px-6 py-5 space-y-4" style="max-height:60vh;overflow-y:auto;">
+                    <div>
+                        <p class="text-sm font-bold mb-1">ETA Model</p>
+                        <p class="text-xs mb-3" style="color:rgba(255,255,255,0.3);">Upload the <span style="color:rgba(255,255,255,0.5);font-family:monospace;">*_eta_stops.json</span> file exported from the ETA training notebook. Contains learned travel times between stops.</p>
+                        <label id="eta-upload-label" class="flex items-center justify-center gap-2 w-full py-6 rounded-xl cursor-pointer transition-all" style="border:2px dashed rgba(255,255,255,0.1);background:rgba(255,255,255,0.02);"
+                            onmouseover="this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)'">
+                            <svg class="w-5 h-5" style="color:rgba(255,255,255,0.3)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V9l-6-6z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v6h6"/></svg>
+                            <span id="eta-upload-label-text" class="text-sm" style="color:rgba(255,255,255,0.4);">Click to upload *_eta_stops.json</span>
+                            <input type="file" accept=".json" class="hidden" onchange="handleETAModelUpload(event)">
+                        </label>
                     </div>
+
+                    <!-- Model stats (shown after upload or if already saved) -->
+                    <div id="eta-model-stats" class="hidden space-y-3">
+                        <div class="rounded-xl p-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">
+                            <p class="text-xs font-bold mb-2" style="color:rgba(255,255,255,0.5);">MODEL INFO</p>
+                            <div class="grid grid-cols-2 gap-2" id="eta-model-info-grid"></div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold mb-2" style="color:rgba(255,255,255,0.4);">OUTBOUND SEGMENT TIMES</p>
+                            <div id="eta-outbound-times" class="space-y-1"></div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold mb-2" style="color:rgba(255,255,255,0.4);">RETURN SEGMENT TIMES</p>
+                            <div id="eta-return-times" class="space-y-1"></div>
+                        </div>
+                    </div>
+
+                    <button onclick="saveETAModel()" class="modal-btn w-full"><div class="modal-btn-inner"><span>Save ETA Model</span></div></button>
+                    <p id="eta-save-msg" class="text-xs text-center" style="color:rgba(126,232,90,0.8);opacity:0;transition:opacity 0.3s ease;">Saved!</p>
+                </div>
+
+                <!-- Tab: Alternates -->
+                <div id="bus-tabpanel-alternates" class="hidden px-6 py-5 space-y-5" style="max-height:60vh;overflow-y:auto;">
+                    <div>
+                        <p class="text-sm font-bold mb-1">Other Settings</p>
+                        <p class="text-xs mb-4" style="color:rgba(255,255,255,0.3);">Additional configuration for this bus. More options will be added here over time.</p>
+                    </div>
+
+                    <div style="height:1px;background:rgba(255,255,255,0.05);"></div>
+                    <p class="text-sm font-semibold">Alternative Starting Points</p>
+                    <p class="text-xs -mt-3" style="color:rgba(255,255,255,0.3);">Pick stops from the route where this bus sometimes starts its trip instead of the usual origin.</p>
+
+                    <!-- Outbound alternates -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <p class="text-sm font-semibold">Outbound</p>
+                                <p class="text-[10px] mt-0.5" style="color:rgba(255,255,255,0.3);">Stops where an outbound trip can alternatively start</p>
+                            </div>
+                            <button onclick="addAlternateStart('outbound')" class="text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1" style="border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.04);cursor:pointer;">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                                Add
+                            </button>
+                        </div>
+                        <div id="alternates-outbound-list" class="space-y-2"></div>
+                    </div>
+
+                    <div style="height:1px;background:rgba(255,255,255,0.05);"></div>
+
+                    <!-- Return alternates -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <p class="text-sm font-semibold">Return</p>
+                                <p class="text-[10px] mt-0.5" style="color:rgba(255,255,255,0.3);">Stops where a return trip can alternatively start</p>
+                            </div>
+                            <button onclick="addAlternateStart('return')" class="text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1" style="border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.04);cursor:pointer;">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                                Add
+                            </button>
+                        </div>
+                        <div id="alternates-return-list" class="space-y-2"></div>
+                    </div>
+
+                    <button onclick="saveAlternates()" class="modal-btn w-full"><div class="modal-btn-inner"><span>Save Settings</span></div></button>
+                    <p id="alternates-save-msg" class="text-xs text-center" style="color:rgba(126,232,90,0.8);opacity:0;transition:opacity 0.3s ease;">Saved!</p>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-6 py-4 flex items-center justify-between gap-3" style="border-top:1px solid rgba(255,255,255,0.06);">
+                    <button onclick="closeBusModal()" class="glass-button px-5 py-2 text-sm font-semibold" style="border-radius:10px;">Cancel</button>
+                    <p id="bus-modal-save-msg" class="text-xs text-center flex-1" style="color:rgba(126,232,90,0.8);opacity:0;transition:opacity 0.3s ease;">Saved!</p>
+                    <button onclick="saveBusDetails()" class="modal-btn"><div class="modal-btn-inner" style="padding:8px 20px;"><span>Save Details</span></div></button>
                 </div>
             </div>
         </div>
@@ -1255,6 +1374,7 @@
         let busAdminData = {}; // cache of admin metadata keyed by busId
         let currentBusModalId = null;
         let busMarkers = {};
+        const busLastHeading = {}; // persist last valid heading per bus
         let liveUnsubscribe = null;
         let trackedBusId = null;
         // Two separate stores: last known position (updated every Firebase tick) and when it stopped moving
@@ -1849,11 +1969,11 @@
                     busMarkers[busId].setPopupContent(createBusPopup(busId, busData, color, statusText));
                     
                     // Update marker icon color
-                    const newIcon = createBusIcon(color, busData.heading || 0);
+                    const newIcon = createBusIcon(color, getBusHeading(busId, busData.heading));
                     busMarkers[busId].setIcon(newIcon);
                 } else {
                     // Create new marker
-                    const icon = createBusIcon(color, busData.heading || 0);
+                    const icon = createBusIcon(color, getBusHeading(busId, busData.heading));
                     
                     const marker = L.marker(pos, { icon }).addTo(liveMap);
                     marker.bindPopup(createBusPopup(busId, busData, color, statusText));
@@ -1901,6 +2021,14 @@
             
             // Update bus list cards
             updateBusListCards(busArray);
+        }
+
+        function getBusHeading(busId, heading) {
+            if (heading && heading !== 0) {
+                busLastHeading[busId] = heading;
+                return heading;
+            }
+            return busLastHeading[busId] || 0;
         }
 
         function createBusIcon(color, heading) {
@@ -1990,6 +2118,7 @@
                     <p style="margin:0 0 4px 0;font-size:11px;font-weight:600;color:${color};">${statusText}</p>
                     ${busData.inTrip === true ? `<p style="margin:0 0 4px 0;font-size:11px;color:rgba(255,255,255,0.6);">Speed: <span style="color:#fff;font-weight:600;">${speed} km/h</span></p>` : ''}
                     ${busData.inTrip === true ? nextStopPopupHTML(busId) : ''}
+                    ${busData.inTrip === true ? etaPopupHTML(busId, busData) : ''}
                     <p style="margin:${busData.inTrip ? '6px' : '0'} 0 2px 0;font-size:10px;color:rgba(255,255,255,0.35);">${lastSeen}</p>
                     ${busData.battery != null && busData.battery >= 0 ? `<p style="margin:3px 0 0 0;font-size:10px;color:${batteryColor(busData.battery)};">⬡ Battery: <span style="font-weight:600;">${busData.battery}%</span>${busData.charging ? ' <span style="color:#7ee85a;">⚡</span>' : ''}</p>` : ''}
                     <p style="margin:0;font-size:10px;color:rgba(255,255,255,0.2);font-family:monospace;">${busData.lat?.toFixed(4)}, ${busData.lng?.toFixed(4)}</p>
@@ -1999,7 +2128,7 @@
 
         // ── BUS MODAL TABS ──
         function switchBusTab(tab) {
-            ['details','route','schedule'].forEach(t => {
+            ['details','route','schedule','eta','alternates'].forEach(t => {
                 document.getElementById(`bus-tabpanel-${t}`).classList.toggle('hidden', t !== tab);
                 const btn = document.getElementById(`bus-tab-${t}`);
                 btn.classList.toggle('bus-modal-tab-active', t === tab);
@@ -2171,7 +2300,226 @@
             msg.style.opacity = '1'; setTimeout(() => msg.style.opacity = '0', 2000);
         }
 
-        // ── NEXT STOP ENGINE ──
+        // ── ETA MODEL ──
+        let pendingETAModel = null;
+
+        function handleETAModelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!data.avg_travel_times) throw new Error('Missing avg_travel_times');
+                    pendingETAModel = data;
+                    const lbl = document.getElementById('eta-upload-label-text');
+                    lbl.textContent = `✓ ${file.name}`; lbl.style.color = '#7ee85a';
+                    renderETAModelStats(data);
+                } catch(err) {
+                    const lbl = document.getElementById('eta-upload-label-text');
+                    lbl.textContent = '⚠ Invalid file — expected *_eta_stops.json';
+                    lbl.style.color = '#ef4444';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function renderETAModelStats(data) {
+            document.getElementById('eta-model-stats').classList.remove('hidden');
+            const grid = document.getElementById('eta-model-info-grid');
+            const items = [
+                ['Route', data.route_id || '—'],
+                ['Outbound', data.label_outbound || '—'],
+                ['Return', data.label_return || '—'],
+                ['Stops (out)', (data.outbound || []).length],
+                ['Stops (ret)', (data.return || []).length],
+                ['Segments', Object.keys(data.avg_travel_times?.OUTBOUND || {}).length + Object.keys(data.avg_travel_times?.RETURN || {}).length],
+            ];
+            grid.innerHTML = items.map(([k,v]) => `
+                <div class="rounded-lg px-2.5 py-1.5" style="background:rgba(255,255,255,0.04);">
+                    <p class="text-[9px] font-semibold" style="color:rgba(255,255,255,0.3);">${k}</p>
+                    <p class="text-xs font-bold text-white">${v}</p>
+                </div>`).join('');
+
+            const renderTimes = (timesObj, stopsArr, containerId) => {
+                const el = document.getElementById(containerId);
+                if (!timesObj || !stopsArr) { el.innerHTML = '<p class="text-xs" style="color:rgba(255,255,255,0.25);">No data</p>'; return; }
+                el.innerHTML = Object.entries(timesObj).map(([seg, mins]) => {
+                    const [fromIdx, toIdx] = seg.split('→').map(Number);
+                    const fromName = stopsArr[fromIdx]?.name || `Stop ${fromIdx}`;
+                    const toName   = stopsArr[toIdx]?.name   || `Stop ${toIdx}`;
+                    const bar = Math.min(100, (mins / 6) * 100);
+                    return `<div class="flex items-center gap-2 py-1">
+                        <div class="text-[10px] truncate flex-1" style="color:rgba(255,255,255,0.5);">${fromName} → ${toName}</div>
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <div style="width:40px;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;">
+                                <div style="width:${bar}%;height:100%;background:#38bdf8;border-radius:2px;"></div>
+                            </div>
+                            <span class="text-[10px] font-mono font-bold" style="color:#38bdf8;min-width:28px;">${mins}m</span>
+                        </div>
+                    </div>`;
+                }).join('');
+            };
+            renderTimes(data.avg_travel_times?.OUTBOUND, data.outbound, 'eta-outbound-times');
+            renderTimes(data.avg_travel_times?.RETURN,   data.return,   'eta-return-times');
+        }
+
+        async function saveETAModel() {
+            if (!currentBusModalId || !pendingETAModel) return;
+            const { dbRef, update } = window.firebaseDbFns;
+            const etaData = {
+                etaRouteId:       pendingETAModel.route_id || '',
+                etaLabelOutbound: pendingETAModel.label_outbound || '',
+                etaLabelReturn:   pendingETAModel.label_return || '',
+                etaAvgTimes:      pendingETAModel.avg_travel_times,
+            };
+            await update(dbRef(window.firebaseDatabase, `busAdmin/${currentBusModalId}`), etaData);
+            busAdminData[currentBusModalId] = { ...busAdminData[currentBusModalId], ...etaData };
+            const msg = document.getElementById('eta-save-msg');
+            msg.style.opacity = '1'; setTimeout(() => msg.style.opacity = '0', 2000);
+        }
+
+        // ── ALTERNATES ──
+        // pendingAlternates = { outbound: [{name, stopIdx}], return: [{name, stopIdx}] }
+        let pendingAlternates = { outbound: [], return: [] };
+
+        function getStopsForDirection(dir) {
+            const admin = busAdminData[currentBusModalId] || {};
+            return dir === 'outbound' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
+        }
+
+        function addAlternateStart(dir) {
+            const stops = getStopsForDirection(dir);
+            if (!stops.length) {
+                alert('Upload route stops first (Route Data tab) before adding alternates.');
+                return;
+            }
+            pendingAlternates[dir].push({ stopIdx: 1, name: stops[1]?.name || '' });
+            renderAlternatesList(dir);
+        }
+
+        function removeAlternate(dir, idx) {
+            pendingAlternates[dir].splice(idx, 1);
+            renderAlternatesList(dir);
+        }
+
+        function renderAlternatesList(dir) {
+            const container = document.getElementById(`alternates-${dir}-list`);
+            const stops = getStopsForDirection(dir);
+            const items = pendingAlternates[dir];
+
+            if (!items.length) {
+                container.innerHTML = `<p class="text-xs py-2" style="color:rgba(255,255,255,0.25);">No alternates added — bus always starts from the first stop.</p>`;
+                return;
+            }
+
+            container.innerHTML = items.map((alt, i) => `
+                <div class="flex items-center gap-2 p-2.5 rounded-xl" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);">
+                    <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${dir==='outbound'?'#38bdf8':'#a855f7'};"></div>
+                    <select onchange="updateAlternate('${dir}',${i},this.value)" class="flex-1 text-xs px-2 py-1.5 rounded-lg" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;font-family:'Sora',sans-serif;">
+                        ${stops.map((s,si) => `<option value="${si}" ${si===alt.stopIdx?'selected':''}>${s.name}</option>`).join('')}
+                    </select>
+                    <button onclick="removeAlternate('${dir}',${i})" class="glass-button p-1.5 flex-shrink-0" style="border-radius:6px;">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:rgba(239,68,68,0.7)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>`).join('');
+        }
+
+        function updateAlternate(dir, idx, stopIdx) {
+            const stops = getStopsForDirection(dir);
+            pendingAlternates[dir][idx] = {
+                stopIdx: parseInt(stopIdx),
+                name: stops[parseInt(stopIdx)]?.name || ''
+            };
+        }
+
+        async function saveAlternates() {
+            if (!currentBusModalId) return;
+            const { dbRef, update } = window.firebaseDbFns;
+            await update(dbRef(window.firebaseDatabase, `busAdmin/${currentBusModalId}`), {
+                alternateStarts: pendingAlternates
+            });
+            busAdminData[currentBusModalId] = { ...busAdminData[currentBusModalId], alternateStarts: pendingAlternates };
+            const msg = document.getElementById('alternates-save-msg');
+            msg.style.opacity = '1'; setTimeout(() => msg.style.opacity = '0', 2000);
+        }
+
+        // ── ETA COMPUTATION ENGINE ──
+        // Uses avg_travel_times from the uploaded ETA model to estimate arrival
+        // at all upcoming stops based on current stop index + elapsed time.
+
+        function computeETAForAllStops(busId, busData) {
+            const admin = busAdminData[busId] || {};
+            const n = busNextStop[busId];
+            if (!n || !admin.etaAvgTimes) return null;
+            if (n.reached) return null; // destination reached — no ETA needed
+
+            const direction = n.direction; // 'R2M' or 'M2R'
+            const dirKey    = direction === 'R2M' ? 'OUTBOUND' : 'RETURN';
+            const times     = admin.etaAvgTimes[dirKey];
+            if (!times) return null;
+
+            const stops     = direction === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
+            const lastIdx   = n.stopNo - 1; // 0-based index of next stop (bus is approaching this)
+            const now       = new Date();
+
+            // Elapsed time at current segment (since last stop)
+            // Estimate: if bus is between stops, some of the first segment time is already used
+            const distToNext   = n.dist;
+            const totalSegDist = lastIdx > 0
+                ? haversineDistance(stops[lastIdx-1]?.lat||busData.lat, stops[lastIdx-1]?.lng||busData.lng, stops[lastIdx].lat, stops[lastIdx].lng)
+                : distToNext;
+            const segKey       = `${Math.max(0,lastIdx-1)}→${lastIdx}`;
+            const segAvgMins   = times[segKey] || 1;
+            const fractionDone = totalSegDist > 0 ? Math.max(0, 1 - distToNext / totalSegDist) : 0;
+            const elapsedInSeg = fractionDone * segAvgMins;
+
+            // Build ETA list for all upcoming stops
+            const etas = [];
+            let cumMins = segAvgMins - elapsedInSeg; // time to reach next stop
+
+            for (let i = lastIdx; i < stops.length; i++) {
+                if (i > lastIdx) {
+                    const key = `${i-1}→${i}`;
+                    cumMins += (times[key] || 1);
+                }
+                const arrivalTime = new Date(now.getTime() + cumMins * 60 * 1000);
+                etas.push({
+                    stopIdx  : i,
+                    stopName : stops[i].name,
+                    etaMins  : Math.round(cumMins * 10) / 10,
+                    arrival  : arrivalTime.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }),
+                });
+            }
+            return etas;
+        }
+
+        function etaBadgeHTML(busId, busData) {
+            const etas = computeETAForAllStops(busId, busData);
+            if (!etas || etas.length === 0) return '';
+            const next = etas[0];
+            const dest = etas[etas.length - 1];
+            return `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold" style="background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.35);color:#a5b4fc;">
+                <svg class="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"/></svg>
+                <span>${next.arrival}</span>
+                <span style="opacity:0.5;">·</span>
+                <span style="opacity:0.6;">dest ${dest.arrival}</span>
+            </div>`;
+        }
+
+        function etaPopupHTML(busId, busData) {
+            const etas = computeETAForAllStops(busId, busData);
+            if (!etas || etas.length === 0) return '';
+            const next = etas[0];
+            const dest = etas[etas.length - 1];
+            const midStops = etas.slice(1, -1).filter((_, i) => i % 3 === 0); // show every 3rd
+            return `<div style="margin:4px 0 2px 0;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06);">
+                <p style="margin:0 0 3px 0;font-size:10px;font-weight:700;color:#a5b4fc;letter-spacing:0.05em;">ETA</p>
+                <p style="margin:0 0 2px 0;font-size:11px;color:#fff;font-weight:600;">${next.stopName} <span style="color:#a5b4fc;">${next.arrival}</span></p>
+                ${midStops.map(s => `<p style="margin:0 0 1px 0;font-size:10px;color:rgba(255,255,255,0.4);">${s.stopName} <span style="color:rgba(165,180,252,0.7);">${s.arrival}</span></p>`).join('')}
+                <p style="margin:2px 0 0 0;font-size:10px;color:rgba(255,255,255,0.5);">Destination <span style="color:#a5b4fc;font-weight:600;">${dest.arrival}</span></p>
+            </div>`;
+        }
         const busNextStop = {}; // { busId: { stop, dist, direction, tripNo } }
 
         function isParkedByLastSeen(lastSeen, threshold = 30 * 60 * 1000) {
@@ -2204,28 +2552,37 @@
             const m2r = admin.stopsM2R || [];
             if (!r2m.length && !m2r.length) return null;
 
+            // Build extended start point lists including alternates
+            const alts = admin.alternateStarts || {};
+            const r2mStarts = [r2m[0], ...(alts.outbound || []).map(a => r2m[a.stopIdx]).filter(Boolean)];
+            const m2rStarts = [m2r[0], ...(alts.return  || []).map(a => m2r[a.stopIdx]).filter(Boolean)];
+
             // Use timetable — find the most recent departure and its direction
             if (schedule?.ratmalana?.length || schedule?.maharagama?.length) {
                 const now = new Date();
                 const nowMins = now.getHours() * 60 + now.getMinutes();
-
                 const allTrips = [
                     ...(schedule.ratmalana || []).map(t => ({ dir: 'R2M', mins: toMins(t) })),
                     ...(schedule.maharagama || []).map(t => ({ dir: 'M2R', mins: toMins(t) }))
                 ].sort((a, b) => a.mins - b.mins);
-
-                // Last trip that has already departed
                 let current = null;
                 for (const trip of allTrips) {
                     if (trip.mins <= nowMins) current = trip;
                 }
                 if (current) return current.dir;
-
-                // Before first departure of the day — use first trip direction
                 if (allTrips.length) return allTrips[0].dir;
             }
 
-            // Fallback: heading-based
+            // Fallback: check if bus is near any alternate start point first
+            const nearThreshold = 300; // 300m — close to a known start point
+            for (const s of r2mStarts) {
+                if (s && haversineDistance(busData.lat, busData.lng, s.lat, s.lng) < nearThreshold) return 'R2M';
+            }
+            for (const s of m2rStarts) {
+                if (s && haversineDistance(busData.lat, busData.lng, s.lat, s.lng) < nearThreshold) return 'M2R';
+            }
+
+            // Fallback: heading
             if (busData.heading != null && busData.heading !== 0) {
                 const r2mBearing = r2m.length >= 2 ? bearingBetween(r2m[0].lat, r2m[0].lng, r2m[r2m.length-1].lat, r2m[r2m.length-1].lng) : null;
                 const m2rBearing = m2r.length >= 2 ? bearingBetween(m2r[0].lat, m2r[0].lng, m2r[m2r.length-1].lat, m2r[m2r.length-1].lng) : null;
@@ -2276,23 +2633,46 @@
             const stops = direction === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
             if (!stops.length) { delete busNextStop[busId]; return; }
 
-            // Find the closest stop the bus hasn't fully passed yet
-            // Strategy: find closest stop, then pick the next one in sequence
-            const withDist = stops.map((s, i) => ({ ...s, i, dist: haversineDistance(busData.lat, busData.lng, s.lat, s.lng) }));
+            // Check if bus is near an alternate start — if so, slice stops from that index
+            const alts = admin.alternateStarts || {};
+            const dirAlts = direction === 'R2M' ? (alts.outbound || []) : (alts.return || []);
+            let startIdx = 0;
+            for (const alt of dirAlts) {
+                const altStop = stops[alt.stopIdx];
+                if (altStop && haversineDistance(busData.lat, busData.lng, altStop.lat, altStop.lng) < 300) {
+                    startIdx = alt.stopIdx;
+                    break;
+                }
+            }
+            const activeStops = startIdx > 0 ? stops.slice(startIdx) : stops;
+
+            const withDist = activeStops.map((s, i) => ({ ...s, i, dist: haversineDistance(busData.lat, busData.lng, s.lat, s.lng) }));
             withDist.sort((a, b) => a.dist - b.dist);
             const closest = withDist[0];
+            const lastStop = activeStops[activeStops.length - 1];
+            const distToDestination = haversineDistance(busData.lat, busData.lng, lastStop.lat, lastStop.lng);
 
-            // If closest is the last stop, it's the destination
+            if (distToDestination < 30) {
+                busNextStop[busId] = {
+                    stop: lastStop,
+                    dist: Math.round(distToDestination),
+                    direction,
+                    stopNo: activeStops.length,
+                    totalStops: activeStops.length,
+                    tripInfo: getCurrentTripNo(busId),
+                    reached: true
+                };
+                return;
+            }
+
             let nextIdx = closest.i;
-            // If bus has passed this stop (dist < 80m and not last), advance to next
-            if (closest.dist < 80 && closest.i < stops.length - 1) nextIdx = closest.i + 1;
-            // If clearly between two stops, pick the one ahead (higher index in sequence)
-            else if (closest.dist > 80 && closest.i < stops.length - 1) {
+            if (closest.dist < 80 && closest.i < activeStops.length - 1) nextIdx = closest.i + 1;
+            else if (closest.dist > 80 && closest.i < activeStops.length - 1) {
                 const nextCandidate = withDist.find(s => s.i === closest.i + 1);
                 if (nextCandidate && nextCandidate.dist < closest.dist * 1.5) nextIdx = nextCandidate.i;
             }
 
-            const nextStop = stops[nextIdx];
+            const nextStop = activeStops[nextIdx];
             const dist = haversineDistance(busData.lat, busData.lng, nextStop.lat, nextStop.lng);
             const tripInfo = getCurrentTripNo(busId);
 
@@ -2301,8 +2681,10 @@
                 dist: Math.round(dist),
                 direction,
                 stopNo: nextIdx + 1,
-                totalStops: stops.length,
-                tripInfo
+                totalStops: activeStops.length,
+                tripInfo,
+                reached: false,
+                activeStops
             };
         }
 
@@ -2345,6 +2727,10 @@
         function nextStopBadgeHTML(busId) {
             const n = busNextStop[busId];
             if (!n) return '';
+            if (n.reached) return `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold" style="background:rgba(126,232,90,0.12);border:1px solid rgba(126,232,90,0.3);color:#7ee85a;">
+                <svg class="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                <span>Reached</span>
+            </div>`;
             const sheetNames = busAdminData[busId]?.stopsSheetNames;
             const dirLabel = sheetNames
                 ? (n.direction === 'R2M' ? sheetNames.outbound : sheetNames.return)
@@ -2359,6 +2745,7 @@
         function nextStopPopupHTML(busId) {
             const n = busNextStop[busId];
             if (!n) return '';
+            if (n.reached) return `<p style="margin:4px 0 2px 0;font-size:11px;color:#7ee85a;font-weight:700;">✓ Reached ${n.stop.name}</p>`;
             const sheetNames = busAdminData[busId]?.stopsSheetNames;
             const dirLabel = sheetNames
                 ? (n.direction === 'R2M' ? sheetNames.outbound : sheetNames.return)
@@ -2430,13 +2817,16 @@
             document.getElementById('bus-modal-save-msg').style.opacity = '0';
 
             // Reset pending uploads
-            pendingStopsR2M = null; pendingStopsM2R = null; pendingSchedule = null;
+            pendingStopsR2M = null; pendingStopsM2R = null; pendingSchedule = null; pendingETAModel = null;
+            pendingAlternates = { outbound: [], return: [] };
 
             // Reset upload labels
             const stopsLbl = document.getElementById('stops-upload-label-text');
             const schedLbl = document.getElementById('schedule-upload-label-text');
+            const etaLbl   = document.getElementById('eta-upload-label-text');
             stopsLbl.textContent = 'Click to upload stops .xlsx'; stopsLbl.style.color = 'rgba(255,255,255,0.4)';
             schedLbl.textContent = 'Click to upload timetable .xlsx'; schedLbl.style.color = 'rgba(255,255,255,0.4)';
+            etaLbl.textContent   = 'Click to upload *_eta_stops.json'; etaLbl.style.color = 'rgba(255,255,255,0.4)';
 
             // Restore saved route data
             if (admin.stopsR2M?.length || admin.stopsM2R?.length) {
@@ -2456,6 +2846,32 @@
             } else {
                 document.getElementById('schedule-preview').classList.add('hidden');
             }
+
+            // Restore saved ETA model
+            if (admin.etaAvgTimes) {
+                etaLbl.textContent = '✓ ETA model loaded from Firebase'; etaLbl.style.color = '#7ee85a';
+                const fakeData = {
+                    route_id: admin.etaRouteId || '',
+                    label_outbound: admin.etaLabelOutbound || '',
+                    label_return: admin.etaLabelReturn || '',
+                    outbound: admin.stopsR2M || [],
+                    return: admin.stopsM2R || [],
+                    avg_travel_times: admin.etaAvgTimes,
+                };
+                renderETAModelStats(fakeData);
+            } else {
+                document.getElementById('eta-model-stats').classList.add('hidden');
+            }
+
+            // Restore saved alternates
+            if (admin.alternateStarts) {
+                pendingAlternates = {
+                    outbound: admin.alternateStarts.outbound || [],
+                    return: admin.alternateStarts.return || []
+                };
+            }
+            renderAlternatesList('outbound');
+            renderAlternatesList('return');
 
             switchBusTab('details');
             document.getElementById('bus-detail-modal').classList.remove('hidden');
@@ -2634,7 +3050,7 @@
                 }
 
                 return `
-                <div class="glass-panel ${glowClass} p-4 transition-all" style="${isTracked ? 'border-color: rgba(126,232,90,0.45); box-shadow: 0 0 18px -4px rgba(126,232,90,0.2);' : ''}">
+                <div class="glass-panel ${glowClass} p-4 transition-all flex flex-col" style="${isTracked ? 'border-color: rgba(126,232,90,0.45); box-shadow: 0 0 18px -4px rgba(126,232,90,0.2);' : ''}">
                     <div class="flex items-center gap-3 mb-3">
                         <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer" style="background: ${bgColor}; border: 2px solid ${borderColor}" onclick="focusOnBus('${busId}')">
                             <svg class="w-5 h-5" style="color: ${borderColor}" fill="currentColor" viewBox="0 0 24 24">
@@ -2653,19 +3069,24 @@
                             </div>` : ''}
                             ${batteryBadgeHTML(bus.battery)}
                             ${nextStopBadgeHTML(busId)}
-                            <button onclick="openBusModal('${busId}')" class="glass-button p-1.5" style="border-radius:7px;" title="Edit bus details">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:rgba(255,255,255,0.4)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                            </button>
+                            ${bus.inTrip ? etaBadgeHTML(busId, bus) : ''}
                         </div>
                     </div>
-                    <div class="space-y-1 text-xs text-gray-400 cursor-pointer" onclick="focusOnBus('${busId}')">
+                    <div class="space-y-1 text-xs text-gray-400 flex-1 cursor-pointer" onclick="focusOnBus('${busId}')">
                         ${admin.depot ? `<p>Depot: <span class="text-white">${admin.depot}</span></p>` : ''}
                         ${bus.battery != null && bus.battery >= 0 ? `<p>Battery: <span style="color:${batteryColor(bus.battery)};font-weight:700;">${bus.battery}%</span>${bus.charging ? ` <span style="color:#7ee85a;">⚡</span>` : ''}</p>` : `<p>Battery: <span style="color:rgba(255,255,255,0.3);">No data</span></p>`}
-                        ${bus.inTrip === true && busNextStop[busId] ? `<p>Next stop: <span class="text-white font-semibold">${busNextStop[busId].stop.name}</span> <span class="text-gray-500">· ${formatDist(busNextStop[busId].dist)}</span></p>` : ''}
+                        ${bus.inTrip === true && busNextStop[busId] ? (busNextStop[busId].reached
+                            ? `<p>Status: <span style="color:#7ee85a;font-weight:700;">✓ Reached ${busNextStop[busId].stop.name}</span></p>`
+                            : `<p>Next stop: <span class="text-white font-semibold">${busNextStop[busId].stop.name}</span> <span class="text-gray-500">· ${formatDist(busNextStop[busId].dist)}</span></p>`) : ''}
                         ${bus.inTrip === true && busNextStop[busId]?.tripInfo ? `<p>Trip: <span class="text-white">${busNextStop[busId].tripInfo.tripNo}/${busNextStop[busId].tripInfo.total}</span></p>` : ''}
                         ${bus.inTrip === true ? `<p>Speed: <span class="text-white font-bold">${speed} km/h</span></p>` : ''}
                         <p>Updated: <span class="text-white">${bus.lastSeen || 'Unknown'}</span></p>
                         <p class="font-mono text-[10px] opacity-70">${bus.lat?.toFixed(4)}, ${bus.lng?.toFixed(4)}</p>
+                    </div>
+                    <div class="flex justify-end mt-2">
+                        <button onclick="openBusModal('${busId}')" class="glass-button p-1.5" style="border-radius:7px;" title="Edit bus details">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:rgba(255,255,255,0.4)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        </button>
                     </div>
                 </div>
             `}).join('');
@@ -2748,7 +3169,7 @@
             const n = busNextStop[busId];
             if (!n) { clearRouteStops(); return; }
 
-            const stops = n.direction === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
+            const stops = n.activeStops || (n.direction === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []));
             if (!stops.length) { clearRouteStops(); return; }
 
             const cacheKey = `${busId}_${n.direction}_${n.stopNo}`;
@@ -2757,7 +3178,7 @@
 
             clearRouteStops();
 
-            const nextIdx = n.stopNo - 1;
+            const nextIdx = n.reached ? stops.length : n.stopNo - 1;
 
             // Subtle dashed route line
             const routeLine = L.polyline(stops.map(s => [s.lat, s.lng]), {
