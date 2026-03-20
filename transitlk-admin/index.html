@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TransitLK Admin Dashboard</title>
     <link rel="icon" type="image/png" href="logo2.png">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -42,8 +42,6 @@
             if (localStorage.getItem('rememberMe') === 'true') {
                 sessionStorage.setItem('lastActivity', Date.now());
             }
-            updateDate();
-            checkAuth();
         });
     </script>
     <style>
@@ -689,7 +687,7 @@
             <!-- Logo -->
             <div class="flex flex-col items-center mb-10">
                 <div class="login-logo-ring relative mb-6" style="width:80px;height:80px;">
-                    <div class="relative z-10 w-full h-full rounded-full bg-gradient-to-br from-[rgba(126,232,90,0.12)] to-[rgba(45,212,191,0.08)] border border-white/10 flex items-center justify-center overflow-hidden">
+                    <div class="relative z-10 w-full h-full rounded-full bg-gradient-to-br from-[rgba(126,232,90,0.12)] to-[rgba(45,212,191,0.08)] flex items-center justify-center overflow-hidden">
                         <img src="logo2.png" alt="TransitLK" class="w-14 h-14 object-contain" style="filter:drop-shadow(0 0 10px rgba(126,232,90,0.4))">
                     </div>
                 </div>
@@ -935,6 +933,7 @@
                     <div class="flex items-center gap-1.5"><span style="width:7px;height:7px;border-radius:50%;background:#ef4444;box-shadow:0 0 5px rgba(239,68,68,0.6);display:inline-block;"></span>Offline</div>
                 </div>
 
+
                 <div class="glass-panel p-4 mb-6" style="position:relative;">
                     <div id="live-map"></div>
                     <button onclick="recenterMap()" id="recenter-btn" style="
@@ -967,6 +966,7 @@
                         </svg>
                         Recenter
                     </button>
+
                 </div>
                 
                 <div class="mb-4 flex flex-col gap-3">
@@ -1034,9 +1034,7 @@
                 <!-- Modal Tabs -->
                 <div class="flex border-b overflow-x-auto" style="border-color:rgba(255,255,255,0.06);">
                     <button onclick="switchBusTab('details')" id="bus-tab-details" class="bus-modal-tab bus-modal-tab-active px-5 py-3 text-xs font-semibold flex-shrink-0">Details</button>
-                    <button onclick="switchBusTab('route')" id="bus-tab-route" class="bus-modal-tab px-5 py-3 text-xs font-semibold flex-shrink-0">Route Data</button>
-                    <button onclick="switchBusTab('schedule')" id="bus-tab-schedule" class="bus-modal-tab px-5 py-3 text-xs font-semibold flex-shrink-0">Schedule</button>
-                    <button onclick="switchBusTab('eta')" id="bus-tab-eta" class="bus-modal-tab px-5 py-3 text-xs font-semibold flex-shrink-0">ETA Model</button>
+                    <button onclick="switchBusTab('route')" id="bus-tab-route" class="bus-modal-tab px-5 py-3 text-xs font-semibold flex-shrink-0">Routes</button>
                     <button onclick="switchBusTab('alternates')" id="bus-tab-alternates" class="bus-modal-tab px-5 py-3 text-xs font-semibold flex-shrink-0">Other</button>
                 </div>
 
@@ -1099,38 +1097,39 @@
                 </div><!-- /bus-tabpanel-details -->
 
                 <!-- Tab: Route Data -->
-                <div id="bus-tabpanel-route" class="hidden px-6 py-5 space-y-5" style="max-height:60vh;overflow-y:auto;">
+                <div id="bus-tabpanel-route" class="hidden px-6 py-5 space-y-4" style="max-height:60vh;overflow-y:auto;">
+                    <!-- Route selector -->
+                    <div class="flex items-center justify-between">
+                        <div id="route-selector-pills" class="flex flex-wrap gap-2"></div>
+                        <button onclick="addNewRoute()" class="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg flex-shrink-0" style="border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.04);cursor:pointer;">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                            Add Route
+                        </button>
+                    </div>
+                    <!-- Route label input -->
+                    <div id="route-label-row" class="hidden">
+                        <label class="section-label block mb-1.5">Route Label</label>
+                        <input id="route-label-input" type="text" placeholder="e.g. Ratmalana ↔ Maharagama" class="w-full px-3 py-2.5 text-sm" style="border-radius:10px;">
+                    </div>
+                    <!-- Stops upload -->
                     <div>
                         <p class="text-sm font-bold mb-1">Stops File</p>
-                        <p class="text-xs mb-3" style="color:rgba(255,255,255,0.3);">Upload an Excel file (.xlsx) with two sheets — Sheet 1: outbound trip, Sheet 2: return trip. Columns: <span style="color:rgba(255,255,255,0.5);font-family:monospace;">StopName, Coordinates</span></p>
-                        <label id="stops-upload-label" class="flex items-center justify-center gap-2 w-full py-6 rounded-xl cursor-pointer transition-all" style="border:2px dashed rgba(255,255,255,0.1);background:rgba(255,255,255,0.02);"
-                            onmouseover="this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)'">
+                        <p class="text-xs mb-3" style="color:rgba(255,255,255,0.3);">Excel (.xlsx) — Sheet 1: outbound, Sheet 2: return. Columns: <span style="color:rgba(255,255,255,0.5);font-family:monospace;">StopName, Coordinates</span></p>
+                        <label id="stops-upload-label" class="flex items-center justify-center gap-2 w-full py-5 rounded-xl cursor-pointer transition-all" style="border:2px dashed rgba(255,255,255,0.1);background:rgba(255,255,255,0.02);" onmouseover="this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)'">
                             <svg class="w-5 h-5" style="color:rgba(255,255,255,0.3)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                             <span id="stops-upload-label-text" class="text-sm" style="color:rgba(255,255,255,0.4);">Click to upload stops .xlsx</span>
                             <input type="file" accept=".xlsx" class="hidden" onchange="handleStopsXLSX(event)">
                         </label>
                     </div>
                     <div id="stops-preview" class="space-y-3 hidden">
-                        <div>
-                            <p class="text-xs font-bold mb-1.5" style="color:rgba(255,255,255,0.4);">R2M — Ratmalana → Maharagama</p>
-                            <div id="stops-r2m-table"></div>
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold mb-1.5" style="color:rgba(255,255,255,0.4);">M2R — Maharagama → Ratmalana</p>
-                            <div id="stops-m2r-table"></div>
-                        </div>
+                        <div><p class="text-xs font-bold mb-1.5" style="color:rgba(255,255,255,0.4);">OUTBOUND</p><div id="stops-r2m-table"></div></div>
+                        <div><p class="text-xs font-bold mb-1.5" style="color:rgba(255,255,255,0.4);">RETURN</p><div id="stops-m2r-table"></div></div>
                     </div>
-                    <button onclick="saveRouteData()" class="modal-btn w-full"><div class="modal-btn-inner"><span>Save Route Data</span></div></button>
-                    <p id="route-save-msg" class="text-xs text-center" style="color:rgba(126,232,90,0.8);opacity:0;transition:opacity 0.3s ease;">Saved!</p>
-                </div>
-
-                <!-- Tab: Schedule -->
-                <div id="bus-tabpanel-schedule" class="hidden px-6 py-5 space-y-5" style="max-height:60vh;overflow-y:auto;">
+                    <!-- Schedule upload -->
                     <div>
                         <p class="text-sm font-bold mb-1">Timetable File</p>
-                        <p class="text-xs mb-3" style="color:rgba(255,255,255,0.3);">Upload an Excel file (.xlsx) with two sheets — Sheet 1: outbound departures, Sheet 2: return departures. One column: <span style="color:rgba(255,255,255,0.5);font-family:monospace;">Time</span> (HH:MM, 24hr)</p>
-                        <label id="schedule-upload-label" class="flex items-center justify-center gap-2 w-full py-6 rounded-xl cursor-pointer transition-all" style="border:2px dashed rgba(255,255,255,0.1);background:rgba(255,255,255,0.02);"
-                            onmouseover="this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)'">
+                        <p class="text-xs mb-3" style="color:rgba(255,255,255,0.3);">Excel (.xlsx) — Sheet 1: outbound departures, Sheet 2: return departures. Column: <span style="color:rgba(255,255,255,0.5);font-family:monospace;">Time</span> (HH:MM)</p>
+                        <label id="schedule-upload-label" class="flex items-center justify-center gap-2 w-full py-5 rounded-xl cursor-pointer transition-all" style="border:2px dashed rgba(255,255,255,0.1);background:rgba(255,255,255,0.02);" onmouseover="this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)'">
                             <svg class="w-5 h-5" style="color:rgba(255,255,255,0.3)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                             <span id="schedule-upload-label-text" class="text-sm" style="color:rgba(255,255,255,0.4);">Click to upload timetable .xlsx</span>
                             <input type="file" accept=".xlsx" class="hidden" onchange="handleScheduleXLSX(event)">
@@ -1138,96 +1137,59 @@
                     </div>
                     <div id="schedule-preview" class="space-y-3 hidden">
                         <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <p class="text-xs font-bold mb-1.5" style="color:rgba(255,255,255,0.4);">FROM RATMALANA</p>
-                                <div id="schedule-ratmalana-list" class="space-y-1"></div>
-                            </div>
-                            <div>
-                                <p class="text-xs font-bold mb-1.5" style="color:rgba(255,255,255,0.4);">FROM MAHARAGAMA</p>
-                                <div id="schedule-maharagama-list" class="space-y-1"></div>
-                            </div>
+                            <div><p class="text-xs font-bold mb-1.5" style="color:rgba(255,255,255,0.4);">OUTBOUND</p><div id="schedule-ratmalana-list" class="space-y-1"></div></div>
+                            <div><p class="text-xs font-bold mb-1.5" style="color:rgba(255,255,255,0.4);">RETURN</p><div id="schedule-maharagama-list" class="space-y-1"></div></div>
                         </div>
                     </div>
-                    <button onclick="saveScheduleData()" class="modal-btn w-full"><div class="modal-btn-inner"><span>Save Schedule</span></div></button>
-                    <p id="schedule-save-msg" class="text-xs text-center" style="color:rgba(126,232,90,0.8);opacity:0;transition:opacity 0.3s ease;">Saved!</p>
+                    <!-- Delete route -->
+                    <div id="route-delete-row" class="hidden pt-2" style="border-top:1px solid rgba(255,255,255,0.05);">
+                        <button onclick="deleteCurrentRoute()" class="text-xs font-semibold px-3 py-1.5 rounded-lg" style="border:1px solid rgba(239,68,68,0.3);color:#ef4444;background:rgba(239,68,68,0.06);cursor:pointer;">Remove This Route</button>
+                    </div>
+                    <button onclick="saveCurrentRoute()" class="modal-btn w-full"><div class="modal-btn-inner"><span>Save Route</span></div></button>
+                    <p id="route-save-msg" class="text-xs text-center" style="color:rgba(126,232,90,0.8);opacity:0;transition:opacity 0.3s ease;">Saved!</p>
                 </div>
 
-                <!-- Tab: ETA Model -->
-                <div id="bus-tabpanel-eta" class="hidden px-6 py-5 space-y-4" style="max-height:60vh;overflow-y:auto;">
-                    <div>
-                        <p class="text-sm font-bold mb-1">ETA Model</p>
-                        <p class="text-xs mb-3" style="color:rgba(255,255,255,0.3);">Upload the <span style="color:rgba(255,255,255,0.5);font-family:monospace;">*_eta_stops.json</span> file exported from the ETA training notebook. Contains learned travel times between stops.</p>
-                        <label id="eta-upload-label" class="flex items-center justify-center gap-2 w-full py-6 rounded-xl cursor-pointer transition-all" style="border:2px dashed rgba(255,255,255,0.1);background:rgba(255,255,255,0.02);"
-                            onmouseover="this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)'">
-                            <svg class="w-5 h-5" style="color:rgba(255,255,255,0.3)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V9l-6-6z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v6h6"/></svg>
-                            <span id="eta-upload-label-text" class="text-sm" style="color:rgba(255,255,255,0.4);">Click to upload *_eta_stops.json</span>
-                            <input type="file" accept=".json" class="hidden" onchange="handleETAModelUpload(event)">
-                        </label>
-                    </div>
+                <!-- Tab: Schedule (kept for compat but hidden — merged into Route Data) -->
+                <div id="bus-tabpanel-schedule" class="hidden"></div>
 
-                    <!-- Model stats (shown after upload or if already saved) -->
-                    <div id="eta-model-stats" class="hidden space-y-3">
-                        <div class="rounded-xl p-3" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">
-                            <p class="text-xs font-bold mb-2" style="color:rgba(255,255,255,0.5);">MODEL INFO</p>
-                            <div class="grid grid-cols-2 gap-2" id="eta-model-info-grid"></div>
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold mb-2" style="color:rgba(255,255,255,0.4);">OUTBOUND SEGMENT TIMES</p>
-                            <div id="eta-outbound-times" class="space-y-1"></div>
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold mb-2" style="color:rgba(255,255,255,0.4);">RETURN SEGMENT TIMES</p>
-                            <div id="eta-return-times" class="space-y-1"></div>
-                        </div>
-                    </div>
+                <!-- Tab: ETA Model (kept for compat but hidden — merged into Route Data) -->
+                <div id="bus-tabpanel-eta" class="hidden"></div>
 
-                    <button onclick="saveETAModel()" class="modal-btn w-full"><div class="modal-btn-inner"><span>Save ETA Model</span></div></button>
-                    <p id="eta-save-msg" class="text-xs text-center" style="color:rgba(126,232,90,0.8);opacity:0;transition:opacity 0.3s ease;">Saved!</p>
-                </div>
-
-                <!-- Tab: Alternates -->
+                <!-- Tab: Other -->
                 <div id="bus-tabpanel-alternates" class="hidden px-6 py-5 space-y-5" style="max-height:60vh;overflow-y:auto;">
                     <div>
                         <p class="text-sm font-bold mb-1">Other Settings</p>
                         <p class="text-xs mb-4" style="color:rgba(255,255,255,0.3);">Additional configuration for this bus. More options will be added here over time.</p>
                     </div>
-
+                    <!-- Active Route Selector -->
+                    <div>
+                        <p class="text-sm font-semibold mb-1">Active Route</p>
+                        <p class="text-xs mb-2" style="color:rgba(255,255,255,0.3);">Select which route this bus is currently running</p>
+                        <select id="active-route-select" onchange="setActiveRoute(this.value)" class="w-full px-3 py-2.5 text-sm rounded-xl" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;font-family:'Sora',sans-serif;">
+                        </select>
+                    </div>
                     <div style="height:1px;background:rgba(255,255,255,0.05);"></div>
                     <p class="text-sm font-semibold">Alternative Starting Points</p>
-                    <p class="text-xs -mt-3" style="color:rgba(255,255,255,0.3);">Pick stops from the route where this bus sometimes starts its trip instead of the usual origin.</p>
-
-                    <!-- Outbound alternates -->
+                    <p class="text-xs -mt-3" style="color:rgba(255,255,255,0.3);">For the active route — stops where this bus sometimes starts instead of the usual origin.</p>
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <div>
-                                <p class="text-sm font-semibold">Outbound</p>
-                                <p class="text-[10px] mt-0.5" style="color:rgba(255,255,255,0.3);">Stops where an outbound trip can alternatively start</p>
-                            </div>
+                            <p class="text-sm font-semibold">Outbound</p>
                             <button onclick="addAlternateStart('outbound')" class="text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1" style="border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.04);cursor:pointer;">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-                                Add
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg> Add
                             </button>
                         </div>
                         <div id="alternates-outbound-list" class="space-y-2"></div>
                     </div>
-
                     <div style="height:1px;background:rgba(255,255,255,0.05);"></div>
-
-                    <!-- Return alternates -->
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <div>
-                                <p class="text-sm font-semibold">Return</p>
-                                <p class="text-[10px] mt-0.5" style="color:rgba(255,255,255,0.3);">Stops where a return trip can alternatively start</p>
-                            </div>
+                            <p class="text-sm font-semibold">Return</p>
                             <button onclick="addAlternateStart('return')" class="text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1" style="border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.04);cursor:pointer;">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-                                Add
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg> Add
                             </button>
                         </div>
                         <div id="alternates-return-list" class="space-y-2"></div>
                     </div>
-
                     <button onclick="saveAlternates()" class="modal-btn w-full"><div class="modal-btn-inner"><span>Save Settings</span></div></button>
                     <p id="alternates-save-msg" class="text-xs text-center" style="color:rgba(126,232,90,0.8);opacity:0;transition:opacity 0.3s ease;">Saved!</p>
                 </div>
@@ -1395,6 +1357,25 @@
         let busStoppedSince = {};  // { busId: timestamp } — when bus stopped moving
         try { busStoppedSince = JSON.parse(localStorage.getItem('busStoppedSince') || '{}'); } catch(e) { busStoppedSince = {}; }
         const expandedETAPanels = new Set(); // buses with ETA panel open — survives re-renders
+
+        // ── ML ETA cache ─────────────────────────────────────────────────────
+        // Populated in real time from buses/{busId}/etas written by the Render backend.
+        const mlEtaCache = {};
+
+        function startMLEtaListener() {
+            const { dbRef, onValue } = window.firebaseDbFns;
+            onValue(dbRef(window.firebaseDatabase, 'buses'), (snapshot) => {
+                const buses = snapshot.val();
+                if (!buses) return;
+                Object.entries(buses).forEach(([busId, busData]) => {
+                    if (busData?.etas?.stops?.length) {
+                        mlEtaCache[busId] = busData.etas;
+                    } else {
+                        delete mlEtaCache[busId];
+                    }
+                });
+            });
+        }
         let liveUnsubscribe = null;
         let trackedBusId = null;
         // Two separate stores: last known position (updated every Firebase tick) and when it stopped moving
@@ -1425,12 +1406,6 @@
             return since && (Date.now() - since) >= threshold;
         }
 
-        function checkParked(busId, busData, threshold = 30 * 60 * 1000) {
-            if (busData.inTrip || !busData.online) return false;
-            if (!busData.tripEndedAt) return false;
-            return (Date.now() - busData.tripEndedAt) >= threshold;
-        }
-
         function togglePassword() {
             const input = document.getElementById('login-password');
             const icon = document.getElementById('eye-icon');
@@ -1446,6 +1421,7 @@
             document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             document.getElementById('today-date').textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         }
+        window.updateDate = updateDate;
 
         const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
@@ -1472,6 +1448,7 @@
                 }
             });
         }
+        window.checkAuth = checkAuth;
 
         function showLogin() {
             dashboardLoaded = false;
@@ -1491,6 +1468,7 @@
             );
             loadData();
             startBusAdminListener();
+            startMLEtaListener();
         }
 
         document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -1926,11 +1904,10 @@
             const { dbRef, onValue } = window.firebaseDbFns;
             const busesRef = dbRef(window.firebaseDatabase, 'buses');
             
-            console.log('Starting live tracking listener...');
+            
             
             liveUnsubscribe = onValue(busesRef, (snapshot) => {
                 const buses = snapshot.val();
-                console.log('Received bus data:', buses);
                 updateLiveBuses(buses);
             }, (error) => {
                 console.error('Firebase listener error:', error);
@@ -2035,7 +2012,7 @@
                 }
 
                 // Compute next stop if bus is in trip and has route data
-                if (busData.inTrip && (busAdminData[busId]?.stopsR2M || busAdminData[busId]?.stopsM2R)) {
+                if (busData.inTrip && getActiveRouteData(busId)) {
                     computeNextStop(busId, busData);
                 } else if (!busData.inTrip) {
                     delete busNextStop[busId];
@@ -2177,32 +2154,171 @@
         // ── BUS MODAL TABS ──
         function switchBusTab(tab) {
             ['details','route','schedule','eta','alternates'].forEach(t => {
-                document.getElementById(`bus-tabpanel-${t}`).classList.toggle('hidden', t !== tab);
+                document.getElementById(`bus-tabpanel-${t}`)?.classList.toggle('hidden', t !== tab);
                 const btn = document.getElementById(`bus-tab-${t}`);
-                btn.classList.toggle('bus-modal-tab-active', t === tab);
+                if (btn) btn.classList.toggle('bus-modal-tab-active', t === tab);
             });
         }
 
         // ── CSV PARSING ──
         // old vars removed — see EXCEL UPLOAD HANDLERS block
 
-        function parseCSV(text) {
-            const lines = text.trim().split('\n').filter(l => l.trim());
-            // skip header if first cell is non-numeric / non-time
-            const isHeader = l => isNaN(parseFloat(l.split(',')[0])) && !/^\d{1,2}:\d{2}/.test(l.split(',')[0].trim());
-            return lines.filter((l, i) => i === 0 ? !isHeader(l) : true).map(l => l.split(',').map(c => c.trim()));
+        // ── MULTI-ROUTE SYSTEM ──
+        // Routes stored as busAdmin/{busId}/routes/{routeId} = { label, stopsR2M, stopsM2R, schedule, etaAvgTimes, stopsSheetNames, alternateStarts }
+        // Active route: busAdmin/{busId}/activeRouteId
+        // Backward compat: if no routes object, fall back to flat fields (stopsR2M, stopsM2R, etc.)
+
+        let pendingStopsR2M = null, pendingStopsM2R = null, pendingSchedule = null, pendingETAModel = null;
+        let pendingAlternates = { outbound: [], return: [] };
+        let currentRouteId = null; // which route is selected in the Routes tab
+        let pendingRoutes = {};    // local copy of routes being edited
+
+        // ── Helper: get active route data for a bus (with backward compat) ──
+        function getActiveRouteData(busId) {
+            const admin = busAdminData[busId] || {};
+            const activeId = admin.activeRouteId;
+            if (admin.routes && activeId && admin.routes[activeId]) return admin.routes[activeId];
+            // Backward compat — flat fields
+            if (admin.stopsR2M || admin.stopsM2R) {
+                return {
+                    label: admin.etaRouteId || 'Default Route',
+                    stopsR2M: admin.stopsR2M || [],
+                    stopsM2R: admin.stopsM2R || [],
+                    schedule: admin.schedule || null,
+                    etaAvgTimes: admin.etaAvgTimes || null,
+                    stopsSheetNames: admin.stopsSheetNames || null,
+                    alternateStarts: admin.alternateStarts || { outbound: [], return: [] },
+                };
+            }
+            return null;
         }
 
-        // ── EXCEL UPLOAD HANDLERS ──
-        let pendingStopsR2M = null, pendingStopsM2R = null, pendingSchedule = null;
-
+        // ── Coordinate parser ──
         function parseCoordinates(coordStr) {
             if (!coordStr) return { lat: NaN, lng: NaN };
-            // Supports "6.83319, 79.92539" or "6.83319,79.92539" or "6.83319 79.92539"
             const parts = String(coordStr).split(/[\s,]+/).map(p => parseFloat(p.trim())).filter(n => !isNaN(n));
             return parts.length >= 2 ? { lat: parts[0], lng: parts[1] } : { lat: NaN, lng: NaN };
         }
 
+        // ── Route selector UI ──
+        function renderRoutePills() {
+            const container = document.getElementById('route-selector-pills');
+            const routeIds = Object.keys(pendingRoutes);
+            if (!routeIds.length) {
+                container.innerHTML = '<p class="text-xs" style="color:rgba(255,255,255,0.3);">No routes added yet</p>';
+                return;
+            }
+            container.innerHTML = routeIds.map(id => {
+                const r = pendingRoutes[id];
+                const isActive = id === currentRouteId;
+                return `<button onclick="selectRouteInModal('${id}')" class="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all" style="border:1px solid ${isActive?'rgba(5,152,177,0.6)':'rgba(255,255,255,0.1)'};color:${isActive?'#38bdf8':'rgba(255,255,255,0.5)'};background:${isActive?'rgba(5,152,177,0.12)':'rgba(255,255,255,0.04)'};cursor:pointer;">${r.label || id}</button>`;
+            }).join('');
+        }
+
+        function selectRouteInModal(routeId) {
+            // Save current pending data into pendingRoutes before switching
+            if (currentRouteId) flushPendingToRoute(currentRouteId);
+            currentRouteId = routeId;
+            loadRouteIntoUI(routeId);
+            renderRoutePills();
+        }
+
+        function flushPendingToRoute(routeId) {
+            if (!routeId || !pendingRoutes[routeId]) return;
+            const r = pendingRoutes[routeId];
+            if (pendingStopsR2M) r.stopsR2M = pendingStopsR2M;
+            if (pendingStopsM2R) r.stopsM2R = pendingStopsM2R;
+            if (pendingSchedule) r.schedule = pendingSchedule;
+            if (pendingETAModel) {
+                r.etaAvgTimes = pendingETAModel.avg_travel_times;
+                r.etaRouteId = pendingETAModel.route_id || '';
+                r.etaLabelOutbound = pendingETAModel.label_outbound || '';
+                r.etaLabelReturn = pendingETAModel.label_return || '';
+            }
+            const labelInput = document.getElementById('route-label-input');
+            if (labelInput) r.label = labelInput.value.trim() || r.label;
+        }
+
+        function loadRouteIntoUI(routeId) {
+            const r = pendingRoutes[routeId] || {};
+            // Reset pending
+            pendingStopsR2M = null; pendingStopsM2R = null; pendingSchedule = null; pendingETAModel = null;
+
+            // Label
+            document.getElementById('route-label-row').classList.remove('hidden');
+            document.getElementById('route-label-input').value = r.label || '';
+
+            // Show delete button if more than one route
+            const deleteRow = document.getElementById('route-delete-row');
+            deleteRow.classList.toggle('hidden', Object.keys(pendingRoutes).length <= 1);
+
+            // Stops
+            const stopsLbl = document.getElementById('stops-upload-label-text');
+            if (r.stopsR2M?.length || r.stopsM2R?.length) {
+                stopsLbl.textContent = '✓ Stops loaded'; stopsLbl.style.color = '#7ee85a';
+                document.getElementById('stops-preview').classList.remove('hidden');
+                const sn = r.stopsSheetNames;
+                document.querySelector('#stops-preview div:first-child p').textContent = sn ? `Sheet 1 — ${sn.outbound} (Outbound)` : 'Outbound';
+                document.querySelector('#stops-preview div:last-child p').textContent = sn ? `Sheet 2 — ${sn.return} (Return)` : 'Return';
+                renderStopsTable(r.stopsR2M || [], 'stops-r2m-table');
+                renderStopsTable(r.stopsM2R || [], 'stops-m2r-table');
+            } else {
+                stopsLbl.textContent = 'Click to upload stops .xlsx'; stopsLbl.style.color = 'rgba(255,255,255,0.4)';
+                document.getElementById('stops-preview').classList.add('hidden');
+            }
+
+            // Schedule
+            const schedLbl = document.getElementById('schedule-upload-label-text');
+            if (r.schedule?.ratmalana || r.schedule?.maharagama) {
+                schedLbl.textContent = '✓ Schedule loaded'; schedLbl.style.color = '#7ee85a';
+                document.getElementById('schedule-preview').classList.remove('hidden');
+                renderSchedulePreview(r.schedule.ratmalana || [], r.schedule.maharagama || []);
+            } else {
+                schedLbl.textContent = 'Click to upload timetable .xlsx'; schedLbl.style.color = 'rgba(255,255,255,0.4)';
+                document.getElementById('schedule-preview').classList.add('hidden');
+            }
+
+            // ETA
+
+        }
+
+        function addNewRoute() {
+            const newId = `route_${Date.now()}`;
+            pendingRoutes[newId] = { label: 'New Route', stopsR2M: [], stopsM2R: [], schedule: null, etaAvgTimes: null };
+            if (currentRouteId) flushPendingToRoute(currentRouteId);
+            currentRouteId = newId;
+            renderRoutePills();
+            loadRouteIntoUI(newId);
+        }
+
+        function deleteCurrentRoute() {
+            if (!currentRouteId || Object.keys(pendingRoutes).length <= 1) return;
+            delete pendingRoutes[currentRouteId];
+            currentRouteId = Object.keys(pendingRoutes)[0];
+            renderRoutePills();
+            loadRouteIntoUI(currentRouteId);
+        }
+
+        async function saveCurrentRoute() {
+            if (!currentBusModalId || !currentRouteId) return;
+            flushPendingToRoute(currentRouteId);
+            const { dbRef, update } = window.firebaseDbFns;
+            // Save all routes
+            const admin = busAdminData[currentBusModalId] || {};
+            const activeId = admin.activeRouteId || currentRouteId;
+            await update(dbRef(window.firebaseDatabase, `busAdmin/${currentBusModalId}`), {
+                routes: pendingRoutes,
+                activeRouteId: Object.keys(pendingRoutes).includes(activeId) ? activeId : currentRouteId
+            });
+            busAdminData[currentBusModalId] = { ...admin, routes: pendingRoutes, activeRouteId: activeId };
+            renderRoutePills();
+            const msg = document.getElementById('route-save-msg');
+            msg.style.opacity = '1'; setTimeout(() => msg.style.opacity = '0', 2000);
+            // Refresh active route selector in Other tab
+            renderActiveRouteSelector();
+        }
+
+        // ── Stops XLSX handler ──
         function handleStopsXLSX(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -2210,39 +2326,166 @@
             reader.onload = e => {
                 try {
                     const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                    const r2mSheet = wb.Sheets[wb.SheetNames[0]];  // Sheet 1 = outbound
-                    const m2rSheet = wb.Sheets[wb.SheetNames[1]];  // Sheet 2 = return
-                    const sheet1Name = wb.SheetNames[0];
-                    const sheet2Name = wb.SheetNames[1];
-
+                    const r2mSheet = wb.Sheets[wb.SheetNames[0]];
+                    const m2rSheet = wb.Sheets[wb.SheetNames[1]];
+                    const sheet1Name = wb.SheetNames[0], sheet2Name = wb.SheetNames[1];
                     const parseSheet = sheet => {
                         if (!sheet) return [];
-                        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-                        // Skip header row
-                        return rows.slice(1).map(r => {
+                        return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }).slice(1).map(r => {
                             const { lat, lng } = parseCoordinates(r[1]);
                             return { name: String(r[0] || '').trim(), lat, lng };
                         }).filter(s => s.name && !isNaN(s.lat) && !isNaN(s.lng));
                     };
-
                     pendingStopsR2M = parseSheet(r2mSheet);
                     pendingStopsM2R = parseSheet(m2rSheet);
-                    window._stopsSheetNames = { outbound: sheet1Name, return: sheet2Name };
-
-                    document.getElementById('stops-upload-label-text').textContent = `✓ ${file.name}`;
-                    document.getElementById('stops-upload-label-text').style.color = '#7ee85a';
+                    if (currentRouteId && pendingRoutes[currentRouteId]) {
+                        pendingRoutes[currentRouteId].stopsSheetNames = { outbound: sheet1Name, return: sheet2Name };
+                    }
+                    const lbl = document.getElementById('stops-upload-label-text');
+                    lbl.textContent = `✓ ${file.name}`; lbl.style.color = '#7ee85a';
                     document.getElementById('stops-preview').classList.remove('hidden');
                     document.querySelector('#stops-preview div:first-child p').textContent = `Sheet 1 — ${sheet1Name} (Outbound)`;
                     document.querySelector('#stops-preview div:last-child p').textContent = `Sheet 2 — ${sheet2Name} (Return)`;
                     renderStopsTable(pendingStopsR2M, 'stops-r2m-table');
                     renderStopsTable(pendingStopsM2R, 'stops-m2r-table');
                 } catch(err) {
-                    console.error('Stops parse error:', err);
-                    document.getElementById('stops-upload-label-text').textContent = '⚠ Could not parse file';
-                    document.getElementById('stops-upload-label-text').style.color = '#ef4444';
+                    const lbl = document.getElementById('stops-upload-label-text');
+                    lbl.textContent = '⚠ Could not parse file'; lbl.style.color = '#ef4444';
                 }
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        // ── Schedule XLSX handler ──
+        function handleScheduleXLSX(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                    const ratSheet = wb.Sheets[wb.SheetNames[0]];
+                    const mahSheet = wb.Sheets[wb.SheetNames[1]];
+                    const sheet1Name = wb.SheetNames[0], sheet2Name = wb.SheetNames[1];
+                    const parseTimes = sheet => {
+                        if (!sheet) return [];
+                        return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }).slice(1).map(r => {
+                            const val = r[0];
+                            if (val === '' || val == null) return null;
+                            if (typeof val === 'number') {
+                                const totalMins = Math.round(val * 24 * 60);
+                                return `${String(Math.floor(totalMins/60)).padStart(2,'0')}:${String(totalMins%60).padStart(2,'0')}`;
+                            }
+                            const s = String(val).trim();
+                            return /^\d{1,2}:\d{2}$/.test(s) ? s : null;
+                        }).filter(Boolean);
+                    };
+                    pendingSchedule = { ratmalana: parseTimes(ratSheet), maharagama: parseTimes(mahSheet) };
+                    const lbl = document.getElementById('schedule-upload-label-text');
+                    lbl.textContent = `✓ ${file.name}`; lbl.style.color = '#7ee85a';
+                    document.getElementById('schedule-preview').classList.remove('hidden');
+                    document.querySelector('#schedule-preview .grid div:first-child p').textContent = `FROM ${sheet1Name.toUpperCase()}`;
+                    document.querySelector('#schedule-preview .grid div:last-child p').textContent = `FROM ${sheet2Name.toUpperCase()}`;
+                    renderSchedulePreview(pendingSchedule.ratmalana, pendingSchedule.maharagama);
+                } catch(err) {
+                    const lbl = document.getElementById('schedule-upload-label-text');
+                    lbl.textContent = '⚠ Could not parse file'; lbl.style.color = '#ef4444';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // ── ETA model handler ──
+        // saveRouteData, saveScheduleData, saveETAModel handled by saveCurrentRoute above
+
+        // ── Other tab: active route selector + alternates ──
+        function renderActiveRouteSelector() {
+            const sel = document.getElementById('active-route-select');
+            if (!sel) return;
+            const admin = busAdminData[currentBusModalId] || {};
+            const routes = admin.routes || pendingRoutes || {};
+            const activeId = admin.activeRouteId || Object.keys(routes)[0] || '';
+            sel.innerHTML = Object.keys(routes).length
+                ? Object.entries(routes).map(([id, r]) => `<option value="${id}" ${id===activeId?'selected':''}>${r.label || id}</option>`).join('')
+                : '<option value="">No routes configured</option>';
+        }
+
+        async function setActiveRoute(routeId) {
+            if (!currentBusModalId || !routeId) return;
+            const { dbRef, update } = window.firebaseDbFns;
+            await update(dbRef(window.firebaseDatabase, `busAdmin/${currentBusModalId}`), { activeRouteId: routeId });
+            busAdminData[currentBusModalId] = { ...busAdminData[currentBusModalId], activeRouteId: routeId };
+            // Reset next stop so it recomputes with new route
+            delete busNextStop[currentBusModalId];
+        }
+
+        // ── Alternates (scoped to active route) ──
+        function getStopsForDirection(dir) {
+            const route = getActiveRouteData(currentBusModalId) || {};
+            return dir === 'outbound' ? (route.stopsR2M || []) : (route.stopsM2R || []);
+        }
+
+        function addAlternateStart(dir) {
+            const stops = getStopsForDirection(dir);
+            if (!stops.length) { alert('Configure route stops first in the Routes tab.'); return; }
+            pendingAlternates[dir].push({ stopIdx: 1, name: stops[1]?.name || '' });
+            renderAlternatesList(dir);
+        }
+
+        function removeAlternate(dir, idx) {
+            pendingAlternates[dir].splice(idx, 1);
+            renderAlternatesList(dir);
+        }
+
+        function renderAlternatesList(dir) {
+            const container = document.getElementById(`alternates-${dir}-list`);
+            const stops = getStopsForDirection(dir);
+            const items = pendingAlternates[dir];
+            if (!items.length) {
+                container.innerHTML = `<p class="text-xs py-2" style="color:rgba(255,255,255,0.25);">No alternates — bus always starts from the first stop.</p>`;
+                return;
+            }
+            container.innerHTML = items.map((alt, i) => `
+                <div class="flex items-center gap-2 p-2.5 rounded-xl" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);">
+                    <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${dir==='outbound'?'#38bdf8':'#a855f7'};"></div>
+                    <select onchange="updateAlternate('${dir}',${i},this.value)" class="flex-1 text-xs px-2 py-1.5 rounded-lg" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;font-family:'Sora',sans-serif;">
+                        ${stops.map((s,si) => `<option value="${si}" ${si===alt.stopIdx?'selected':''}>${s.name}</option>`).join('')}
+                    </select>
+                    <button onclick="removeAlternate('${dir}',${i})" class="glass-button p-1.5 flex-shrink-0" style="border-radius:6px;">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:rgba(239,68,68,0.7)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>`).join('');
+        }
+
+        function updateAlternate(dir, idx, stopIdx) {
+            const stops = getStopsForDirection(dir);
+            pendingAlternates[dir][idx] = { stopIdx: parseInt(stopIdx), name: stops[parseInt(stopIdx)]?.name || '' };
+        }
+
+        async function saveAlternates() {
+            if (!currentBusModalId) return;
+            const { dbRef, update } = window.firebaseDbFns;
+            // Save alternates into active route
+            const admin = busAdminData[currentBusModalId] || {};
+            const activeId = admin.activeRouteId || currentRouteId;
+            if (activeId && admin.routes?.[activeId]) {
+                await update(dbRef(window.firebaseDatabase, `busAdmin/${currentBusModalId}/routes/${activeId}`), { alternateStarts: pendingAlternates });
+                admin.routes[activeId].alternateStarts = pendingAlternates;
+            } else {
+                // Backward compat
+                await update(dbRef(window.firebaseDatabase, `busAdmin/${currentBusModalId}`), { alternateStarts: pendingAlternates });
+                busAdminData[currentBusModalId] = { ...admin, alternateStarts: pendingAlternates };
+            }
+            const msg = document.getElementById('alternates-save-msg');
+            msg.style.opacity = '1'; setTimeout(() => msg.style.opacity = '0', 2000);
+        }
+
+        function renderSchedulePreview(ratTimes, mahTimes) {
+            const timeChip = t => `<span class="text-xs font-mono px-2.5 py-1 rounded-lg" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">${t}</span>`;
+            const ratEl = document.getElementById('schedule-ratmalana-list');
+            const mahEl = document.getElementById('schedule-maharagama-list');
+            if (ratEl) ratEl.innerHTML = ratTimes?.length ? `<div class="flex flex-wrap gap-1.5">${ratTimes.map(timeChip).join('')}</div>` : '<p class="text-xs" style="color:rgba(255,255,255,0.25);">No times found</p>';
+            if (mahEl) mahEl.innerHTML = mahTimes?.length ? `<div class="flex flex-wrap gap-1.5">${mahTimes.map(timeChip).join('')}</div>` : '<p class="text-xs" style="color:rgba(255,255,255,0.25);">No times found</p>';
         }
 
         function renderStopsTable(stops, containerId) {
@@ -2262,257 +2505,41 @@
                 </div>`).join('')}</div>`;
         }
 
-        function handleScheduleXLSX(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = e => {
-                try {
-                    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                    const ratSheet = wb.Sheets[wb.SheetNames[0]];  // Sheet 1 = outbound origin
-                    const mahSheet = wb.Sheets[wb.SheetNames[1]];  // Sheet 2 = return origin
-                    const sheet1Name = wb.SheetNames[0];
-                    const sheet2Name = wb.SheetNames[1];
-
-                    const parseTimes = sheet => {
-                        if (!sheet) return [];
-                        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-                        return rows.slice(1).map(r => {
-                            const val = r[0];
-                            if (val === '' || val === null || val === undefined) return null;
-                            // Excel time serial: fraction of a day (e.g. 0.270833 = 06:30)
-                            if (typeof val === 'number') {
-                                const totalMins = Math.round(val * 24 * 60);
-                                const hh = String(Math.floor(totalMins / 60)).padStart(2, '0');
-                                const mm = String(totalMins % 60).padStart(2, '0');
-                                return `${hh}:${mm}`;
-                            }
-                            // Already a string like "06:30"
-                            const s = String(val).trim();
-                            return /^\d{1,2}:\d{2}$/.test(s) ? s : null;
-                        }).filter(Boolean);
-                    };
-
-                    const ratTimes = parseTimes(ratSheet);
-                    const mahTimes = parseTimes(mahSheet);
-                    pendingSchedule = {
-                        ratmalana: ratTimes,
-                        maharagama: mahTimes
-                    };
-
-                    document.getElementById('schedule-upload-label-text').textContent = `✓ ${file.name}`;
-                    document.getElementById('schedule-upload-label-text').style.color = '#7ee85a';
-                    document.getElementById('schedule-preview').classList.remove('hidden');
-                    document.querySelector('#schedule-preview .grid div:first-child p').textContent = `FROM ${sheet1Name.toUpperCase()}`;
-                    document.querySelector('#schedule-preview .grid div:last-child p').textContent = `FROM ${sheet2Name.toUpperCase()}`;
-                    renderSchedulePreview(ratTimes, mahTimes);
-                } catch(err) {
-                    console.error('Schedule parse error:', err);
-                    document.getElementById('schedule-upload-label-text').textContent = '⚠ Could not parse file';
-                    document.getElementById('schedule-upload-label-text').style.color = '#ef4444';
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function renderSchedulePreview(ratTimes, mahTimes) {
-            const timeChip = t => `<span class="text-xs font-mono px-2.5 py-1 rounded-lg" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">${t}</span>`;
-            document.getElementById('schedule-ratmalana-list').innerHTML =
-                ratTimes.length ? `<div class="flex flex-wrap gap-1.5">${ratTimes.map(timeChip).join('')}</div>`
-                : '<p class="text-xs" style="color:rgba(255,255,255,0.25);">No times found</p>';
-            document.getElementById('schedule-maharagama-list').innerHTML =
-                mahTimes.length ? `<div class="flex flex-wrap gap-1.5">${mahTimes.map(timeChip).join('')}</div>`
-                : '<p class="text-xs" style="color:rgba(255,255,255,0.25);">No times found</p>';
-        }
-
-        async function saveRouteData() {
-            if (!currentBusModalId) return;
-            const { dbRef, update } = window.firebaseDbFns;
-            const data = {};
-            if (pendingStopsR2M) data.stopsR2M = pendingStopsR2M;
-            if (pendingStopsM2R) data.stopsM2R = pendingStopsM2R;
-            if (window._stopsSheetNames) data.stopsSheetNames = window._stopsSheetNames;
-            if (!Object.keys(data).length) return;
-            await update(dbRef(window.firebaseDatabase, `busAdmin/${currentBusModalId}`), data);
-            busAdminData[currentBusModalId] = { ...busAdminData[currentBusModalId], ...data };
-            const msg = document.getElementById('route-save-msg');
-            msg.style.opacity = '1'; setTimeout(() => msg.style.opacity = '0', 2000);
-        }
-
-        async function saveScheduleData() {
-            if (!currentBusModalId || !pendingSchedule) return;
-            const { dbRef, update } = window.firebaseDbFns;
-            await update(dbRef(window.firebaseDatabase, `busAdmin/${currentBusModalId}`), { schedule: pendingSchedule });
-            busAdminData[currentBusModalId] = { ...busAdminData[currentBusModalId], schedule: pendingSchedule };
-            const msg = document.getElementById('schedule-save-msg');
-            msg.style.opacity = '1'; setTimeout(() => msg.style.opacity = '0', 2000);
-        }
-
-        // ── ETA MODEL ──
-        let pendingETAModel = null;
-
-        function handleETAModelUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = e => {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (!data.avg_travel_times) throw new Error('Missing avg_travel_times');
-                    pendingETAModel = data;
-                    const lbl = document.getElementById('eta-upload-label-text');
-                    lbl.textContent = `✓ ${file.name}`; lbl.style.color = '#7ee85a';
-                    renderETAModelStats(data);
-                } catch(err) {
-                    const lbl = document.getElementById('eta-upload-label-text');
-                    lbl.textContent = '⚠ Invalid file — expected *_eta_stops.json';
-                    lbl.style.color = '#ef4444';
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        function renderETAModelStats(data) {
-            document.getElementById('eta-model-stats').classList.remove('hidden');
-            const grid = document.getElementById('eta-model-info-grid');
-            const items = [
-                ['Route', data.route_id || '—'],
-                ['Outbound', data.label_outbound || '—'],
-                ['Return', data.label_return || '—'],
-                ['Stops (out)', (data.outbound || []).length],
-                ['Stops (ret)', (data.return || []).length],
-                ['Segments', Object.keys(data.avg_travel_times?.OUTBOUND || {}).length + Object.keys(data.avg_travel_times?.RETURN || {}).length],
-            ];
-            grid.innerHTML = items.map(([k,v]) => `
-                <div class="rounded-lg px-2.5 py-1.5" style="background:rgba(255,255,255,0.04);">
-                    <p class="text-[9px] font-semibold" style="color:rgba(255,255,255,0.3);">${k}</p>
-                    <p class="text-xs font-bold text-white">${v}</p>
-                </div>`).join('');
-
-            const renderTimes = (timesObj, stopsArr, containerId) => {
-                const el = document.getElementById(containerId);
-                if (!timesObj || !stopsArr) { el.innerHTML = '<p class="text-xs" style="color:rgba(255,255,255,0.25);">No data</p>'; return; }
-                el.innerHTML = Object.entries(timesObj).map(([seg, mins]) => {
-                    const [fromIdx, toIdx] = seg.split('→').map(Number);
-                    const fromName = stopsArr[fromIdx]?.name || `Stop ${fromIdx}`;
-                    const toName   = stopsArr[toIdx]?.name   || `Stop ${toIdx}`;
-                    const bar = Math.min(100, (mins / 6) * 100);
-                    return `<div class="flex items-center gap-2 py-1">
-                        <div class="text-[10px] truncate flex-1" style="color:rgba(255,255,255,0.5);">${fromName} → ${toName}</div>
-                        <div class="flex items-center gap-1.5 flex-shrink-0">
-                            <div style="width:40px;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;">
-                                <div style="width:${bar}%;height:100%;background:#38bdf8;border-radius:2px;"></div>
-                            </div>
-                            <span class="text-[10px] font-mono font-bold" style="color:#38bdf8;min-width:28px;">${mins}m</span>
-                        </div>
-                    </div>`;
-                }).join('');
-            };
-            renderTimes(data.avg_travel_times?.OUTBOUND, data.outbound, 'eta-outbound-times');
-            renderTimes(data.avg_travel_times?.RETURN,   data.return,   'eta-return-times');
-        }
-
-        async function saveETAModel() {
-            if (!currentBusModalId || !pendingETAModel) return;
-            const { dbRef, update } = window.firebaseDbFns;
-            const etaData = {
-                etaRouteId:       pendingETAModel.route_id || '',
-                etaLabelOutbound: pendingETAModel.label_outbound || '',
-                etaLabelReturn:   pendingETAModel.label_return || '',
-                etaAvgTimes:      pendingETAModel.avg_travel_times,
-            };
-            await update(dbRef(window.firebaseDatabase, `busAdmin/${currentBusModalId}`), etaData);
-            busAdminData[currentBusModalId] = { ...busAdminData[currentBusModalId], ...etaData };
-            const msg = document.getElementById('eta-save-msg');
-            msg.style.opacity = '1'; setTimeout(() => msg.style.opacity = '0', 2000);
-        }
-
-        // ── ALTERNATES ──
-        // pendingAlternates = { outbound: [{name, stopIdx}], return: [{name, stopIdx}] }
-        let pendingAlternates = { outbound: [], return: [] };
-
-        function getStopsForDirection(dir) {
-            const admin = busAdminData[currentBusModalId] || {};
-            return dir === 'outbound' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
-        }
-
-        function addAlternateStart(dir) {
-            const stops = getStopsForDirection(dir);
-            if (!stops.length) {
-                alert('Upload route stops first (Route Data tab) before adding alternates.');
-                return;
-            }
-            pendingAlternates[dir].push({ stopIdx: 1, name: stops[1]?.name || '' });
-            renderAlternatesList(dir);
-        }
-
-        function removeAlternate(dir, idx) {
-            pendingAlternates[dir].splice(idx, 1);
-            renderAlternatesList(dir);
-        }
-
-        function renderAlternatesList(dir) {
-            const container = document.getElementById(`alternates-${dir}-list`);
-            const stops = getStopsForDirection(dir);
-            const items = pendingAlternates[dir];
-
-            if (!items.length) {
-                container.innerHTML = `<p class="text-xs py-2" style="color:rgba(255,255,255,0.25);">No alternates added — bus always starts from the first stop.</p>`;
-                return;
-            }
-
-            container.innerHTML = items.map((alt, i) => `
-                <div class="flex items-center gap-2 p-2.5 rounded-xl" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);">
-                    <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${dir==='outbound'?'#38bdf8':'#a855f7'};"></div>
-                    <select onchange="updateAlternate('${dir}',${i},this.value)" class="flex-1 text-xs px-2 py-1.5 rounded-lg" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;font-family:'Sora',sans-serif;">
-                        ${stops.map((s,si) => `<option value="${si}" ${si===alt.stopIdx?'selected':''}>${s.name}</option>`).join('')}
-                    </select>
-                    <button onclick="removeAlternate('${dir}',${i})" class="glass-button p-1.5 flex-shrink-0" style="border-radius:6px;">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:rgba(239,68,68,0.7)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                    </button>
-                </div>`).join('');
-        }
-
-        function updateAlternate(dir, idx, stopIdx) {
-            const stops = getStopsForDirection(dir);
-            pendingAlternates[dir][idx] = {
-                stopIdx: parseInt(stopIdx),
-                name: stops[parseInt(stopIdx)]?.name || ''
-            };
-        }
-
-        async function saveAlternates() {
-            if (!currentBusModalId) return;
-            const { dbRef, update } = window.firebaseDbFns;
-            await update(dbRef(window.firebaseDatabase, `busAdmin/${currentBusModalId}`), {
-                alternateStarts: pendingAlternates
-            });
-            busAdminData[currentBusModalId] = { ...busAdminData[currentBusModalId], alternateStarts: pendingAlternates };
-            const msg = document.getElementById('alternates-save-msg');
-            msg.style.opacity = '1'; setTimeout(() => msg.style.opacity = '0', 2000);
-        }
-
         // ── ETA COMPUTATION ENGINE ──
         // Uses avg_travel_times from the uploaded ETA model to estimate arrival
         // at all upcoming stops based on current stop index + elapsed time.
 
         function computeETAForAllStops(busId, busData) {
-            const admin = busAdminData[busId] || {};
-            const n = busNextStop[busId];
-            if (!n || !admin.etaAvgTimes) return null;
-            if (n.reached) return null; // destination reached — no ETA needed
+            // ── 1. ML ETAs from Render backend (written to Firebase) ──────────
+            const ml = mlEtaCache[busId];
+            if (ml?.stops?.length) {
+                const ageMs = ml.updated_at ? (Date.now() - ml.updated_at) : 0;
+                if (ageMs < 60_000) {
+                    return ml.stops.map(s => ({
+                        stopIdx  : s.stopIdx,
+                        stopName : s.stopName,
+                        etaMins  : s.etaMins,
+                        arrival  : s.arrivalTime,
+                        source   : 'ml',
+                    }));
+                }
+            }
 
-            const direction = n.direction; // 'R2M' or 'M2R'
+            // ── 2. Fallback — avg travel times ────────────────────────────────
+            const route = getActiveRouteData(busId);
+            const n = busNextStop[busId];
+            if (!n || !route?.etaAvgTimes) return null;
+            if (n.reached) return null;
+
+            const direction = n.direction;
             const dirKey    = direction === 'R2M' ? 'OUTBOUND' : 'RETURN';
-            const times     = admin.etaAvgTimes[dirKey];
+            const times     = route.etaAvgTimes[dirKey];
             if (!times) return null;
 
-            const stops     = direction === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
-            const lastIdx   = n.stopNo - 1; // 0-based index of next stop (bus is approaching this)
+            const stops     = n.activeStops || (direction === 'R2M' ? (route.stopsR2M || []) : (route.stopsM2R || []));
+            const lastIdx   = n.stopNo - 1;
             const now       = new Date();
 
-            // Elapsed time at current segment (since last stop)
-            // Estimate: if bus is between stops, some of the first segment time is already used
             const distToNext   = n.dist;
             const totalSegDist = lastIdx > 0
                 ? haversineDistance(stops[lastIdx-1]?.lat||busData.lat, stops[lastIdx-1]?.lng||busData.lng, stops[lastIdx].lat, stops[lastIdx].lng)
@@ -2522,21 +2549,17 @@
             const fractionDone = totalSegDist > 0 ? Math.max(0, 1 - distToNext / totalSegDist) : 0;
             const elapsedInSeg = fractionDone * segAvgMins;
 
-            // Build ETA list for all upcoming stops
             const etas = [];
-            let cumMins = segAvgMins - elapsedInSeg; // time to reach next stop
-
+            let cumMins = segAvgMins - elapsedInSeg;
             for (let i = lastIdx; i < stops.length; i++) {
-                if (i > lastIdx) {
-                    const key = `${i-1}→${i}`;
-                    cumMins += (times[key] || 1);
-                }
+                if (i > lastIdx) cumMins += (times[`${i-1}→${i}`] || 1);
                 const arrivalTime = new Date(now.getTime() + cumMins * 60 * 1000);
                 etas.push({
                     stopIdx  : i,
                     stopName : stops[i].name,
                     etaMins  : Math.round(cumMins * 10) / 10,
                     arrival  : arrivalTime.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }),
+                    source   : 'avg',
                 });
             }
             return etas;
@@ -2547,7 +2570,7 @@
             if (!etas || etas.length === 0) return '';
             const next = etas[0];
             const dest = etas[etas.length - 1];
-            return `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold" style="background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.35);color:#a5b4fc;">
+            return `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full" style="background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.35);color:#a5b4fc;font-size:10px;font-weight:600;">
                 <svg class="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"/></svg>
                 <span>${next.arrival}</span>
                 <span style="opacity:0.5;">·</span>
@@ -2594,12 +2617,13 @@
         function angleDiff(a, b) { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; }
 
         function detectDirection(busId, busData) {
-            const admin = busAdminData[busId] || {};
-            const r2m = admin.stopsR2M || [];
-            const m2r = admin.stopsM2R || [];
+            const route = getActiveRouteData(busId);
+            if (!route) return null;
+            const r2m = route.stopsR2M || [];
+            const m2r = route.stopsM2R || [];
             if (!r2m.length && !m2r.length) return null;
 
-            const alts = admin.alternateStarts || {};
+            const alts = route.alternateStarts || {};
             const r2mStarts = [r2m[0], ...(alts.outbound || []).map(a => r2m[a.stopIdx]).filter(Boolean)];
             const m2rStarts = [m2r[0], ...(alts.return  || []).map(a => m2r[a.stopIdx]).filter(Boolean)];
 
@@ -2640,7 +2664,7 @@
             }
 
             // 4. Timetable as last resort
-            const schedule = admin.schedule;
+            const schedule = route.schedule;
             if (schedule?.ratmalana?.length || schedule?.maharagama?.length) {
                 const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
                 const allTrips = [
@@ -2662,8 +2686,8 @@
         }
 
         function getCurrentTripNo(busId) {
-            const admin = busAdminData[busId] || {};
-            const schedule = admin.schedule;
+            const route = getActiveRouteData(busId);
+            const schedule = route?.schedule;
             if (!schedule) return null;
             const now = new Date();
             const nowMins = now.getHours() * 60 + now.getMinutes();
@@ -2695,15 +2719,16 @@
             }
             // Once reached, stay reached until trip ends
             if (busNextStop[busId]?.reached) return;
-            const admin = busAdminData[busId] || {};
+            const route = getActiveRouteData(busId);
+            if (!route) { delete busNextStop[busId]; return; }
             const direction = detectDirection(busId, busData);
             if (!direction) { delete busNextStop[busId]; return; }
 
-            const stops = direction === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
+            const stops = direction === 'R2M' ? (route.stopsR2M || []) : (route.stopsM2R || []);
             if (!stops.length) { delete busNextStop[busId]; return; }
 
             // Check if bus is near an alternate start — if so, slice stops from that index
-            const alts = admin.alternateStarts || {};
+            const alts = route.alternateStarts || {};
             const dirAlts = direction === 'R2M' ? (alts.outbound || []) : (alts.return || []);
             let startIdx = 0;
             for (const alt of dirAlts) {
@@ -2787,7 +2812,7 @@
             const c = batteryColor(battery);
             const bg = battery <= 20 ? 'rgba(239,68,68,0.1)' : battery <= 50 ? 'rgba(234,179,8,0.1)' : 'rgba(126,232,90,0.1)';
             const border = battery <= 20 ? 'rgba(239,68,68,0.3)' : battery <= 50 ? 'rgba(234,179,8,0.3)' : 'rgba(126,232,90,0.3)';
-            return `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold" style="background:${bg};border:1px solid ${border};color:${c};">
+            return `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full" style="background:${bg};border:1px solid ${border};color:${c};font-size:10px;font-weight:600;">
                 ${batteryIcon(battery)}
                 <span style="margin-left:2px;">${battery}%</span>
             </div>`;
@@ -2796,18 +2821,19 @@
         function nextStopBadgeHTML(busId) {
             const n = busNextStop[busId];
             if (!n) return '';
-            if (n.reached) return `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold" style="background:rgba(126,232,90,0.12);border:1px solid rgba(126,232,90,0.3);color:#7ee85a;">
-                <svg class="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            if (n.reached) return `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full" style="background:rgba(126,232,90,0.12);border:1px solid rgba(126,232,90,0.3);color:#7ee85a;font-size:10px;font-weight:600;">
+                <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                 <span>Reached</span>
             </div>`;
-            const sheetNames = busAdminData[busId]?.stopsSheetNames;
+            const route = getActiveRouteData(busId);
+            const sheetNames = route?.stopsSheetNames;
             const dirLabel = sheetNames
                 ? (n.direction === 'R2M' ? sheetNames.outbound : sheetNames.return)
                 : (n.direction === 'R2M' ? 'Outbound' : 'Return');
-            return `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold" style="background:rgba(5,152,177,0.12);border:1px solid rgba(5,152,177,0.35);color:#38bdf8;">
-                <svg class="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                <span class="truncate" style="max-width:90px;">${n.stop.name}</span>
-                <span style="opacity:0.6;">· ${formatDist(n.dist)}</span>
+            return `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full" style="background:rgba(5,152,177,0.12);border:1px solid rgba(5,152,177,0.35);color:#38bdf8;font-size:10px;font-weight:600;">
+                <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${n.stop.name}</span>
+                <span style="opacity:0.6;flex-shrink:0;">· ${formatDist(n.dist)}</span>
             </div>`;
         }
 
@@ -2815,11 +2841,12 @@
             const n = busNextStop[busId];
             if (!n) return '';
             if (n.reached) return `<p style="margin:4px 0 2px 0;font-size:11px;color:#7ee85a;font-weight:700;">✓ Reached ${n.stop.name}</p>`;
-            const sheetNames = busAdminData[busId]?.stopsSheetNames;
-            const dirLabel = sheetNames
-                ? (n.direction === 'R2M' ? sheetNames.outbound : sheetNames.return)
+            const route2 = getActiveRouteData(busId);
+            const sheetNames2 = route2?.stopsSheetNames;
+            const dirLabel2 = sheetNames2
+                ? (n.direction === 'R2M' ? sheetNames2.outbound : sheetNames2.return)
                 : (n.direction === 'R2M' ? 'Outbound' : 'Return');
-            const tripLine = n.tripInfo ? `<p style="margin:0 0 3px 0;font-size:10px;color:rgba(255,255,255,0.35);">Trip ${n.tripInfo.tripNo}/${n.tripInfo.total} · ${dirLabel}</p>` : '';
+            const tripLine = n.tripInfo ? `<p style="margin:0 0 3px 0;font-size:10px;color:rgba(255,255,255,0.35);">Trip ${n.tripInfo.tripNo}/${n.tripInfo.total} · ${dirLabel2}</p>` : '';
             return `${tripLine}<p style="margin:0 0 2px 0;font-size:11px;color:#38bdf8;font-weight:600;">
                 ▸ ${n.stop.name}
                 <span style="font-size:10px;color:rgba(255,255,255,0.4);font-weight:400;"> · ${formatDist(n.dist)}</span>
@@ -2893,52 +2920,47 @@
             // Reset upload labels
             const stopsLbl = document.getElementById('stops-upload-label-text');
             const schedLbl = document.getElementById('schedule-upload-label-text');
-            const etaLbl   = document.getElementById('eta-upload-label-text');
             stopsLbl.textContent = 'Click to upload stops .xlsx'; stopsLbl.style.color = 'rgba(255,255,255,0.4)';
             schedLbl.textContent = 'Click to upload timetable .xlsx'; schedLbl.style.color = 'rgba(255,255,255,0.4)';
-            etaLbl.textContent   = 'Click to upload *_eta_stops.json'; etaLbl.style.color = 'rgba(255,255,255,0.4)';
 
-            // Restore saved route data
-            if (admin.stopsR2M?.length || admin.stopsM2R?.length) {
-                document.getElementById('stops-preview').classList.remove('hidden');
-                stopsLbl.textContent = '✓ Stops data loaded from Firebase'; stopsLbl.style.color = '#7ee85a';
-                renderStopsTable(admin.stopsR2M || [], 'stops-r2m-table');
-                renderStopsTable(admin.stopsM2R || [], 'stops-m2r-table');
-            } else {
-                document.getElementById('stops-preview').classList.add('hidden');
-            }
-
-            // Restore saved schedule
-            if (admin.schedule?.ratmalana || admin.schedule?.maharagama) {
-                document.getElementById('schedule-preview').classList.remove('hidden');
-                schedLbl.textContent = '✓ Schedule loaded from Firebase'; schedLbl.style.color = '#7ee85a';
-                renderSchedulePreview(admin.schedule.ratmalana || [], admin.schedule.maharagama || []);
-            } else {
-                document.getElementById('schedule-preview').classList.add('hidden');
-            }
-
-            // Restore saved ETA model
-            if (admin.etaAvgTimes) {
-                etaLbl.textContent = '✓ ETA model loaded from Firebase'; etaLbl.style.color = '#7ee85a';
-                const fakeData = {
-                    route_id: admin.etaRouteId || '',
-                    label_outbound: admin.etaLabelOutbound || '',
-                    label_return: admin.etaLabelReturn || '',
-                    outbound: admin.stopsR2M || [],
-                    return: admin.stopsM2R || [],
-                    avg_travel_times: admin.etaAvgTimes,
+            // ── Restore routes ──
+            pendingRoutes = {};
+            if (admin.routes && Object.keys(admin.routes).length) {
+                // Multi-route data
+                pendingRoutes = JSON.parse(JSON.stringify(admin.routes)); // deep copy
+            } else if (admin.stopsR2M || admin.stopsM2R || admin.etaAvgTimes) {
+                // Backward compat — migrate flat fields into a single route
+                const defaultId = 'route_default';
+                pendingRoutes[defaultId] = {
+                    label: admin.etaRouteId || 'Default Route',
+                    stopsR2M: admin.stopsR2M || [],
+                    stopsM2R: admin.stopsM2R || [],
+                    schedule: admin.schedule || null,
+                    etaAvgTimes: admin.etaAvgTimes || null,
+                    etaRouteId: admin.etaRouteId || '',
+                    etaLabelOutbound: admin.etaLabelOutbound || '',
+                    etaLabelReturn: admin.etaLabelReturn || '',
+                    stopsSheetNames: admin.stopsSheetNames || null,
                 };
-                renderETAModelStats(fakeData);
             } else {
-                document.getElementById('eta-model-stats').classList.add('hidden');
+                // No data — start with one empty route
+                pendingRoutes['route_1'] = { label: 'Route 1', stopsR2M: [], stopsM2R: [], schedule: null, etaAvgTimes: null };
             }
 
-            // Restore saved alternates
+            // Select active route
+            currentRouteId = admin.activeRouteId && pendingRoutes[admin.activeRouteId]
+                ? admin.activeRouteId
+                : Object.keys(pendingRoutes)[0];
+
+            renderRoutePills();
+            loadRouteIntoUI(currentRouteId);
+            renderActiveRouteSelector();
+
+            // Restore alternates
             if (admin.alternateStarts) {
-                pendingAlternates = {
-                    outbound: admin.alternateStarts.outbound || [],
-                    return: admin.alternateStarts.return || []
-                };
+                pendingAlternates = { outbound: admin.alternateStarts.outbound || [], return: admin.alternateStarts.return || [] };
+            } else {
+                pendingAlternates = { outbound: [], return: [] };
             }
             renderAlternatesList('outbound');
             renderAlternatesList('return');
@@ -3090,6 +3112,102 @@
             filterBusCards();
         }
 
+        // Patch only the dynamic inner content of existing cards — preserves scroll position
+        function patchBusCard(busId, bus) {
+            const card = document.getElementById(`bus-card-${CSS.escape(busId)}`);
+            if (!card) return false; // card doesn't exist yet — need full render
+
+            const admin = busAdminData[busId] || {};
+            const speed = ((bus.speed || 0) * 3.6).toFixed(1);
+
+            // ── Update card status color + border + glow ──────────────────────
+            const isActive = admin.active !== false;
+            let statusText, statusColor, bgColor, borderColor, glowClass;
+            if (!isActive) {
+                statusText = '● Deactivated'; statusColor = 'text-gray-500';
+                bgColor = 'rgba(156,163,175,0.12)'; borderColor = '#6b7280'; glowClass = 'glow-grey';
+            } else if (bus.online === true) {
+                if (bus.inTrip === true) {
+                    statusText = '● In Trip'; statusColor = 'text-purple-400';
+                    bgColor = 'rgba(168,85,247,0.2)'; borderColor = '#a855f7'; glowClass = 'glow-purple';
+                } else if (checkParked(busId, bus)) {
+                    statusText = '● Parked'; statusColor = 'text-blue-400';
+                    bgColor = 'rgba(59,130,246,0.2)'; borderColor = '#3b82f6'; glowClass = 'glow-blue';
+                } else {
+                    statusText = '● Online (Idle)'; statusColor = 'text-yellow-400';
+                    bgColor = 'rgba(234,179,8,0.2)'; borderColor = '#eab308'; glowClass = 'glow-yellow';
+                }
+            } else {
+                statusText = '● Offline'; statusColor = 'text-red-400';
+                bgColor = 'rgba(239,68,68,0.2)'; borderColor = '#ef4444'; glowClass = 'glow-red';
+            }
+            // Apply border color
+            card.style.borderColor = borderColor;
+            // Update glow class
+            ['glow-purple','glow-yellow','glow-blue','glow-red','glow-grey'].forEach(c => card.classList.remove(c));
+            card.classList.add(glowClass);
+            // Update status text
+            const statusEl = card.querySelector('.bus-status-text');
+            if (statusEl) { statusEl.textContent = statusText; statusEl.className = `bus-status-text text-sm font-semibold ${statusColor}`; }
+            // Update icon circle
+            const iconCircle = card.querySelector('.bus-icon-circle');
+            if (iconCircle) { iconCircle.style.background = bgColor; iconCircle.style.borderColor = borderColor; }
+
+            // Update detail rows
+            const details = card.querySelector('.bus-card-details');
+            if (details) {
+                details.innerHTML = `
+                    ${admin.depot ? `<p>Depot: <span style="color:#fff;">${admin.depot}</span></p>` : ''}
+                    ${bus.battery != null && bus.battery >= 0 ? `<p>Battery: <span style="color:${batteryColor(bus.battery)};font-weight:600;">${bus.battery}%</span>${bus.charging ? ` <span style="color:#7ee85a;">⚡</span>` : ''}</p>` : `<p>Battery: <span style="color:rgba(255,255,255,0.25);">No data</span></p>`}
+                    ${bus.inTrip === true && busNextStop[busId] ? (busNextStop[busId].reached
+                        ? `<p>Status: <span style="color:#7ee85a;font-weight:600;">✓ Reached ${busNextStop[busId].stop.name}</span></p>`
+                        : `<p>Next: <span style="color:#fff;font-weight:600;">${busNextStop[busId].stop.name}</span> <span style="color:rgba(255,255,255,0.3);">· ${formatDist(busNextStop[busId].dist)}</span></p>`) : ''}
+                    ${bus.inTrip === true && busNextStop[busId]?.tripInfo ? `<p>Trip: <span style="color:#fff;">${busNextStop[busId].tripInfo.tripNo}/${busNextStop[busId].tripInfo.total}</span></p>` : ''}
+                    ${bus.inTrip === true ? `<p>Speed: <span style="color:#fff;font-weight:600;">${speed} km/h</span></p>` : ''}
+                    <p>Updated: <span style="color:#fff;">${bus.lastSeen || 'Unknown'}</span></p>
+                    <p style="font-size:10px;opacity:0.4;font-family:'JetBrains Mono',monospace;">${bus.lat?.toFixed(4)}, ${bus.lng?.toFixed(4)}</p>
+                `;
+            }
+
+            // Update ETA panel content only (not visibility — user controls that)
+            const etaPanel = document.getElementById(`eta-panel-${busId}`);
+            if (etaPanel) {
+                const etaBody = etaPanel.querySelector('.eta-panel-body');
+                if (etaBody) {
+                    let cachedEtas = null;
+                    try { if (bus.inTrip && !busNextStop[busId]?.reached) cachedEtas = computeETAForAllStops(busId, bus); } catch(e) {}
+                    if (cachedEtas) {
+                        const dir = busNextStop[busId]?.direction;
+                        const r = getActiveRouteData(busId);
+                        const dirLabel = dir === 'R2M' ? (r?.etaLabelOutbound || 'Outbound') : (r?.etaLabelReturn || 'Return');
+                        etaPanel.querySelector('.eta-panel-dir-label').textContent = dirLabel;
+                        etaBody.innerHTML = cachedEtas.map((e, i) => `
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <div style="width:6px;height:6px;border-radius:50%;flex-shrink:0;background:${i===0?'#a5b4fc':'rgba(165,180,252,0.3)'};"></div>
+                                    <p style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${i===0?'#fff':'rgba(255,255,255,0.5)'};">${e.stopName}</p>
+                                </div>
+                                <div class="flex items-center gap-2 flex-shrink-0">
+                                    <p style="font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${i===0?'#a5b4fc':'rgba(165,180,252,0.6)'};">${e.arrival}</p>
+                                    <p style="font-size:10px;color:rgba(255,255,255,0.2);">${e.etaMins < 1 ? '<1m' : Math.round(e.etaMins)+'m'}</p>
+                                </div>
+                            </div>`).join('');
+                    }
+                }
+            }
+
+            // Update badges
+            const badgeRow = card.querySelector('.bus-card-badges');
+            if (badgeRow) {
+                const battEl = badgeRow.querySelector('.bus-badge-battery');
+                if (battEl) battEl.outerHTML = `<span class="bus-badge-battery">${batteryBadgeHTML(bus.battery)}</span>`;
+                const nextEl = badgeRow.querySelector('.bus-badge-nextstop');
+                if (nextEl) nextEl.outerHTML = `<span class="bus-badge-nextstop">${nextStopBadgeHTML(busId)}</span>`;
+            }
+
+            return true;
+        }
+
         function renderBusCards(busArray) {
             const container = document.getElementById('bus-list');
             if (busArray.length === 0) {
@@ -3158,19 +3276,22 @@
                 const etaPanelHTML = cachedEtas ? `
                     <div id="eta-panel-${busId}" class="hidden mt-3 rounded-xl overflow-hidden" style="border:1px solid rgba(99,102,241,0.25);background:rgba(99,102,241,0.06);">
                         <div class="px-4 py-2 flex items-center justify-between" style="border-bottom:1px solid rgba(99,102,241,0.15);">
-                            <p class="text-xs font-bold" style="color:#a5b4fc;">ETA — All Stops</p>
-                            <p class="text-[10px]" style="color:rgba(165,180,252,0.5);">${busNextStop[busId]?.direction === 'R2M' ? (busAdminData[busId]?.etaLabelOutbound || 'Outbound') : (busAdminData[busId]?.etaLabelReturn || 'Return')}</p>
+                            <p style="font-size:11px;font-weight:700;color:#a5b4fc;">ETA — All Stops</p>
+                            <div class="flex items-center gap-2">
+                                <span class="eta-source-badge" style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:999px;letter-spacing:0.05em;border:1px solid;${cachedEtas[0]?.source==='ml'?'background:rgba(126,232,90,0.12);border-color:rgba(126,232,90,0.3);color:#7ee85a;':'background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.3);'}">${cachedEtas[0]?.source==='ml'?'ML MODEL':'AVG'}</span>
+                                <p class="eta-panel-dir-label" style="font-size:10px;color:rgba(165,180,252,0.5);">${(() => { const r = getActiveRouteData(busId); return busNextStop[busId]?.direction === 'R2M' ? (r?.etaLabelOutbound || 'Outbound') : (r?.etaLabelReturn || 'Return'); })()}</p>
+                            </div>
                         </div>
-                        <div class="px-4 py-3 space-y-1.5 overflow-y-auto" style="max-height:220px;">
+                        <div class="eta-panel-body px-4 py-3 space-y-1.5 overflow-y-auto" style="max-height:220px;">
                             ${cachedEtas.map((e, i) => `
                                 <div class="flex items-center justify-between gap-3">
                                     <div class="flex items-center gap-2 min-w-0">
                                         <div style="width:6px;height:6px;border-radius:50%;flex-shrink:0;background:${i===0?'#a5b4fc':'rgba(165,180,252,0.3)'};"></div>
-                                        <p class="text-xs truncate" style="color:${i===0?'#fff':'rgba(255,255,255,0.5)'};">${e.stopName}</p>
+                                        <p style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${i===0?'#fff':'rgba(255,255,255,0.5)'};">${e.stopName}</p>
                                     </div>
                                     <div class="flex items-center gap-2 flex-shrink-0">
-                                        <p class="text-xs font-bold font-mono" style="color:${i===0?'#a5b4fc':'rgba(165,180,252,0.6)'};">${e.arrival}</p>
-                                        <p class="text-[10px]" style="color:rgba(255,255,255,0.2);">${e.etaMins < 1 ? '<1m' : Math.round(e.etaMins)+'m'}</p>
+                                        <p style="font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${i===0?'#a5b4fc':'rgba(165,180,252,0.6)'};">${e.arrival}</p>
+                                        <p style="font-size:10px;color:rgba(255,255,255,0.2);">${e.etaMins < 1 ? '<1m' : Math.round(e.etaMins)+'m'}</p>
                                     </div>
                                 </div>`).join('')}
                         </div>
@@ -3185,39 +3306,38 @@
                     </button>` : '<div></div>';
 
                 return `
-                <div class="glass-panel ${glowClass} p-4 transition-all flex flex-col" style="${isTracked ? 'border-color: rgba(126,232,90,0.45); box-shadow: 0 0 18px -4px rgba(126,232,90,0.2);' : ''}">
+                <div id="bus-card-${busId}" data-bus-id="${busId}" class="glass-panel ${glowClass} p-4 transition-all flex flex-col" style="${isTracked ? 'border-color: rgba(126,232,90,0.45); box-shadow: 0 0 18px -4px rgba(126,232,90,0.2);' : ''}">
                     <div class="flex items-center gap-3 mb-3">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer" style="background: ${bgColor}; border: 2px solid ${borderColor}" onclick="focusOnBus('${busId}')">
+                        <div class="bus-icon-circle w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer" style="background: ${bgColor}; border: 2px solid ${borderColor}" onclick="focusOnBus('${busId}')">
                             <svg class="w-5 h-5" style="color: ${borderColor}" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
                             </svg>
                         </div>
-                        <div class="flex-1 cursor-pointer" onclick="focusOnBus('${busId}')">
-                            <h4 class="font-bold text-sm">${cardName}</h4>
-                            ${(admin.routeNo || admin.route) ? `<p class="text-[10px]" style="color:rgba(255,255,255,0.35)">${admin.routeNo ? `<span style="color:rgba(255,255,255,0.5);font-weight:700;">#${admin.routeNo}</span> · ` : ''}${admin.route || ''}</p>` : (bus.customName && bus.customName !== busId ? `<p class="text-[10px] text-gray-500">${busId}</p>` : '')}
-                            <p class="text-xs ${statusColor} font-semibold">${statusText}${!isActive ? ' · <span style="color:rgba(255,255,255,0.3)">Deactivated</span>' : ''}</p>
+                        <div class="flex-1 min-w-0 cursor-pointer" onclick="focusOnBus('${busId}')">
+                            <p style="font-size:12px;font-weight:700;color:#fff;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${cardName}</p>
+                            ${(admin.routeNo || admin.route) ? `<p style="font-size:10px;color:rgba(255,255,255,0.4);line-height:1.3;">${admin.routeNo ? `<span style="color:rgba(255,255,255,0.6);font-weight:700;">#${admin.routeNo}</span> · ` : ''}${admin.route || ''}</p>` : (bus.customName && bus.customName !== busId ? `<p style="font-size:10px;color:rgba(255,255,255,0.35);">${busId}</p>` : '')}
+                            <p style="font-size:11px;font-weight:600;line-height:1.4;" class="bus-status-text ${statusColor}">${statusText}</p>
                         </div>
-                        <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
-                            ${isTracked ? `<div class="flex items-center gap-1 px-2 py-1 rounded-full" style="background:rgba(126,232,90,0.12);border:1px solid rgba(126,232,90,0.3)">
-                                <span class="w-1.5 h-1.5 rounded-full" style="background:#7ee85a;box-shadow:0 0 6px rgba(126,232,90,0.7);animation:livePulse 1.8s ease-in-out infinite"></span>
-                                <span class="text-[10px] font-semibold" style="color:#7ee85a">Tracking</span>
+                        <div class="bus-card-badges flex flex-col items-end gap-1.5 flex-shrink-0">
+                            ${isTracked ? `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full" style="background:rgba(126,232,90,0.12);border:1px solid rgba(126,232,90,0.3);">
+                                <span style="width:6px;height:6px;border-radius:50%;background:#7ee85a;box-shadow:0 0 5px rgba(126,232,90,0.7);animation:livePulse 1.8s ease-in-out infinite;display:inline-block;flex-shrink:0;"></span>
+                                <span style="font-size:10px;font-weight:600;color:#7ee85a;">Tracking</span>
                             </div>` : ''}
-                            ${batteryBadgeHTML(bus.battery)}
-                            ${nextStopBadgeHTML(busId)}
+                            <span class="bus-badge-battery">${batteryBadgeHTML(bus.battery)}</span>
+                            <span class="bus-badge-nextstop">${nextStopBadgeHTML(busId)}</span>
                         </div>
                     </div>
-                    <div class="space-y-1 text-xs text-gray-400 flex-1 cursor-pointer" onclick="focusOnBus('${busId}')">
-                        ${admin.depot ? `<p>Depot: <span class="text-white">${admin.depot}</span></p>` : ''}
-                        ${bus.battery != null && bus.battery >= 0 ? `<p>Battery: <span style="color:${batteryColor(bus.battery)};font-weight:700;">${bus.battery}%</span>${bus.charging ? ` <span style="color:#7ee85a;">⚡</span>` : ''}</p>` : `<p>Battery: <span style="color:rgba(255,255,255,0.3);">No data</span></p>`}
+                    <div class="bus-card-details space-y-1 flex-1 cursor-pointer" style="font-size:11px;color:rgba(255,255,255,0.4);" onclick="focusOnBus('${busId}')">
+                        ${admin.depot ? `<p>Depot: <span style="color:#fff;">${admin.depot}</span></p>` : ''}
+                        ${bus.battery != null && bus.battery >= 0 ? `<p>Battery: <span style="color:${batteryColor(bus.battery)};font-weight:600;">${bus.battery}%</span>${bus.charging ? ` <span style="color:#7ee85a;">⚡</span>` : ''}</p>` : `<p>Battery: <span style="color:rgba(255,255,255,0.25);">No data</span></p>`}
                         ${bus.inTrip === true && busNextStop[busId] ? (busNextStop[busId].reached
-                            ? `<p>Status: <span style="color:#7ee85a;font-weight:700;">✓ Reached ${busNextStop[busId].stop.name}</span></p>`
-                            : `<p>Next stop: <span class="text-white font-semibold">${busNextStop[busId].stop.name}</span> <span class="text-gray-500">· ${formatDist(busNextStop[busId].dist)}</span></p>`) : ''}
-                        ${bus.inTrip === true && busNextStop[busId]?.tripInfo ? `<p>Trip: <span class="text-white">${busNextStop[busId].tripInfo.tripNo}/${busNextStop[busId].tripInfo.total}</span></p>` : ''}
-                        ${bus.inTrip === true ? `<p>Speed: <span class="text-white font-bold">${speed} km/h</span></p>` : ''}
-                        <p>Updated: <span class="text-white">${bus.lastSeen || 'Unknown'}</span></p>
-                        <p class="font-mono text-[10px] opacity-70">${bus.lat?.toFixed(4)}, ${bus.lng?.toFixed(4)}</p>
+                            ? `<p>Status: <span style="color:#7ee85a;font-weight:600;">✓ Reached ${busNextStop[busId].stop.name}</span></p>`
+                            : `<p>Next: <span style="color:#fff;font-weight:600;">${busNextStop[busId].stop.name}</span> <span style="color:rgba(255,255,255,0.3);">· ${formatDist(busNextStop[busId].dist)}</span></p>`) : ''}
+                        ${bus.inTrip === true && busNextStop[busId]?.tripInfo ? `<p>Trip: <span style="color:#fff;">${busNextStop[busId].tripInfo.tripNo}/${busNextStop[busId].tripInfo.total}</span></p>` : ''}
+                        ${bus.inTrip === true ? `<p>Speed: <span style="color:#fff;font-weight:600;">${speed} km/h</span></p>` : ''}
+                        <p>Updated: <span style="color:#fff;">${bus.lastSeen || 'Unknown'}</span></p>
+                        <p style="font-size:10px;opacity:0.4;font-family:'JetBrains Mono',monospace;">${bus.lat?.toFixed(4)}, ${bus.lng?.toFixed(4)}</p>
                     </div>
-
                     ${etaPanelHTML}
                     <div class="flex items-center justify-between mt-2">
                         ${etaBtnHTML}
@@ -3314,7 +3434,19 @@
             const count = document.getElementById('bus-search-count');
             if (count) count.textContent = query || activeBusFilter !== 'all' ? `${filtered.length} result${filtered.length !== 1 ? 's' : ''}` : '';
 
-            renderBusCards(filtered);
+            // Check if the set of visible bus IDs has changed
+            const container = document.getElementById('bus-list');
+            const existingIds = [...container.querySelectorAll('[data-bus-id]')].map(el => el.dataset.busId);
+            const newIds = filtered.map(([id]) => id);
+            const sameSet = existingIds.length === newIds.length && newIds.every((id, i) => id === existingIds[i]);
+
+            if (sameSet && existingIds.length > 0) {
+                // Just patch dynamic content — don't touch DOM structure, preserves scroll
+                filtered.forEach(([busId, bus]) => patchBusCard(busId, bus));
+            } else {
+                // Card set changed — full re-render needed
+                renderBusCards(filtered);
+            }
         }
 
         function focusOnBus(busId) {
@@ -3338,11 +3470,11 @@
         }
 
         function drawRouteStops(busId, busData) {
-            const admin = busAdminData[busId] || {};
+            const route = getActiveRouteData(busId);
             const n = busNextStop[busId];
             if (!n) { clearRouteStops(); return; }
 
-            const stops = n.activeStops || (n.direction === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []));
+            const stops = n.activeStops || (n.direction === 'R2M' ? (route?.stopsR2M || []) : (route?.stopsM2R || []));
             if (!stops.length) { clearRouteStops(); return; }
 
             const cacheKey = `${busId}_${n.direction}_${n.stopNo}`;
@@ -3439,14 +3571,29 @@
             }
         }
 
+        // ── POI ENGINE ──
+
         function stopLiveTracking() {
             if (liveUnsubscribe) {
                 const { off, dbRef } = window.firebaseDbFns;
                 off(dbRef(window.firebaseDatabase, 'buses'));
                 liveUnsubscribe = null;
-                console.log('Live tracking stopped');
+                
             }
         }
+
+        // Init on DOM ready — called from plain script so functions are guaranteed defined
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDate();
+            // checkAuth() needs Firebase which is loaded by the module script
+            // Poll until it's ready
+            const waitForFirebase = setInterval(() => {
+                if (window.firebaseAuthFns && window.firebaseAuth) {
+                    clearInterval(waitForFirebase);
+                    checkAuth();
+                }
+            }, 50);
+        });
     </script>
 
     <!-- Fullscreen Toggle -->
