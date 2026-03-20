@@ -3318,11 +3318,11 @@
                                 <div class="flex items-center justify-between gap-3">
                                     <div class="flex items-center gap-2 min-w-0">
                                         <div style="width:6px;height:6px;border-radius:50%;flex-shrink:0;background:${i===0?'#a5b4fc':'rgba(165,180,252,0.3)'};"></div>
-                                        <p style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${i===0?'#fff':'rgba(255,255,255,0.5)'};">$\{e.stopName}</p>
+                                        <p style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${i===0?'#fff':'rgba(255,255,255,0.5)'};">${e.stopName}</p>
                                     </div>
                                     <div class="flex items-center gap-2 flex-shrink-0">
-                                        <p style="font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${i===0?'#a5b4fc':'rgba(165,180,252,0.6)'};">$\{e.arrival}</p>
-                                        <p style="font-size:10px;color:rgba(255,255,255,0.2);">$\{e.etaMins < 1 ? '<1m' : Math.round(e.etaMins)+'m'}</p>
+                                        <p style="font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${i===0?'#a5b4fc':'rgba(165,180,252,0.6)'};">${e.arrival}</p>
+                                        <p style="font-size:10px;color:rgba(255,255,255,0.2);">${e.etaMins < 1 ? '<1m' : Math.round(e.etaMins)+'m'}</p>
                                     </div>
                                 </div>`).join('') : `
                                 <div class="flex items-center justify-center gap-2 py-4">
