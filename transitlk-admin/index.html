@@ -1357,6 +1357,7 @@
         let busStoppedSince = {};  // { busId: timestamp } — when bus stopped moving
         try { busStoppedSince = JSON.parse(localStorage.getItem('busStoppedSince') || '{}'); } catch(e) { busStoppedSince = {}; }
         const expandedETAPanels = new Set(); // buses with ETA panel open — survives re-renders
+        const _busInTripState = {}; // tracks last known inTrip per bus to detect status changes
 
         // ── ML ETA cache ─────────────────────────────────────────────────────
         // Populated in real time from buses/{busId}/etas written by the Render backend.
@@ -3440,11 +3441,23 @@
             const newIds = filtered.map(([id]) => id);
             const sameSet = existingIds.length === newIds.length && newIds.every((id, i) => id === existingIds[i]);
 
-            if (sameSet && existingIds.length > 0) {
+            // Check if any bus changed inTrip / online status — forces full re-render
+            const statusChanged = filtered.some(([busId, bus]) => {
+                const prev = _busInTripState[busId];
+                return prev === undefined
+                    || prev.inTrip  !== bus.inTrip
+                    || prev.online  !== bus.online;
+            });
+            // Update tracked states
+            filtered.forEach(([busId, bus]) => {
+                _busInTripState[busId] = { inTrip: bus.inTrip, online: bus.online };
+            });
+
+            if (sameSet && existingIds.length > 0 && !statusChanged) {
                 // Just patch dynamic content — don't touch DOM structure, preserves scroll
                 filtered.forEach(([busId, bus]) => patchBusCard(busId, bus));
             } else {
-                // Card set changed — full re-render needed
+                // Card set changed or status changed — full re-render needed
                 renderBusCards(filtered);
             }
         }
