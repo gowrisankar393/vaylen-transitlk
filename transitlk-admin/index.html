@@ -3218,6 +3218,7 @@
 
             // Check if the set of visible bus IDs has changed
             const container = document.getElementById('bus-list');
+            if (!container) return; // live tab not open yet
             const existingIds = [...container.querySelectorAll('[data-bus-id]')].map(el => el.dataset.busId);
             const newIds = filtered.map(([id]) => id);
             const sameSet = existingIds.length === newIds.length && newIds.every((id, i) => id === existingIds[i]);
