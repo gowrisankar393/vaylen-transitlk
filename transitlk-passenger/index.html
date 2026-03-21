@@ -1,2223 +1,961 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TransitLK</title>
-    <link rel="icon" type="image/png" href="logo2.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, onValue, off } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyAqoBhfXXNJYUdOD5oCq8oJWF3NJFuP8XI",
-            authDomain: "transitlk-79740.firebaseapp.com",
-            projectId: "transitlk-79740",
-            storageBucket: "transitlk-79740.firebasestorage.app",
-            messagingSenderId: "756408321316",
-            appId: "1:756408321316:web:admin-dashboard"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        window._db = db;
-        window._dbRef = ref;
-        window._onValue = onValue;
-        window._off = off;
-        window._firebaseReady = true;
-        document.dispatchEvent(new Event('firebaseReady'));
-    </script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        :root {
-            --bg: #080808;
-            --surface: rgba(14,14,14,0.95);
-            --glass: rgba(18,18,18,0.85);
-            --border: rgba(255,255,255,0.07);
-            --border-light: rgba(255,255,255,0.12);
-            --text: #ffffff;
-            --text-dim: rgba(255,255,255,0.45);
-            --text-muted: rgba(255,255,255,0.2);
-            --accent: #0598B1;
-            --accent2: #26A38C;
-            --accent3: #96d46c;
-            --grad: linear-gradient(135deg, #0598B1, #26A38C, #96d46c);
-            --purple: #a855f7;
-            --orange: #f97316;
-            --cyan: #38bdf8;
-            --green: #7ee85a;
-            --red: #ef4444;
-            --yellow: #eab308;
-            --blue: #3b82f6;
-        }
-
-        html, body {
-            height: 100%;
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Sora', sans-serif;
-            overflow: hidden;
-        }
-
-        /* ── SCREENS ── */
-        .screen { position: fixed; inset: 0; display: flex; flex-direction: column; transition: transform 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.4s; }
-        .screen.hidden { transform: translateY(40px); opacity: 0; pointer-events: none; }
-        .screen.slide-left { transform: translateX(-100%); opacity: 0; pointer-events: none; }
-        .screen.slide-right { transform: translateX(100%); opacity: 0; pointer-events: none; }
-
-        /* ── HOME SCREEN ── */
-        #screen-home {
-            background: var(--bg);
-        }
-
-        .home-map-bg {
-            position: absolute; inset: 0;
-            z-index: 0;
-            background: url('bg1.jpg') center center / cover no-repeat;
-        }
-
-        .home-overlay {
-            position: absolute; inset: 0; z-index: 1;
-            background: linear-gradient(to bottom,
-                rgba(8,8,8,0.3) 0%,
-                rgba(8,8,8,0.0) 30%,
-                rgba(8,8,8,0.0) 50%,
-                rgba(8,8,8,0.85) 70%,
-                rgba(8,8,8,0.97) 100%);
-        }
-
-        .home-content {
-            position: relative; z-index: 2;
-            display: flex; flex-direction: column;
-            height: 100%;
-            padding: 0 0 32px 0;
-        }
-
-        .home-header {
-            padding: 52px 20px 0;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-
-        .logo {
-            display: flex; align-items: center; gap: 8px;
-        }
-
-        .logo-dot {
-            width: 28px; height: 28px; border-radius: 8px;
-            background: var(--grad);
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        .logo-text { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
-        .logo-text span { background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-        .home-bottom {
-            margin-top: auto;
-            padding: 0 16px;
-        }
-
-        .home-greeting {
-            padding: 0 4px 16px;
-        }
-
-        .home-greeting h1 {
-            font-size: 26px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.2;
-            margin-bottom: 4px;
-        }
-
-        .home-greeting p { font-size: 13px; color: var(--text-dim); }
-
-        /* Search card */
-        .search-card {
-            background: var(--surface);
-            border: 1px solid var(--border-light);
-            border-radius: 20px;
-            padding: 6px;
-            backdrop-filter: blur(24px);
-            box-shadow: 0 24px 64px rgba(0,0,0,0.6);
-        }
-
-        .search-row {
-            display: flex; align-items: center; gap: 10px;
-            padding: 10px 12px;
-            cursor: pointer;
-            border-radius: 14px;
-            transition: background 0.15s;
-        }
-
-        .search-row:hover, .search-row:active { background: rgba(255,255,255,0.04); }
-
-        .search-dot {
-            width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-        }
-
-        .search-input-fake {
-            flex: 1;
-            font-size: 14px; font-weight: 500;
-            color: var(--text-dim);
-            font-family: 'Sora', sans-serif;
-        }
-
-        .search-input-fake.has-value { color: var(--text); }
-
-        .search-divider {
-            height: 1px; background: var(--border); margin: 0 12px;
-        }
-
-        .search-action-btn {
-            width: 100%; margin-top: 6px;
-            padding: 14px;
-            border-radius: 14px;
-            border: none; cursor: pointer;
-            font-family: 'Sora', sans-serif;
-            font-size: 14px; font-weight: 700;
-            background: var(--grad); color: #000;
-            transition: opacity 0.2s, transform 0.15s;
-        }
-
-        .search-action-btn:active { transform: scale(0.98); opacity: 0.9; }
-
-        /* Quick routes */
-        .quick-section {
-            padding: 20px 16px 0;
-        }
-
-        .quick-label {
-            font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
-            color: var(--text-muted); margin-bottom: 10px;
-            text-transform: uppercase;
-        }
-
-        .quick-chips {
-            display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
-            scrollbar-width: none;
-        }
-
-        .quick-chips::-webkit-scrollbar { display: none; }
-
-        .quick-chip {
-            flex-shrink: 0;
-            padding: 8px 14px;
-            border-radius: 50px;
-            border: 1px solid var(--border-light);
-            background: var(--glass);
-            font-size: 12px; font-weight: 600;
-            cursor: pointer; white-space: nowrap;
-            transition: all 0.15s;
-        }
-
-        .quick-chip:active { background: rgba(255,255,255,0.1); transform: scale(0.97); }
-        .quick-chip.active { background: rgba(5,152,177,0.15); border-color: rgba(5,152,177,0.5); color: var(--cyan); }
-
-        /* ── SEARCH SCREEN ── */
-        #screen-search {
-            background: var(--bg);
-            z-index: 10;
-        }
-
-        .search-screen-header {
-            padding: 52px 16px 12px;
-            display: flex; align-items: center; gap: 12px;
-            border-bottom: 1px solid var(--border);
-            flex-shrink: 0;
-        }
-
-        .back-btn {
-            width: 36px; height: 36px; border-radius: 10px;
-            background: var(--glass); border: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; flex-shrink: 0;
-            transition: background 0.15s;
-        }
-
-        .back-btn:active { background: rgba(255,255,255,0.08); }
-
-        .search-field-wrap {
-            flex: 1;
-            display: flex; flex-direction: column; gap: 6px;
-        }
-
-        .search-field {
-            display: flex; align-items: center; gap: 10px;
-            padding: 10px 12px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-        }
-
-        .search-field input {
-            flex: 1; background: none; border: none; outline: none;
-            font-family: 'Sora', sans-serif;
-            font-size: 14px; font-weight: 500; color: var(--text);
-        }
-
-        .search-field input::placeholder { color: var(--text-dim); }
-
-        .search-results { flex: 1; overflow-y: auto; padding: 12px 16px; }
-
-        .search-section-label {
-            font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
-            color: var(--text-muted); text-transform: uppercase;
-            margin: 16px 0 8px;
-        }
-
-        .route-result-item {
-            display: flex; align-items: center; gap: 12px;
-            padding: 12px;
-            border-radius: 14px;
-            border: 1px solid var(--border);
-            background: var(--glass);
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-
-        .route-result-item:active { background: rgba(255,255,255,0.06); transform: scale(0.99); }
-
-        .route-badge {
-            width: 44px; height: 44px; border-radius: 12px;
-            background: rgba(5,152,177,0.15);
-            border: 1px solid rgba(5,152,177,0.3);
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .route-badge span {
-            font-size: 13px; font-weight: 800; color: var(--cyan);
-        }
-
-        .route-info { flex: 1; min-width: 0; }
-        .route-name { font-size: 14px; font-weight: 700; }
-        .route-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        .route-live-dot {
-            width: 7px; height: 7px; border-radius: 50%;
-            background: var(--green);
-            box-shadow: 0 0 8px var(--green);
-            flex-shrink: 0;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.6; transform: scale(0.85); }
-        }
-
-        /* ── ROUTE SCREEN ── */
-        #screen-route {
-            background: var(--bg);
-            z-index: 10;
-        }
-
-        .route-screen-header {
-            padding: 52px 16px 16px;
-            border-bottom: 1px solid var(--border);
-            flex-shrink: 0;
-        }
-
-        .route-header-top {
-            display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
-        }
-
-        .route-title-block { flex: 1; }
-        .route-title-block h2 { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
-        .route-title-block p { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
-
-        /* Stop selector */
-        .stop-selector {
-            display: flex; align-items: center; gap: 8px;
-            padding: 10px 12px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            cursor: pointer;
-        }
-
-        .stop-selector-text { flex: 1; font-size: 13px; font-weight: 500; }
-        .stop-selector-text.placeholder { color: var(--text-dim); }
-
-        .route-content { flex: 1; overflow-y: auto; padding: 16px; }
-
-        /* Timetable section */
-        .section-header {
-            display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
-        }
-
-        .section-title { font-size: 13px; font-weight: 700; }
-        .section-sub { font-size: 11px; color: var(--text-dim); }
-
-        .timetable-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;
-        }
-
-        .timetable-col { }
-        .timetable-col-label {
-            font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
-            color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;
-        }
-
-        .time-chip {
-            display: inline-block;
-            padding: 6px 10px; margin: 3px 3px 3px 0;
-            border-radius: 8px;
-            font-size: 12px; font-weight: 600; font-family: monospace;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid var(--border);
-            color: var(--text-dim);
-        }
-
-        .time-chip.next {
-            background: rgba(5,152,177,0.12);
-            border-color: rgba(5,152,177,0.4);
-            color: var(--cyan);
-        }
-
-        /* Live buses section */
-        .live-bus-card {
-            background: var(--glass);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 14px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-
-        .live-bus-card:active { transform: scale(0.99); background: rgba(255,255,255,0.06); }
-
-        .live-bus-card-top {
-            display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
-        }
-
-        .live-bus-icon {
-            width: 40px; height: 40px; border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .live-bus-info { flex: 1; min-width: 0; }
-        .live-bus-name { font-size: 14px; font-weight: 700; }
-        .live-bus-status { font-size: 11px; margin-top: 2px; font-weight: 600; }
-
-        .eta-badge {
-            text-align: right; flex-shrink: 0;
-        }
-
-        .eta-mins {
-            font-size: 22px; font-weight: 800; letter-spacing: -1px; line-height: 1;
-        }
-
-        .eta-label { font-size: 10px; color: var(--text-dim); font-weight: 500; }
-
-        .live-bus-progress {
-            height: 4px; border-radius: 2px; background: rgba(255,255,255,0.06);
-            overflow: hidden; margin-bottom: 8px;
-        }
-
-        .live-bus-progress-bar {
-            height: 100%; border-radius: 2px;
-            transition: width 1s ease;
-        }
-
-        .live-bus-footer {
-            display: flex; justify-content: space-between;
-            font-size: 11px; color: var(--text-dim);
-        }
-
-        /* ── TRACKING SCREEN ── */
-        #screen-track {
-            z-index: 20;
-        }
-
-        #track-map {
-            position: absolute; inset: 0;
-            z-index: 0;
-        }
-
-        .track-overlay-top {
-            position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
-            padding: 52px 16px 16px;
-            background: linear-gradient(to bottom, rgba(8,8,8,0.9) 0%, rgba(8,8,8,0) 100%);
-            pointer-events: none;
-        }
-        .track-overlay-top * { pointer-events: all; }
-
-        .track-header {
-            display: flex; align-items: center; gap: 10px;
-        }
-
-        .track-bus-name { font-size: 16px; font-weight: 800; }
-        .track-bus-route { font-size: 12px; color: var(--text-dim); margin-top: 1px; }
-
-        .track-overlay-bottom {
-            position: absolute; bottom: 0; left: 0; right: 0; z-index: 1000;
-            padding: 20px 16px 36px;
-            background: linear-gradient(to top, rgba(8,8,8,0.95) 0%, rgba(8,8,8,0.85) 60%, rgba(8,8,8,0) 100%);
-            pointer-events: none;
-        }
-        .track-overlay-bottom * { pointer-events: all; }
-
-        .track-info-card {
-            background: rgba(14,14,14,0.9);
-            border: 1px solid var(--border-light);
-            border-radius: 20px;
-            padding: 16px;
-            backdrop-filter: blur(20px);
-        }
-
-        .track-next-stop {
-            display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
-        }
-
-        .track-stop-dot {
-            width: 10px; height: 10px; border-radius: 50%;
-            background: var(--cyan); flex-shrink: 0;
-            box-shadow: 0 0 10px var(--cyan);
-        }
-
-        .track-next-label { font-size: 10px; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
-        .track-next-name { font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
-
-        .track-stats {
-            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
-        }
-
-        .track-stat {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 10px;
-            text-align: center;
-        }
-
-        .track-stat-value { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
-        .track-stat-label { font-size: 10px; color: var(--text-dim); margin-top: 2px; font-weight: 500; }
-
-        /* Stops list overlay */
-        .track-stops-toggle {
-            display: flex; align-items: center; justify-content: center; gap-6px;
-            padding: 12px;
-            font-size: 12px; font-weight: 600; color: var(--text-dim);
-            cursor: pointer; margin-top: 10px;
-        }
-
-        /* ── STOP PICKER SHEET ── */
-        .bottom-sheet-overlay {
-            position: fixed; inset: 0; z-index: 50;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(4px);
-            display: flex; align-items: flex-end;
-            opacity: 0; pointer-events: none;
-            transition: opacity 0.3s;
-        }
-
-        .bottom-sheet-overlay.open { opacity: 1; pointer-events: all; }
-
-        .bottom-sheet {
-            width: 100%;
-            background: #111;
-            border: 1px solid var(--border-light);
-            border-radius: 24px 24px 0 0;
-            padding: 0 0 40px;
-            max-height: 70vh;
-            display: flex; flex-direction: column;
-            transform: translateY(100%);
-            transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
-        }
-
-        .bottom-sheet-overlay.open .bottom-sheet { transform: translateY(0); }
-
-        .sheet-handle {
-            width: 36px; height: 4px; border-radius: 2px;
-            background: rgba(255,255,255,0.15);
-            margin: 12px auto 16px;
-        }
-
-        .sheet-title {
-            font-size: 16px; font-weight: 700; padding: 0 16px 12px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .sheet-list { flex: 1; overflow-y: auto; padding: 8px 0; }
-
-        .sheet-item {
-            display: flex; align-items: center; gap: 12px;
-            padding: 12px 16px;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-
-        .sheet-item:active { background: rgba(255,255,255,0.04); }
-
-        .sheet-item-dot {
-            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-        }
-
-        .sheet-item-name { font-size: 14px; font-weight: 500; }
-        .sheet-item-num { font-size: 11px; color: var(--text-muted); margin-left: auto; }
-
-        .sheet-item.selected .sheet-item-name { color: var(--cyan); font-weight: 700; }
-        .sheet-item.selected .sheet-item-dot { background: var(--cyan) !important; box-shadow: 0 0 8px var(--cyan); }
-
-        /* ── LEAFLET OVERRIDES ── */
-        .leaflet-container { background: #0a0a0a !important; }
-        .leaflet-popup-content-wrapper, .leaflet-popup-tip-container { display: none !important; }
-        .leaflet-control-zoom { display: none; }
-        .leaflet-attribution-flag { display: none !important; }
-        .leaflet-control-attribution { display: none !important; }
-
-        /* ── MISC ── */
-        .no-buses {
-            text-align: center; padding: 32px 16px;
-            color: var(--text-dim); font-size: 14px;
-        }
-
-        .spinner {
-            width: 20px; height: 20px; border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.1);
-            border-top-color: var(--cyan);
-            animation: spin 0.8s linear infinite;
-            display: inline-block;
-        }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .divider { height: 1px; background: var(--border); margin: 16px 0; }
-
-        /* Location dot on map */
-        .user-location-dot {
-            width: 14px; height: 14px; border-radius: 50%;
-            background: #4287f5;
-            border: 2px solid #fff;
-            box-shadow: 0 0 0 4px rgba(66,135,245,0.25);
-        }
-
-        /* ── PLACES SEARCH SCREEN ── */
-        #screen-places { background: var(--bg); z-index: 15; }
-
-        .places-header {
-            padding: 52px 16px 12px;
-            border-bottom: 1px solid var(--border);
-            flex-shrink: 0;
-        }
-
-        .places-header-top {
-            display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
-        }
-
-        .places-input-group {
-            display: flex; flex-direction: column; gap: 6px;
-        }
-
-        .places-input-row {
-            display: flex; align-items: center; gap: 10px;
-            padding: 10px 12px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            position: relative;
-        }
-
-        .places-input-row.focused {
-            border-color: rgba(5,152,177,0.5);
-            background: rgba(5,152,177,0.05);
-        }
-
-        .places-input-row input {
-            flex: 1; background: none; border: none; outline: none;
-            font-family: 'Sora', sans-serif;
-            font-size: 14px; font-weight: 500; color: var(--text);
-        }
-
-        .places-input-row input::placeholder { color: var(--text-dim); }
-
-        .places-clear-btn {
-            width: 18px; height: 18px; border-radius: 50%;
-            background: rgba(255,255,255,0.1);
-            border: none; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0; opacity: 0; transition: opacity 0.15s;
-            color: rgba(255,255,255,0.5); font-size: 11px;
-        }
-
-        .places-clear-btn.visible { opacity: 1; }
-
-        /* Suggestions dropdown */
-        .suggestions-dropdown {
-            position: absolute; left: 0; right: 0; top: calc(100% + 4px);
-            background: #141414;
-            border: 1px solid var(--border-light);
-            border-radius: 14px;
-            overflow: hidden;
-            z-index: 100;
-            box-shadow: 0 16px 40px rgba(0,0,0,0.6);
-            max-height: 220px; overflow-y: auto;
-        }
-
-        .suggestion-item {
-            display: flex; align-items: center; gap: 10px;
-            padding: 11px 14px;
-            cursor: pointer;
-            transition: background 0.1s;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-        }
-
-        .suggestion-item:last-child { border-bottom: none; }
-        .suggestion-item:active { background: rgba(255,255,255,0.06); }
-
-        .suggestion-icon {
-            width: 30px; height: 30px; border-radius: 8px;
-            background: rgba(255,255,255,0.06);
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .suggestion-main { font-size: 13px; font-weight: 600; }
-        .suggestion-sub { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
-
-        /* Places map screen */
-        #places-map-screen { background: var(--bg); z-index: 16; }
-        #places-map { position: absolute; inset: 0; z-index: 0; }
-
-        .places-map-top {
-            position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
-            padding: 52px 16px 16px;
-            background: linear-gradient(to bottom, rgba(8,8,8,0.95) 0%, rgba(8,8,8,0) 100%);
-            pointer-events: none;
-        }
-        .places-map-top * { pointer-events: all; }
-
-        .places-route-summary {
-            display: flex; align-items: center; gap: 8px;
-            padding: 10px 14px;
-            background: rgba(14,14,14,0.92);
-            border: 1px solid var(--border-light);
-            border-radius: 14px;
-            backdrop-filter: blur(16px);
-            margin-top: 10px;
-        }
-
-        .places-map-bottom {
-            position: absolute; bottom: 0; left: 0; right: 0; z-index: 1000;
-            padding: 16px 16px 36px;
-            background: linear-gradient(to top, rgba(8,8,8,0.97) 0%, rgba(8,8,8,0.85) 60%, rgba(8,8,8,0) 100%);
-            pointer-events: none;
-        }
-        .places-map-bottom * { pointer-events: all; }
-
-        .buses-for-route {
-            display: flex; flex-direction: column; gap: 8px;
-        }
-
-        .route-bus-card {
-            display: flex; align-items: center; gap: 12px;
-            padding: 12px 14px;
-            background: rgba(14,14,14,0.92);
-            border: 1px solid var(--border-light);
-            border-radius: 14px;
-            cursor: pointer;
-            backdrop-filter: blur(16px);
-            transition: all 0.15s;
-        }
-
-        .route-bus-card:active { transform: scale(0.99); }
-        .route-bus-card.not-started { opacity: 0.55; cursor: default; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>TransitLK</title>
+<link rel="icon" type="image/png" href="logo2.png">
+<link rel="apple-touch-icon" href="logo2.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+  import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+  const cfg = {
+    apiKey:"AIzaSyAqoBhfXXNJYUdOD5oCq8oJWF3NJFuP8XI",
+    authDomain:"transitlk-79740.firebaseapp.com", projectId:"transitlk-79740",
+    storageBucket:"transitlk-79740.firebasestorage.app", messagingSenderId:"756408321316",
+    appId:"1:756408321316:web:9f3b8e80a9cfe39c3bfa0b",
+    databaseURL:"https://transitlk-79740-default-rtdb.firebaseio.com"
+  };
+  const app = initializeApp(cfg);
+  const db = getDatabase(app);
+  window._db=db; window._ref=ref; window._onValue=onValue;
+  window.dispatchEvent(new Event('fb-ready'));
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#080808;--surface:rgba(14,14,14,0.97);--glass:rgba(18,18,18,0.92);
+  --border:rgba(255,255,255,0.07);--border-light:rgba(255,255,255,0.13);
+  --text:#fff;--dim:rgba(255,255,255,0.45);--muted:rgba(255,255,255,0.2);
+  --cyan:#38bdf8;--green:#7ee85a;--purple:#a855f7;--orange:#f97316;
+  --yellow:#eab308;--red:#ef4444;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Sora",sans-serif;overflow:hidden}
+
+/* ── MAP BASE ── */
+#main-map{position:fixed;inset:0;z-index:0}
+
+/* ── TOP BAR ── */
+.top-bar{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  padding:env(safe-area-inset-top,12px) 16px 12px;
+  padding-top:max(env(safe-area-inset-top),14px);
+  background:linear-gradient(to bottom,rgba(8,8,8,.92) 0%,rgba(8,8,8,0) 100%);
+  pointer-events:none;
+}
+.top-bar-inner{pointer-events:all;display:flex;align-items:center;gap:10px}
+
+.search-pill{
+  flex:1;background:var(--glass);border:1px solid var(--border-light);
+  border-radius:14px;padding:11px 14px;cursor:pointer;
+  display:flex;align-items:center;gap:10px;
+  box-shadow:0 4px 20px rgba(0,0,0,.5);backdrop-filter:blur(20px);
+  transition:border-color .2s;
+}
+.search-pill:hover{border-color:rgba(56,189,248,.35)}
+.search-pill-ico{color:var(--dim);flex-shrink:0}
+.search-pill-text{flex:1;font-size:14px;color:var(--dim)}
+.search-pill-dest{font-size:12px;color:var(--cyan);font-weight:600;flex-shrink:0;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── BOTTOM SHEETS ── */
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:200;
+  background:var(--glass);border-radius:22px 22px 0 0;
+  border:1px solid var(--border);border-bottom:none;
+  backdrop-filter:blur(24px);
+  transform:translateY(100%);transition:transform .38s cubic-bezier(.4,0,.2,1);
+  max-height:88vh;display:flex;flex-direction:column;
+  box-shadow:0 -8px 40px rgba(0,0,0,.7);
+}
+.sheet.open{transform:translateY(0)}
+.sheet-handle{width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.15);margin:12px auto 0;flex-shrink:0}
+.sheet-scroll{overflow-y:auto;flex:1;padding:0 16px 32px}
+.sheet-scroll::-webkit-scrollbar{display:none}
+
+/* ── SEARCH SHEET ── */
+#search-sheet{z-index:300}
+.search-sheet-head{padding:16px 16px 12px;flex-shrink:0}
+.back-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.back-btn{width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.06);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--dim);flex-shrink:0;transition:all .2s}
+.back-btn:hover{color:var(--text);border-color:var(--border-light)}
+.sheet-title{font-size:16px;font-weight:700}
+
+.field-wrap{position:relative;margin-bottom:10px}
+.field-wrap:last-of-type{margin-bottom:0}
+.field-ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);pointer-events:none;z-index:2}
+.field-inp{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:13px;padding:13px 36px 13px 42px;color:var(--text);font-family:"Sora",sans-serif;font-size:14px;outline:none;transition:border-color .2s,background .2s}
+.field-inp:focus{border-color:rgba(56,189,248,.4);background:rgba(56,189,248,.04)}
+.field-inp::placeholder{color:var(--muted)}
+.field-clear{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;display:none;font-size:15px;z-index:2}
+.field-clear.show{display:block}
+.swap-row{display:flex;justify-content:center;margin:6px 0}
+.swap-btn{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:5px 16px;cursor:pointer;color:var(--dim);font-size:11px;font-family:"Sora",sans-serif;font-weight:600;transition:all .2s}
+.swap-btn:hover{color:var(--text);border-color:var(--border-light)}
+
+/* suggestion box */
+.sugg-box{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:400;background:#141414;border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.75);display:none}
+.sugg-item{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s}
+.sugg-item:last-child{border-bottom:none}
+.sugg-item:hover,.sugg-item:active{background:rgba(56,189,248,.08)}
+.sugg-ico{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sugg-ico.stop{background:rgba(126,232,90,.1);border:1px solid rgba(126,232,90,.2)}
+.sugg-ico.place{background:rgba(255,255,255,.05);border:1px solid var(--border)}
+.sugg-main{font-size:13px;font-weight:600}
+.sugg-sub{font-size:11px;color:var(--dim);margin-top:1px}
+
+/* ── JOURNEY SHEET ── */
+#journey-sheet .sheet-scroll{padding:16px 16px 32px}
+.journey-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.route-badge{background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.25);border-radius:9px;padding:5px 11px;font-size:13px;font-weight:800;color:var(--cyan);flex-shrink:0}
+.journey-summary{flex:1;min-width:0}
+.journey-route-line{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.journey-meta{font-size:11px;color:var(--dim);margin-top:2px}
+.journey-dur{text-align:right;flex-shrink:0}
+.dur-num{font-size:20px;font-weight:800;color:var(--cyan)}
+.dur-lbl{font-size:10px;color:var(--dim)}
+
+/* walk banners */
+.walk-row{display:flex;gap:8px;margin-bottom:14px}
+.walk-card{flex:1;padding:10px 12px;border-radius:12px;font-size:11px}
+.walk-to{background:rgba(126,232,90,.08);border:1px solid rgba(126,232,90,.2)}
+.walk-from{background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2)}
+.walk-dist{font-weight:700;margin-bottom:2px}
+.walk-stop{color:var(--dim);font-size:10px}
+
+/* step list */
+.steps{margin-bottom:16px}
+.step{display:flex;gap:12px;margin-bottom:0}
+.step-col{display:flex;flex-direction:column;align-items:center;width:16px;flex-shrink:0}
+.step-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:3px;border:2px solid}
+.step-dot.w{border-color:var(--dim);background:transparent}
+.step-dot.b{border-color:var(--green);background:var(--green)}
+.step-dot.r{border-color:rgba(56,189,248,.4);background:transparent}
+.step-dot.a{border-color:var(--orange);background:var(--orange)}
+.step-dot.d{border-color:var(--cyan);background:var(--cyan)}
+.step-line{flex:1;width:2px;min-height:24px;margin:2px 0}
+.step-line.w{background:repeating-linear-gradient(to bottom,var(--muted) 0,var(--muted) 3px,transparent 3px,transparent 7px)}
+.step-line.r{background:rgba(56,189,248,.35)}
+.step-body{flex:1;padding-bottom:18px}
+.step-title{font-size:13px;font-weight:600}
+.step-sub{font-size:11px;color:var(--dim);margin-top:2px;line-height:1.5}
+.step-tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;margin-top:5px}
+.step-tag.g{background:rgba(126,232,90,.1);color:var(--green);border:1px solid rgba(126,232,90,.2)}
+.step-tag.p{background:rgba(168,85,247,.1);color:var(--purple);border:1px solid rgba(168,85,247,.2)}
+.step-tag.o{background:rgba(249,115,22,.1);color:var(--orange);border:1px solid rgba(249,115,22,.2)}
+.step-tag.c{background:rgba(56,189,248,.1);color:var(--cyan);border:1px solid rgba(56,189,248,.2)}
+
+/* stop expander */
+.stop-tog{font-size:11px;color:var(--dim);cursor:pointer;margin-top:4px;display:inline-flex;align-items:center;gap:4px;user-select:none}
+.stop-tog:hover{color:var(--cyan)}
+.stop-list{margin-top:6px;display:none;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.stop-list.open{display:block}
+.stop-li{padding:7px 12px;font-size:11px;color:var(--dim);border-bottom:1px solid rgba(255,255,255,.03);display:flex;align-items:center;gap:8px}
+.stop-li:last-child{border-bottom:none}
+.stop-num{font-size:9px;color:var(--muted);width:16px;text-align:right;flex-shrink:0}
+
+/* live bus cards inside journey sheet */
+.live-section-title{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+.lbc{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:13px;padding:13px;margin-bottom:8px;cursor:pointer;transition:all .2s}
+.lbc:hover{border-color:rgba(168,85,247,.35)}
+.lbc-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.lbc-name{font-size:14px;font-weight:700}
+.lbc-status{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px}
+.lbc-bot{display:flex;align-items:center;justify-content:space-between}
+.lbc-detail{font-size:11px;color:var(--dim)}
+.lbc-eta{text-align:right}
+.eta-num{font-size:22px;font-weight:800}
+.eta-lbl{font-size:10px;color:var(--dim)}
+
+/* ── BUS DETAIL SHEET ── */
+#bus-sheet .sheet-scroll{padding:16px 16px 32px}
+.bus-sheet-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.bus-icon-big{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.bus-name-big{font-size:17px;font-weight:800}
+.bus-route-big{font-size:12px;color:var(--dim);margin-top:2px}
+.bus-stats{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:18px}
+.stat-box{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
+.stat-val{font-size:20px;font-weight:800;line-height:1}
+.stat-lbl{font-size:10px;color:var(--dim);margin-top:4px}
+.close-sheet-btn{margin-top:4px;width:100%;padding:12px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:12px;color:var(--dim);font-family:"Sora",sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.close-sheet-btn:hover{color:var(--text);border-color:var(--border-light)}
+
+/* eta stop list in bus sheet */
+.eta-stop-list{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:14px}
+.eta-stop-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04)}
+.eta-stop-item:last-child{border-bottom:none}
+.eta-stop-item.next-stop{background:rgba(56,189,248,.06)}
+.eta-stop-name{font-size:12px;color:var(--dim)}
+.eta-stop-name.next{color:var(--text);font-weight:600}
+.eta-time{font-size:12px;font-weight:700;font-family:"Sora",sans-serif}
+
+/* spinner */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.1);border-top-color:var(--cyan);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── LOADING SCREEN ── */
+#loading-screen{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity .5s ease, visibility .5s ease;
+}
+#loading-screen.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.loading-logo{width:240px;max-width:70vw;object-fit:contain;}
+
+/* zoom controls */
+.zoom-ctrl{position:fixed;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 240px);z-index:150;display:flex;flex-direction:column;gap:6px}
+.zoom-btn{width:38px;height:38px;background:var(--glass);border:1px solid var(--border);border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--dim);font-size:18px;transition:all .2s;backdrop-filter:blur(16px)}
+.zoom-btn:hover{color:var(--text);border-color:var(--border-light)}
+
+/* my location btn */
+.myloc-btn{position:fixed;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 196px);z-index:150;width:38px;height:38px;background:var(--glass);border:1px solid var(--border);border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--dim);backdrop-filter:blur(16px);transition:all .2s}
+.myloc-btn:hover{color:var(--cyan);border-color:rgba(56,189,248,.3)}
+
+/* user dot */
+.user-dot{width:14px;height:14px;border-radius:50%;background:#3b82f6;border:2.5px solid #fff;box-shadow:0 0 0 4px rgba(59,130,246,.25)}
+
+/* no results */
+.no-res{text-align:center;padding:32px 16px;color:var(--dim);font-size:13px;line-height:1.7}
+
+/* ── TOUCH SHEET DRAG ── */
+.sheet{touch-action:pan-y}
+.sheet-handle{cursor:grab;padding:6px 0;margin-bottom:4px}
+.sheet-handle:active{cursor:grabbing}
+
+/* ── SAFE AREAS ── */
+.sheet-scroll{padding-bottom:max(32px, calc(env(safe-area-inset-bottom) + 20px)) !important}
+.top-bar{padding-top:max(env(safe-area-inset-top,0px),14px)}
+.zoom-ctrl,.myloc-btn{bottom:calc(env(safe-area-inset-bottom,0px) + 220px)}
+.myloc-btn{bottom:calc(env(safe-area-inset-bottom,0px) + 175px)}
+
+/* ── OVERSCROLL ── */
+html,body{overscroll-behavior:none}
+.sheet-scroll{overscroll-behavior:contain}
+
+/* ── ACTIVE STATES for touch ── */
+.lbc:active{background:rgba(168,85,247,.08);border-color:rgba(168,85,247,.35)}
+.sugg-item:active{background:rgba(56,189,248,.1)}
+.back-btn:active,.zoom-btn:active,.myloc-btn:active,.swap-btn:active{opacity:.6}
+.search-pill:active{border-color:rgba(56,189,248,.35)}
+</style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════ -->
-<!--  SCREEN 1: HOME                        -->
-<!-- ══════════════════════════════════════ -->
-<div id="screen-home" class="screen">
-    <div id="home-map-bg" class="home-map-bg"></div>
-    <div class="home-overlay"></div>
-    <div class="home-content">
-        <div class="home-header">
-            <div class="logo">
-                <img src="logo1.png" alt="TransitLK" style="height:28px;object-fit:contain;">
-            </div>
-        </div>
-
-        <div class="quick-section">
-            <div class="quick-label">Popular Routes</div>
-            <div class="quick-chips" id="quick-chips">
-                <div class="quick-chip active" onclick="selectQuickRoute('256-341-1')">256-341 · Ratmalana</div>
-            </div>
-        </div>
-
-        <div class="home-bottom">
-            <div class="home-greeting">
-                <h1>Where are you<br>headed?</h1>
-                <p>Find your next bus in seconds</p>
-            </div>
-
-            <div class="search-card">
-                <div class="search-row" onclick="openPlacesSearch('from')">
-                    <div class="search-dot" style="background:var(--green);box-shadow:0 0 8px var(--green)"></div>
-                    <div class="search-input-fake" id="from-display">Your location</div>
-                </div>
-                <div class="search-divider"></div>
-                <div class="search-row" onclick="openPlacesSearch('to')">
-                    <div class="search-dot" style="background:var(--cyan);box-shadow:0 0 8px var(--cyan)44"></div>
-                    <div class="search-input-fake" id="to-display">Where to?</div>
-                </div>
-                <button class="search-action-btn" onclick="openPlacesSearch('to')">Search Buses</button>
-            </div>
-        </div>
-    </div>
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <img class="loading-logo" src="logo1.png" alt="TransitLK">
 </div>
 
-<!-- ══════════════════════════════════════ -->
-<!--  SCREEN 2: SEARCH / ROUTE LIST         -->
-<!-- ══════════════════════════════════════ -->
-<div id="screen-search" class="screen hidden slide-right">
-    <div class="search-screen-header">
-        <div class="back-btn" onclick="goBack()">
-            <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-            </svg>
-        </div>
-        <div class="search-field-wrap">
-            <div class="search-field">
-                <div style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>
-                <input id="search-from-input" placeholder="From..." oninput="filterResults()">
-            </div>
-            <div class="search-field">
-                <div style="width:8px;height:8px;border-radius:50%;background:var(--cyan);flex-shrink:0;"></div>
-                <input id="search-to-input" placeholder="To..." oninput="filterResults()">
-            </div>
-        </div>
+<!-- LIVE MAP -->
+<div id="main-map"></div>
+
+<!-- TOP SEARCH BAR -->
+<div class="top-bar">
+  <div class="top-bar-inner">
+    <img src="logo2.png" style="width:36px;height:36px;object-fit:contain;flex-shrink:0" alt="TransitLK">
+    <div class="search-pill" onclick="openSearch()">
+      <span class="search-pill-ico">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35"/></svg>
+      </span>
+      <span class="search-pill-text" id="pill-text">Where are you going?</span>
+      <span class="search-pill-dest" id="pill-dest" style="display:none"></span>
     </div>
-    <div class="search-results" id="search-results">
-        <!-- populated by JS -->
-    </div>
+  </div>
 </div>
 
-<!-- ══════════════════════════════════════ -->
-<!--  SCREEN 3: ROUTE DETAIL                -->
-<!-- ══════════════════════════════════════ -->
-<div id="screen-route" class="screen hidden slide-right">
-    <div class="route-screen-header">
-        <div class="route-header-top">
-            <div class="back-btn" onclick="goBack()">
-                <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-                </svg>
-            </div>
-            <div class="route-title-block">
-                <h2 id="route-screen-title">Route 256-341</h2>
-                <p id="route-screen-sub">Ratmalana Railway Station → Maharagama</p>
-            </div>
-        </div>
-        <div class="stop-selector" onclick="openStopPicker()">
-            <svg width="14" height="14" fill="none" stroke="var(--cyan)" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                <circle cx="12" cy="11" r="3"/>
-            </svg>
-            <span class="stop-selector-text placeholder" id="stop-selector-text">Select your stop for ETA</span>
-            <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-            </svg>
-        </div>
-    </div>
-    <div class="route-content" id="route-content">
-        <!-- populated by JS -->
-    </div>
+<!-- MAP CONTROLS -->
+<div class="zoom-ctrl">
+  <div class="zoom-btn" onclick="mainMap.zoomIn()">+</div>
+  <div class="zoom-btn" onclick="mainMap.zoomOut()">−</div>
+</div>
+<div class="myloc-btn" onclick="goToMyLocation()" title="My location">
+  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
 </div>
 
-<!-- ══════════════════════════════════════ -->
-<!--  SCREEN 4: LIVE TRACKING               -->
-<!-- ══════════════════════════════════════ -->
-<div id="screen-track" class="screen hidden slide-right">
-    <div id="track-map"></div>
-    <div class="track-overlay-top">
-        <div class="track-header">
-            <div class="back-btn" onclick="stopTracking()">
-                <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-                </svg>
-            </div>
-            <div style="flex:1;">
-                <div class="track-bus-name" id="track-bus-name">Bus 256</div>
-                <div class="track-bus-route" id="track-bus-route">Route 256-341</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:50px;background:rgba(126,232,90,0.12);border:1px solid rgba(126,232,90,0.3);">
-                <span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;display:block;"></span>
-                <span style="font-size:11px;font-weight:700;color:var(--green);">LIVE</span>
-            </div>
-        </div>
+<!-- SEARCH SHEET -->
+<div class="sheet" id="search-sheet">
+  <div class="sheet-handle"></div>
+  <div class="search-sheet-head">
+    <div class="back-row">
+      <div class="back-btn" onclick="closeSearch()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      </div>
+      <div class="sheet-title">Plan your journey</div>
     </div>
-    <div class="track-overlay-bottom">
-        <div class="track-info-card">
-            <div class="track-next-stop">
-                <div class="track-stop-dot"></div>
-                <div>
-                    <div class="track-next-label">Next Stop</div>
-                    <div class="track-next-name" id="track-next-stop">Loading...</div>
-                </div>
-            </div>
-            <div class="track-stats">
-                <div class="track-stat">
-                    <div class="track-stat-value" id="track-eta" style="color:var(--cyan);">--</div>
-                    <div class="track-stat-label">ETA (mins)</div>
-                </div>
-                <div class="track-stat">
-                    <div class="track-stat-value" id="track-speed">--</div>
-                    <div class="track-stat-label">km/h</div>
-                </div>
-                <div class="track-stat">
-                    <div class="track-stat-value" id="track-stops-away">--</div>
-                    <div class="track-stat-label">Stops away</div>
-                </div>
-            </div>
-        </div>
+    <div class="field-wrap">
+      <span class="field-ico">
+        <svg width="13" height="13" fill="none" stroke="var(--green)" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+      </span>
+      <input id="from-inp" class="field-inp" placeholder="Where from?" autocomplete="off"
+        oninput="onInp('from')" onfocus="onFoc('from')" onblur="onBlr('from')">
+      <button class="field-clear" id="from-clr" onclick="clrField('from')">✕</button>
+      <div class="sugg-box" id="from-sugg"></div>
     </div>
+    <div class="swap-row">
+      <button class="swap-btn" onclick="doSwap()">⇅ Swap</button>
+    </div>
+    <div class="field-wrap">
+      <span class="field-ico">
+        <svg width="13" height="13" fill="none" stroke="var(--purple)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3" stroke-width="2"/></svg>
+      </span>
+      <input id="to-inp" class="field-inp" placeholder="Where to?" autocomplete="off"
+        oninput="onInp('to')" onfocus="onFoc('to')" onblur="onBlr('to')">
+      <button class="field-clear" id="to-clr" onclick="clrField('to')">✕</button>
+      <div class="sugg-box" id="to-sugg"></div>
+    </div>
+  </div>
+  <div class="sheet-scroll" id="search-results">
+    <div style="text-align:center;padding:44px 20px;color:var(--dim);font-size:13px">
+      Enter your start and destination above
+    </div>
+  </div>
 </div>
 
-<!-- Google Maps API — replace YOUR_KEY with your actual key -->
-<script>
-    window.GMAPS_KEY = 'AIzaSyDSSAoB1lo6WslQZrVYY83r77nr9uyP4DI';
-    function loadGoogleMaps() {
-        const s = document.createElement('script');
-        s.src = `https://maps.googleapis.com/maps/api/js?key=${window.GMAPS_KEY}&libraries=places&callback=onGoogleMapsReady`;
-        s.async = true; s.defer = true;
-        document.head.appendChild(s);
-    }
-    loadGoogleMaps();
-</script>
-
-<!-- ══════════════════════════════════════ -->
-<!--  SCREEN 5: PLACES SEARCH               -->
-<!-- ══════════════════════════════════════ -->
-<div id="screen-places" class="screen hidden slide-right">
-    <div class="places-header">
-        <div class="places-header-top">
-            <div class="back-btn" onclick="goBack()">
-                <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-                </svg>
-            </div>
-            <span style="font-size:16px;font-weight:800;">Find a Route</span>
-        </div>
-        <div class="places-input-group">
-            <!-- From field -->
-            <div class="places-input-row" id="from-input-row">
-                <div style="width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);flex-shrink:0;"></div>
-                <input id="from-place-input" placeholder="From (your location or type a place)"
-                    onfocus="onPlacesInputFocus('from')" oninput="onPlacesInput('from')" onblur="onPlacesInputBlur('from')">
-                <button class="places-clear-btn" id="from-clear-btn" onclick="clearPlacesInput('from')">✕</button>
-                <div class="suggestions-dropdown" id="from-suggestions" style="display:none;"></div>
-            </div>
-            <!-- Swap button -->
-            <div style="display:flex;justify-content:flex-end;padding:0 4px;">
-                <button onclick="swapPlaces()" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;padding:4px 10px;cursor:pointer;color:var(--text-dim);font-size:11px;font-family:'Sora',sans-serif;">⇅ Swap</button>
-            </div>
-            <!-- To field -->
-            <div class="places-input-row" id="to-input-row">
-                <div style="width:9px;height:9px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan)44;flex-shrink:0;"></div>
-                <input id="to-place-input" placeholder="To (destination)"
-                    onfocus="onPlacesInputFocus('to')" oninput="onPlacesInput('to')" onblur="onPlacesInputBlur('to')">
-                <button class="places-clear-btn" id="to-clear-btn" onclick="clearPlacesInput('to')">✕</button>
-                <div class="suggestions-dropdown" id="to-suggestions" style="display:none;"></div>
-            </div>
-        </div>
-    </div>
-    <div id="places-search-results" style="flex:1;overflow-y:auto;padding:16px;">
-        <p style="color:var(--text-dim);font-size:13px;text-align:center;margin-top:40px;">Enter your origin and destination<br>to find matching bus routes</p>
-    </div>
+<!-- JOURNEY SHEET -->
+<div class="sheet" id="journey-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-scroll" id="journey-content"></div>
 </div>
 
-<!-- ══════════════════════════════════════ -->
-<!--  SCREEN 6: ROUTE MAP + BUS SELECTION   -->
-<!-- ══════════════════════════════════════ -->
-<div id="screen-places-map" class="screen hidden slide-right">
-    <div id="places-map"></div>
-    <div class="places-map-top">
-        <div style="display:flex;align-items:center;gap:10px;">
-            <div class="back-btn" onclick="goBack()">
-                <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-                </svg>
-            </div>
-            <div style="flex:1;">
-                <div style="font-size:15px;font-weight:800;" id="places-map-title">Route found</div>
-                <div style="font-size:11px;color:var(--text-dim);margin-top:1px;" id="places-map-sub"></div>
-            </div>
-        </div>
-        <div class="places-route-summary" id="places-route-summary" style="display:none;">
-            <svg width="14" height="14" fill="none" stroke="var(--cyan)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-            <span style="font-size:12px;font-weight:600;" id="places-route-label"></span>
-        </div>
-    </div>
-    <div class="places-map-bottom">
-        <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;" id="buses-for-route-label">Available Buses</div>
-        <div class="buses-for-route" id="buses-for-route"></div>
-    </div>
-</div>
-<div class="bottom-sheet-overlay" id="stop-sheet" onclick="closeStopPicker(event)">
-    <div class="bottom-sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-title">Choose Your Stop</div>
-        <!-- Search -->
-        <div style="padding:10px 16px 0;">
-            <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:12px;">
-                <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
-                <input id="stop-search-input" placeholder="Search stops..." oninput="filterSheetStops()"
-                    style="flex:1;background:none;border:none;outline:none;font-family:'Sora',sans-serif;font-size:13px;font-weight:500;color:#fff;">
-                <span id="stop-search-clear" onclick="clearStopSearch()" style="display:none;cursor:pointer;color:rgba(255,255,255,0.3);font-size:16px;line-height:1;">✕</span>
-            </div>
-        </div>
-        <!-- Direction toggle -->
-        <div style="display:flex;gap:8px;padding:10px 16px 12px;border-bottom:1px solid var(--border);">
-            <button id="dir-btn-r2m" onclick="setPickerDirection('R2M')" style="flex:1;padding:9px;border-radius:10px;border:1px solid rgba(5,152,177,0.5);background:rgba(5,152,177,0.15);color:#38bdf8;font-family:'Sora',sans-serif;font-size:12px;font-weight:700;cursor:pointer;"></button>
-            <button id="dir-btn-m2r" onclick="setPickerDirection('M2R')" style="flex:1;padding:9px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-family:'Sora',sans-serif;font-size:12px;font-weight:600;cursor:pointer;"></button>
-        </div>
-        <div class="sheet-list" id="sheet-list"></div>
-    </div>
+<!-- BUS DETAIL SHEET -->
+<div class="sheet" id="bus-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-scroll" id="bus-content"></div>
 </div>
 
 <script>
-// ══════════════════════════════════════════════
-//  STATE
-// ══════════════════════════════════════════════
-const PILOT_ROUTE = {
-    id: '256-341-1',
-    number: '256-341',
-    name: 'Ratmalana Railway Station → Maharagama',
-    shortName: 'Ratmalana · Maharagama'
-};
+// ── Embedded route data ───────────────────────────────────────────────
+const RD = {"route_id": "256-341-1", "label_outbound": "R2M", "label_return": "M2R", "outbound": [{"name": "Ratmalana Railway Station", "lat": 6.814809064190277, "lng": 79.86740912301991, "idx": 0}, {"name": "Belekkade Junction", "lat": 6.814554793683886, "lng": 79.87807826136698, "idx": 1}, {"name": "Ratmalana Airport", "lat": 6.8121946337118, "lng": 79.88139510216976, "idx": 2}, {"name": "Golumadama Junction", "lat": 6.81014598633691, "lng": 79.88344282027118, "idx": 3}, {"name": "Stein Studio", "lat": 6.813202868377047, "lng": 79.88904714980028, "idx": 4}, {"name": "Ratmalana Hindu College", "lat": 6.814144933611544, "lng": 79.89081792941846, "idx": 5}, {"name": "Vijaya Mawathe", "lat": 6.81413557650603, "lng": 79.89076319484154, "idx": 6}, {"name": "8th Cross Lane", "lat": 6.816588869814497, "lng": 79.89523808898913, "idx": 7}, {"name": "Sethsiri Road", "lat": 6.81729785350851, "lng": 79.89642759109257, "idx": 8}, {"name": "Samanala Road", "lat": 6.819230603632046, "lng": 79.90047018798553, "idx": 9}, {"name": "Jayanthi Place", "lat": 6.821140161222303, "lng": 79.90274614125948, "idx": 10}, {"name": "Peiris Mawatha", "lat": 6.823508621624756, "lng": 79.90249296791053, "idx": 11}, {"name": "Kahatagahawatte Road", "lat": 6.824515013840997, "lng": 79.90297831378147, "idx": 12}, {"name": "Metishuddagara Mawathe (Wanguwa)", "lat": 6.829638127151377, "lng": 79.9040951639005, "idx": 13}, {"name": "Gangarama Junction", "lat": 6.832733767477246, "lng": 79.90680651202324, "idx": 14}, {"name": "RMV", "lat": 6.829829961640243, "lng": 79.91136455687756, "idx": 15}, {"name": "Neelammahara Junction", "lat": 6.8277462530445625, "lng": 79.91260822291756, "idx": 16}, {"name": "1st Lane", "lat": 6.828078486658188, "lng": 79.91742926723826, "idx": 17}, {"name": "Temple Road", "lat": 6.8284968188915895, "lng": 79.91991084015964, "idx": 18}, {"name": "Henagedara Road", "lat": 6.829451085833285, "lng": 79.9228457910628, "idx": 19}, {"name": "Thappawaththa Road", "lat": 6.830560943692338, "lng": 79.92397543414619, "idx": 20}, {"name": "Jaya Mawatha", "lat": 6.831667733949425, "lng": 79.92459857079591, "idx": 21}, {"name": "Sadu Mawatha", "lat": 6.833231701259597, "lng": 79.9255285862575, "idx": 22}, {"name": "1st lane (2)", "lat": 6.834888457186286, "lng": 79.9254345377943, "idx": 23}, {"name": "Neelammahara Junction (M)", "lat": 6.839768389857514, "lng": 79.92813001165966, "idx": 24}, {"name": "Maharagama", "lat": 6.8437092336942875, "lng": 79.92576819287534, "idx": 25}], "return": [{"name": "Maharagama", "lat": 6.845421134643101, "lng": 79.92613768482384, "idx": 0}, {"name": "Neelammahara Junction", "lat": 6.840043669809688, "lng": 79.92838210704659, "idx": 1}, {"name": "1st lane (2)", "lat": 6.834748261007821, "lng": 79.9255304526041, "idx": 2}, {"name": "Sadu Mawatha", "lat": 6.833175694159728, "lng": 79.92541794258885, "idx": 3}, {"name": "Jaya Mawatha", "lat": 6.831592691445099, "lng": 79.92463551220689, "idx": 4}, {"name": "Thappawaththa Road", "lat": 6.8304589386705, "lng": 79.92406085252492, "idx": 5}, {"name": "Henagedara Road", "lat": 6.829389461982918, "lng": 79.92299354687252, "idx": 6}, {"name": "Temple Road", "lat": 6.828430110199893, "lng": 79.91980003388299, "idx": 7}, {"name": "1st Lane", "lat": 6.82798839812273, "lng": 79.91728187627389, "idx": 8}, {"name": "Katuwawala", "lat": 6.828339702572931, "lng": 79.91206005629783, "idx": 9}, {"name": "RMV", "lat": 6.829715310135391, "lng": 79.91126619967994, "idx": 10}, {"name": "Gangarama Junction", "lat": 6.83280574864011, "lng": 79.90640973674672, "idx": 11}, {"name": "Metishuddagara Mawathe (Wanguwa)", "lat": 6.829244349489343, "lng": 79.90409108666974, "idx": 12}, {"name": "Kahatagahawatte Road", "lat": 6.824845087622099, "lng": 79.90305637198782, "idx": 13}, {"name": "Peiris Mawatha", "lat": 6.823409328150068, "lng": 79.90257299171063, "idx": 14}, {"name": "10th Mile Post Rd", "lat": 6.821647963541033, "lng": 79.90291113229063, "idx": 15}, {"name": "Samanala Road", "lat": 6.819147807673637, "lng": 79.90047005093834, "idx": 16}, {"name": "Sethsiri Road", "lat": 6.817220938931937, "lng": 79.89641569897422, "idx": 17}, {"name": "8th Cross Lane", "lat": 6.816568335134283, "lng": 79.89532675270408, "idx": 18}, {"name": "6th Cross Lane", "lat": 6.815922343313618, "lng": 79.89416942210656, "idx": 19}, {"name": "1st Cross Lane", "lat": 6.814373482383594, "lng": 79.89140231584467, "idx": 20}, {"name": "Stein Studio", "lat": 6.813158205046241, "lng": 79.88912853447913, "idx": 21}, {"name": "Golumadama Junction (BR)", "lat": 6.81011242829084, "lng": 79.88362909835811, "idx": 22}, {"name": "Golumadama Junction (GR)", "lat": 6.8106954346358215, "lng": 79.88234925647812, "idx": 23}, {"name": "Belekkade Junction", "lat": 6.814678893499417, "lng": 79.87866231954662, "idx": 24}, {"name": "Ratmalana Railway Station", "lat": 6.814809064190277, "lng": 79.86740912301991, "idx": 25}], "avg_travel_times": {"OUTBOUND": {"0\u21921": 3.62, "1\u21922": 1.24, "2\u21923": 5.78, "3\u21924": 1.58, "4\u21925": 0.5, "6\u21927": 1.0, "7\u21928": 0.39, "8\u21929": 0.88, "9\u219210": 0.72, "10\u219211": 0.55, "11\u219212": 0.37, "12\u219213": 1.18, "13\u219214": 1.63, "14\u219215": 0.85, "15\u219216": 0.9, "16\u219217": 1.73, "17\u219218": 0.55, "18\u219219": 0.55, "19\u219220": 0.35, "20\u219221": 0.27, "21\u219222": 0.35, "22\u219223": 0.28, "23\u219224": 0.9, "24\u219225": 0.9}, "RETURN": {"0\u21921": 1.98, "1\u21922": 1.17, "2\u21923": 0.43, "3\u21924": 0.42, "4\u21925": 0.32, "5\u21926": 0.42, "6\u21927": 0.6, "7\u21928": 0.75, "8\u21929": 1.48, "9\u219210": 0.45, "10\u219211": 0.77, "11\u219212": 1.95, "12\u219213": 1.15, "13\u219214": 0.35, "14\u219215": 0.42, "15\u219216": 1.18, "16\u219217": 1.32, "17\u219218": 0.34, "18\u219219": 0.32, "19\u219220": 0.65, "20\u219221": 0.45, "21\u219222": 0.85, "22\u219223": 0.88, "23\u219224": 0.72, "24\u219225": 1.72}}};
+const OUT = RD.outbound, RET = RD['return'], AVG = RD.avg_travel_times;
+const ALL_STOPS = [...new Set([...OUT.map(s=>s.name),...RET.map(s=>s.name)])].sort();
+const SRI_LANKA_BOUNDS = {north:9.9,south:5.9,east:81.9,west:79.7};
+const GMAPS_KEY = 'AIzaSyDSSAoB1lo6WslQZrVYY83r77nr9uyP4DI';
 
-let currentScreen = 'home';
-let screenHistory = ['home'];
-let selectedRoute = null;
-let selectedStop = null;      // { name, lat, lng, index, direction }
-let userLocation = null;      // { lat, lng }
+// ── State ─────────────────────────────────────────────────────────────
+let liveBuses = {}, busAdminData = {};
+let fromPlace = null, toPlace = null;
+let userLocation = null;
+let currentMatch = null;
+let mainMap = null, busMarkers = {}, journeyLayers = [], userMarker = null;
+let activeBusSheetId = null;
 
-let busAdminData = {};        // busId → admin data (stops, schedule)
-let liveBuses = {};           // busId → live data
-let liveUnsubscribe = null;
-let adminUnsubscribe = null;
-
-let trackMap = null;
-let trackBusId = null;
-let trackBusMarker = null;
-let trackRouteStopLayers = [];
-let trackUserMarker = null;
-let trackInterval = null;
-
-// ══════════════════════════════════════════════
-//  FIREBASE INIT
-// ══════════════════════════════════════════════
-function waitForFirebase(cb) {
-    if (window._firebaseReady) { cb(); return; }
-    document.addEventListener('firebaseReady', cb, { once: true });
-}
-
-waitForFirebase(() => {
-    initHomeMap();
-    getUserLocation();
-    startAdminListener();
-    startLiveListener();
+// ── Firebase ──────────────────────────────────────────────────────────
+window.addEventListener('fb-ready', () => {
+  const {_db:db,_ref:ref,_onValue:ov} = window;
+  ov(ref(db,'buses'), snap => {
+    liveBuses = snap.val() || {};
+    updateMapMarkers();
+    if (activeBusSheetId) refreshBusSheet(activeBusSheetId);
+  });
+  ov(ref(db,'busAdmin'), snap => { busAdminData = snap.val() || {}; });
 });
 
-// ══════════════════════════════════════════════
-//  FIREBASE LISTENERS
-// ══════════════════════════════════════════════
-function startAdminListener() {
-    const ref = window._dbRef(window._db, 'busAdmin');
-    adminUnsubscribe = window._onValue(ref, snap => {
-        busAdminData = snap.val() || {};
-    });
+// ── Google Maps ───────────────────────────────────────────────────────
+window.GMAPS_KEY = GMAPS_KEY;
+(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a);d[q]=f}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({key:GMAPS_KEY,v:"weekly"});
+google.maps.importLibrary("places").then(({AutocompleteSuggestion})=>{window._AC=AutocompleteSuggestion;});
+
+// ── Init map ──────────────────────────────────────────────────────────
+function initMap() {
+  // Suppress Leaflet default icon loading (we use divIcons only)
+  delete L.Icon.Default.prototype._getIconUrl;
+  L.Icon.Default.mergeOptions({iconUrl:'',shadowUrl:'',iconRetinaUrl:''});
+  mainMap = L.map('main-map', {zoomControl:false,attributionControl:false}).setView([6.83,79.90],13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(mainMap);
+  mainMap.on('click', () => { closeAllSheets(); });
+  getUserLocation();
+  // Hide loading screen once map tiles start loading
+  mainMap.once('load', hideLoader);
+  setTimeout(hideLoader, 2500); // fallback
 }
 
-function startLiveListener() {
-    const ref = window._dbRef(window._db, 'buses');
-    liveUnsubscribe = window._onValue(ref, snap => {
-        liveBuses = snap.val() || {};
-        document.dispatchEvent(new Event('liveBusesUpdated'));
-        if (currentScreen === 'route') renderRouteContent();
-        if (currentScreen === 'track' && trackBusId) updateTrackingView();
-    });
+function hideLoader(){
+  var el = document.getElementById('loading-screen');
+  if(el) el.classList.add('hidden');
+}
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initMap);
+} else {
+  initMap();
 }
 
-// ══════════════════════════════════════════════
-//  LOCATION
-// ══════════════════════════════════════════════
 function getUserLocation() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(pos => {
-        userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        // Auto-detect nearest stop if on route screen
-        if (currentScreen === 'route' && selectedRoute && !selectedStop) autoDetectStop();
-    }, null, { enableHighAccuracy: true, timeout: 8000 });
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(pos => {
+    userLocation = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+    const icon = L.divIcon({className:'',iconSize:[14,14],iconAnchor:[7,7],html:'<div class="user-dot"></div>'});
+    if (userMarker) userMarker.setLatLng([userLocation.lat,userLocation.lng]);
+    else userMarker = L.marker([userLocation.lat,userLocation.lng],{icon,zIndexOffset:500}).addTo(mainMap);
+    mainMap.setView([userLocation.lat,userLocation.lng],14);
+  }, null, {enableHighAccuracy:true,timeout:8000});
 }
 
-function autoDetectStop() {
-    if (!userLocation || !selectedRoute) return;
-    const admin = getRouteAdmin();
-    if (!admin) return;
-    const allStops = [...(admin.stopsR2M || []), ...(admin.stopsM2R || [])];
-    if (!allStops.length) return;
-    let nearest = null, minDist = Infinity;
-    allStops.forEach((s, i) => {
-        const d = haversine(userLocation.lat, userLocation.lng, s.lat, s.lng);
-        if (d < minDist) { minDist = d; nearest = s; }
-    });
-    if (nearest && minDist < 500) {
-        selectedStop = nearest;
-        document.getElementById('stop-selector-text').textContent = nearest.name;
-        document.getElementById('stop-selector-text').classList.remove('placeholder');
-        renderRouteContent();
+function goToMyLocation() {
+  if (userLocation) mainMap.setView([userLocation.lat,userLocation.lng],15,{animate:true});
+  else getUserLocation();
+}
+
+// ── Bus markers ───────────────────────────────────────────────────────
+function makeBusIcon(color, size=34) {
+  return L.divIcon({className:'',iconSize:[size,size],iconAnchor:[size/2,size/2],
+    html:`<div style="width:${size}px;height:${size}px;border-radius:50%;background:rgba(8,8,8,.9);border:2px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px ${color}55;cursor:pointer">
+      <svg width="${size*0.53}" height="${size*0.53}" viewBox="0 0 24 24" fill="${color}">
+        <path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+      </svg>
+    </div>`});
+}
+
+function updateMapMarkers() {
+  Object.entries(liveBuses).forEach(([id,bus]) => {
+    if (!bus.lat || !bus.lng || !bus.online) return;
+    const color = bus.inTrip ? '#a855f7' : '#eab308';
+    const icon = makeBusIcon(color);
+    if (busMarkers[id]) busMarkers[id].setLatLng([bus.lat,bus.lng]).setIcon(icon);
+    else {
+      busMarkers[id] = L.marker([bus.lat,bus.lng],{icon,zIndexOffset:100}).addTo(mainMap)
+        .on('click', e => { e.originalEvent.stopPropagation(); openBusSheet(id); });
     }
+  });
+  Object.keys(busMarkers).forEach(id => {
+    if (!liveBuses[id]?.online) { mainMap.removeLayer(busMarkers[id]); delete busMarkers[id]; }
+  });
 }
 
-// ══════════════════════════════════════════════
-// ══════════════════════════════════════════════
-//  HOME MAP
-// ══════════════════════════════════════════════
-let homeMap = null;
-let homeMarkers = {};
-
-function initHomeMap() {
-    homeMap = L.map('home-map-bg', {
-        zoomControl: false, attributionControl: false,
-        dragging: false, scrollWheelZoom: false,
-        doubleClickZoom: false, keyboard: false,
-        touchZoom: false
-    }).setView([6.83, 79.90], 13);
-
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(homeMap);
-    setTimeout(() => homeMap?.invalidateSize(), 100);
-    setTimeout(() => homeMap?.invalidateSize(), 500);
-    setTimeout(() => homeMap?.invalidateSize(), 1000);
-
-    // Update home map markers whenever live buses update
-    document.addEventListener('liveBusesUpdated', updateHomeMapMarkers);
+// ── Sheets ────────────────────────────────────────────────────────────
+function openSearch() {
+  document.getElementById('search-sheet').classList.add('open');
+  document.getElementById('journey-sheet').classList.remove('open');
+  document.getElementById('bus-sheet').classList.remove('open');
+  history.pushState({sheet:'search'},'',location.href);
+  setTimeout(()=>document.getElementById('from-inp').focus(),350);
+}
+function closeSearch() {
+  document.getElementById('search-sheet').classList.remove('open');
+}
+function closeAllSheets() {
+  document.getElementById('search-sheet').classList.remove('open');
+  document.getElementById('journey-sheet').classList.remove('open');
+  document.getElementById('bus-sheet').classList.remove('open');
+  activeBusSheetId = null;
 }
 
-function updateHomeMapMarkers() {
-    Object.entries(liveBuses).forEach(([busId, bus]) => {
-        if (!bus.lat || !bus.lng) return;
-        const color = bus.inTrip ? '#a855f7' : bus.online ? '#eab308' : '#ef4444';
-        const icon = L.divIcon({
-            className: '',
-            iconSize: [28, 28], iconAnchor: [14, 14],
-            html: `<div style="width:28px;height:28px;border-radius:50%;background:rgba(8,8,8,0.85);border:2px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px ${color}55;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="${color}">
-                    <path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
-                </svg>
-            </div>`
-        });
-        if (homeMarkers[busId]) {
-            homeMarkers[busId].setLatLng([bus.lat, bus.lng]).setIcon(icon);
-        } else {
-            homeMarkers[busId] = L.marker([bus.lat, bus.lng], { icon, interactive: false }).addTo(homeMap);
+function openBusSheet(busId) {
+  activeBusSheetId = busId;
+  document.getElementById('search-sheet').classList.remove('open');
+  document.getElementById('journey-sheet').classList.remove('open');
+  refreshBusSheet(busId);
+  document.getElementById('bus-sheet').classList.add('open');
+  history.pushState({sheet:'bus',busId:busId},'',location.href);
+}
+
+function closeBusSheet() {
+  document.getElementById('bus-sheet').classList.remove('open');
+  activeBusSheetId = null;
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────
+function hav(la1,ln1,la2,ln2){
+  const R=6371000,dL=(la2-la1)*Math.PI/180,dN=(ln2-ln1)*Math.PI/180;
+  const a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dN/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function fmtDist(m){return m>=1000?`${(m/1000).toFixed(1)} km`:`${Math.round(m)} m`;}
+function fmtMins(m){return m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m} min`;}
+function fuzzy(q,n){q=q.toLowerCase();n=n.toLowerCase();return n.includes(q)||q.split(' ').some(w=>w.length>1&&n.includes(w));}
+function localStops(q){return q.length<2?[]:ALL_STOPS.filter(s=>fuzzy(q,s)).slice(0,4).map(n=>({name:n,isStop:true,...(OUT.find(s=>s.name===n)||RET.find(s=>s.name===n)||{})}));}
+
+function durBetween(fi,ti,dir){
+  const avg=dir==='OUT'?AVG.OUTBOUND:AVG.RETURN;
+  let t=0;for(let i=fi;i<ti;i++)t+=avg[i+'→'+(i+1)]||2;
+  return Math.round(t);
+}
+
+function detectDir(bus,admin){
+  const sch=admin.schedule;
+  if(sch?.ratmalana?.length||sch?.maharagama?.length){
+    const now=new Date(),nm=now.getHours()*60+now.getMinutes();
+    const all=[...(sch.ratmalana||[]).map(t=>({dir:'R2M',m:toMins(t)})),...(sch.maharagama||[]).map(t=>({dir:'M2R',m:toMins(t)}))].sort((a,b)=>a.m-b.m);
+    let cur=null;for(const t of all){if(t.m<=nm)cur=t;}
+    if(cur)return cur.dir;if(all.length)return all[0].dir;
+  }
+  return admin.stopsR2M?.length?'R2M':admin.stopsM2R?.length?'M2R':null;
+}
+function toMins(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+
+function getNextStop(busId,bus){
+  const admin=busAdminData[busId]||{};
+  const dir=detectDir(bus,admin);
+  if(!dir)return null;
+  const stops=dir==='R2M'?(admin.stopsR2M||[]):(admin.stopsM2R||[]);
+  if(!stops.length)return null;
+  return stops.map((s,i)=>({...s,i,dist:hav(bus.lat,bus.lng,s.lat,s.lng)})).sort((a,b)=>a.dist-b.dist)[0];
+}
+
+function estimateETA(bus,targetStop){
+  if(!bus.lat||!bus.lng)return null;
+  const dist=hav(bus.lat,bus.lng,targetStop.lat,targetStop.lng);
+  const spd=bus.speed>0.5?bus.speed:5;
+  return Math.max(1,Math.round(dist/spd/60));
+}
+
+function decodePolyline(enc){
+  let idx=0,lat=0,lng=0,pts=[];
+  while(idx<enc.length){
+    let b,shift=0,result=0;
+    do{b=enc.charCodeAt(idx++)-63;result|=(b&0x1f)<<shift;shift+=5;}while(b>=0x20);
+    lat+=(result&1)?~(result>>1):(result>>1);shift=0;result=0;
+    do{b=enc.charCodeAt(idx++)-63;result|=(b&0x1f)<<shift;shift+=5;}while(b>=0x20);
+    lng+=(result&1)?~(result>>1):(result>>1);
+    pts.push([lat/1e5,lng/1e5]);
+  }
+  return pts;
+}
+
+async function fetchWalkPath(o,d){
+  try{
+    const url=`https://maps.googleapis.com/maps/api/directions/json?origin=${o.lat},${o.lng}&destination=${d.lat},${d.lng}&mode=walking&key=${GMAPS_KEY}`;
+    const res=await fetch('https://corsproxy.io/?'+encodeURIComponent(url),{signal:AbortSignal.timeout(5000)});
+    const data=await res.json();
+    if(data.status==='OK'&&data.routes[0])return decodePolyline(data.routes[0].overview_polyline.points);
+  }catch(e){}
+  return null;
+}
+
+// ── Autocomplete ──────────────────────────────────────────────────────
+async function showSugg(field,query){
+  const box=document.getElementById(field+'-sugg');
+  box.style.display='block';
+  const local=localStops(query);
+  const sico='<svg width="12" height="12" fill="none" stroke="var(--green)" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/></svg>';
+  const pico='<svg width="12" height="12" fill="none" stroke="var(--dim)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>';
+  const stopH=s=>`<div class="sugg-item" onmousedown="pickStop('${field}',${JSON.stringify(s).replace(/"/g,'&quot;')})"><div class="sugg-ico stop">${sico}</div><div><div class="sugg-main">${s.name}</div><div class="sugg-sub">Bus stop · 256-341</div></div></div>`;
+  const placeH=(id,main,sec)=>`<div class="sugg-item" onmousedown="pickPlace('${field}','${id}','${main.replace(/'/g,"\\'")}')" ><div class="sugg-ico place">${pico}</div><div><div class="sugg-main">${main}</div><div class="sugg-sub">${sec}</div></div></div>`;
+  box.innerHTML=local.map(stopH).join('')||`<div style="padding:12px 14px;font-size:12px;color:var(--muted)"><span class="spinner"></span> Searching...</div>`;
+  if(window._AC){
+    try{
+      const{suggestions}=await window._AC.fetchAutocompleteSuggestions({input:query,locationBias:{west:SRI_LANKA_BOUNDS.west,south:SRI_LANKA_BOUNDS.south,east:SRI_LANKA_BOUNDS.east,north:SRI_LANKA_BOUNDS.north},includedRegionCodes:['lk']});
+      const gH=suggestions.filter(s=>s.placePrediction).slice(0,4).map(s=>{const p=s.placePrediction;return placeH(p.placeId,p.mainText?.toString()||p.text?.toString()||'',p.secondaryText?.toString()||'Sri Lanka');}).join('');
+      box.innerHTML=local.map(stopH).join('')+gH||`<div style="padding:12px 14px;font-size:12px;color:var(--muted)">No results found</div>`;
+    }catch(e){if(local.length)box.innerHTML=local.map(stopH).join('');}
+  }
+}
+function hideSugg(f){document.getElementById(f+'-sugg').style.display='none';}
+function onInp(f){
+  const v=document.getElementById(f+'-inp').value;
+  document.getElementById(f+'-clr').classList.toggle('show',v.length>0);
+  if(v.length>=2)showSugg(f,v);else hideSugg(f);
+}
+function onFoc(f){const v=document.getElementById(f+'-inp').value;if(v.length>=2)showSugg(f,v);}
+function onBlr(f){setTimeout(()=>hideSugg(f),200);}
+function clrField(f){
+  document.getElementById(f+'-inp').value='';
+  document.getElementById(f+'-clr').classList.remove('show');
+  hideSugg(f);
+  if(f==='from')fromPlace=null;else toPlace=null;
+}
+function doSwap(){
+  const fi=document.getElementById('from-inp'),ti=document.getElementById('to-inp');
+  [fi.value,ti.value]=[ti.value,fi.value];
+  [fromPlace,toPlace]=[toPlace,fromPlace];
+  document.getElementById('from-clr').classList.toggle('show',fi.value.length>0);
+  document.getElementById('to-clr').classList.toggle('show',ti.value.length>0);
+}
+
+function pickStop(field,stop){
+  document.getElementById(field+'-inp').value=stop.name;
+  document.getElementById(field+'-clr').classList.add('show');
+  hideSugg(field);
+  if(field==='from')fromPlace={name:stop.name,lat:stop.lat,lng:stop.lng,isStop:true};
+  else toPlace={name:stop.name,lat:stop.lat,lng:stop.lng,isStop:true};
+  trySearch();
+}
+
+async function pickPlace(field,placeId,name){
+  document.getElementById(field+'-inp').value=name;
+  document.getElementById(field+'-clr').classList.add('show');
+  hideSugg(field);
+  document.getElementById('search-results').innerHTML='<div style="text-align:center;padding:40px"><span class="spinner"></span><p style="color:var(--dim);font-size:12px;margin-top:12px">Getting location...</p></div>';
+  try{
+    const{Place}=await google.maps.importLibrary('places');
+    const pl=new Place({id:placeId,requestedLanguage:'en'});
+    await pl.fetchFields({fields:['location','displayName']});
+    if(pl.location){
+      const r={name,lat:pl.location.lat(),lng:pl.location.lng()};
+      if(field==='from')fromPlace=r;else toPlace=r;
+      trySearch();
+    }
+  }catch(e){
+    try{
+      const{Geocoder}=await google.maps.importLibrary('geocoding');
+      const gc=new Geocoder();
+      const res=await gc.geocode({placeId});
+      if(res.results[0]?.geometry){
+        const r={name,lat:res.results[0].geometry.location.lat(),lng:res.results[0].geometry.location.lng()};
+        if(field==='from')fromPlace=r;else toPlace=r;
+        trySearch();
+      }
+    }catch(e2){
+      document.getElementById('search-results').innerHTML='<div class="no-res">Could not get location.<br><span style="font-size:11px;color:var(--muted)">Try selecting a different result.</span></div>';
+    }
+  }
+}
+
+// ── Match & Search ────────────────────────────────────────────────────
+function trySearch(){
+  if(!fromPlace||!toPlace)return;
+  updatePillDest(toPlace.name);
+  doSearch();
+}
+
+function updatePillDest(name){
+  document.getElementById('pill-text').textContent='To:';
+  const d=document.getElementById('pill-dest');
+  d.style.display='inline';
+  d.textContent=name;
+}
+
+function doSearch(){
+  const res=document.getElementById('search-results');
+  res.innerHTML='<div style="text-align:center;padding:40px"><span class="spinner"></span></div>';
+  const WALK=2000;
+  const matches=[];
+  for(const dir of ['OUT','RET']){
+    const stops=dir==='OUT'?OUT:RET;
+    if(!stops.length)continue;
+    const fC=stops.map((s,i)=>({...s,i,dist:hav(fromPlace.lat,fromPlace.lng,s.lat,s.lng)})).filter(s=>s.dist<=WALK).sort((a,b)=>a.dist-b.dist);
+    const tC=stops.map((s,i)=>({...s,i,dist:hav(toPlace.lat,toPlace.lng,s.lat,s.lng)})).filter(s=>s.dist<=WALK).sort((a,b)=>a.dist-b.dist);
+    if(!fC.length||!tC.length)continue;
+    const board=fC[0],alight=tC[0];
+    if(board.i>=alight.i)continue;
+    const rideStops=stops.slice(board.i,alight.i+1);
+    const mins=durBetween(board.i,alight.i,dir);
+    const dLabel=dir==='OUT'?RD.label_outbound:RD.label_return;
+    matches.push({dir,dLabel,board,alight,rideStops,stops,walkToBoard:Math.round(board.dist),walkFromAlight:Math.round(alight.dist),mins});
+  }
+  // Also check Firebase admin stops
+  for(const[busId,admin]of Object.entries(busAdminData)){
+    for(const dir of['R2M','M2R']){
+      const stops=dir==='R2M'?(admin.stopsR2M||[]):(admin.stopsM2R||[]);
+      if(!stops.length)continue;
+      const fC=stops.map((s,i)=>({...s,i,dist:hav(fromPlace.lat,fromPlace.lng,s.lat,s.lng)})).filter(s=>s.dist<=WALK).sort((a,b)=>a.dist-b.dist);
+      const tC=stops.map((s,i)=>({...s,i,dist:hav(toPlace.lat,toPlace.lng,s.lat,s.lng)})).filter(s=>s.dist<=WALK).sort((a,b)=>a.dist-b.dist);
+      if(!fC.length||!tC.length)continue;
+      const board=fC[0],alight=tC[0];
+      if(board.i>=alight.i||matches.find(m=>m.busId===busId&&m.adminDir===dir))continue;
+      const rideStops=stops.slice(board.i,alight.i+1);
+      matches.push({busId,adminDir:dir,dLabel:dir==='R2M'?'Outbound':'Return',board,alight,rideStops,stops,walkToBoard:Math.round(board.dist),walkFromAlight:Math.round(alight.dist),mins:Math.round((alight.i-board.i)*3)});
+    }
+  }
+  if(!matches.length){
+    res.innerHTML=`<div class="no-res"><svg width="36" height="36" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 12px;display:block"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>No route found within 2km.<br><span style="font-size:11px;color:var(--muted)">Try locations closer to the route.</span></div>`;
+    return;
+  }
+  matches.sort((a,b)=>(a.walkToBoard+a.walkFromAlight)-(b.walkToBoard+b.walkFromAlight));
+  currentMatch=matches[0];
+  renderSearchResult(currentMatch);
+  drawJourneyOnMap(currentMatch);
+}
+
+// ── Search result in sheet ────────────────────────────────────────────
+function renderSearchResult(m){
+  const res=document.getElementById('search-results');
+  const rideCount=m.alight.i-m.board.i;
+  const buses=Object.entries(liveBuses).filter(([,b])=>b.online);
+  const walkH=(m.walkToBoard>50||m.walkFromAlight>50)?`<div class="walk-row">
+    ${m.walkToBoard>50?`<div class="walk-card walk-to"><div class="walk-dist" style="color:var(--green)">${fmtDist(m.walkToBoard)}</div><div class="walk-stop">to board at ${m.board.name}</div></div>`:''}
+    ${m.walkFromAlight>50?`<div class="walk-card walk-from"><div class="walk-dist" style="color:var(--purple)">${fmtDist(m.walkFromAlight)}</div><div class="walk-stop">after alighting at ${m.alight.name}</div></div>`:''}
+  </div>`:'';
+  const mids=m.rideStops.slice(1,-1);
+  const midH=mids.map((s,i)=>`<div class="stop-li"><span class="stop-num">${m.board.i+i+1}</span>${s.name}</div>`).join('');
+  const busCardsH=buses.length?buses.map(([id,bus])=>{
+    const admin=busAdminData[id]||{};
+    const name=admin.plate||bus.customName||id;
+    const inT=bus.inTrip===true;
+    const col=inT?'#a855f7':'#6b7280';
+    const spd=((bus.speed||0)*3.6).toFixed(0);
+    let etaH='';
+    if(inT){
+      // ML ETA from Firebase
+      const mlEtas=bus.etas?.stops;
+      if(mlEtas?.length){
+        const boardEta=mlEtas.find(s=>s.stopName===m.board.name||s.stopIdx===m.board.i);
+        if(boardEta){
+          const ec=boardEta.etaMins<=5?'#7ee85a':boardEta.etaMins<=15?'#eab308':'#38bdf8';
+          etaH=`<div class="lbc-eta"><span class="eta-num" style="color:${ec}">${Math.round(boardEta.etaMins)}</span><div class="eta-lbl">min to your stop</div><div style="font-size:9px;color:rgba(126,232,90,.6);margin-top:1px">ML MODEL</div></div>`;
         }
-    });
-    // Remove stale markers
-    Object.keys(homeMarkers).forEach(id => {
-        if (!liveBuses[id]) { homeMap.removeLayer(homeMarkers[id]); delete homeMarkers[id]; }
-    });
-}
-
-// ══════════════════════════════════════════════
-//  NAVIGATION
-// ══════════════════════════════════════════════
-function showScreen(id, direction = 'right') {
-    const prev = document.getElementById(`screen-${currentScreen}`);
-    const next = document.getElementById(`screen-${id}`);
-
-    prev.classList.add(direction === 'right' ? 'slide-left' : 'slide-right');
-    next.classList.remove('hidden', 'slide-left', 'slide-right');
-
-    currentScreen = id;
-    screenHistory.push(id);
-
-    // Push browser history state so native back button works
-    history.pushState({ screen: id }, '', `#${id}`);
-}
-
-function goBack() {
-    if (screenHistory.length < 2) return;
-    screenHistory.pop();
-    const prev = screenHistory[screenHistory.length - 1];
-
-    const curr = document.getElementById(`screen-${currentScreen}`);
-    const prevEl = document.getElementById(`screen-${prev}`);
-
-    curr.classList.add('hidden');
-    prevEl.classList.remove('hidden', 'slide-left', 'slide-right');
-    currentScreen = prev;
-}
-
-// Handle native back button / browser back
-window.addEventListener('popstate', (e) => {
-    // If a bottom sheet is open, close it first
-    if (document.getElementById('stop-sheet').classList.contains('open')) {
-        document.getElementById('stop-sheet').classList.remove('open');
-        history.pushState({ screen: currentScreen }, '', `#${currentScreen}`);
-        return;
+      }
+      if(!etaH){
+        const eta=estimateETA(bus,m.board);
+        if(eta!==null){const ec=eta<=5?'#7ee85a':eta<=15?'#eab308':'#38bdf8';etaH=`<div class="lbc-eta"><span class="eta-num" style="color:${ec}">${eta}</span><div class="eta-lbl">min (est.)</div></div>`;}
+      }
     }
-    if (screenHistory.length > 1) {
-        screenHistory.pop();
-        const prev = screenHistory[screenHistory.length - 1];
-        const curr = document.getElementById(`screen-${currentScreen}`);
-        const prevEl = document.getElementById(`screen-${prev}`);
-        curr.classList.add('hidden');
-        prevEl.classList.remove('hidden', 'slide-left', 'slide-right');
-        // Special cleanup for tracking screen
-        if (currentScreen === 'track') {
-            if (trackMap) { trackMap.remove(); trackMap = null; }
-            trackBusMarker = null; trackRouteStopLayers = []; trackBusId = null;
-        }
-        currentScreen = prev;
-    }
+    return `<div class="lbc" onclick="openBusSheet('${id}')">
+      <div class="lbc-top"><div class="lbc-name">${name}</div><span class="lbc-status" style="background:${inT?'rgba(168,85,247,.12)':'rgba(107,114,128,.12)'};border:1px solid ${inT?'rgba(168,85,247,.3)':'rgba(107,114,128,.3)'};color:${col}">${inT?'● In Trip':'● Offline'}</span></div>
+      <div class="lbc-bot"><div class="lbc-detail">Route 256-341</div>${etaH}</div>
+    </div>`;
+  }).join(''):`<div class="no-res" style="padding:20px 0">No buses currently online</div>`;
+
+  res.innerHTML=`
+    ${walkH}
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div class="route-badge">256-341</div>
+      <div>
+        <div style="font-size:13px;font-weight:600">${m.board.name} → ${m.alight.name}</div>
+        <div style="font-size:11px;color:var(--dim);margin-top:2px">${rideCount} stop${rideCount!==1?'s':''} · ~${fmtMins(m.mins)} · ${m.dLabel}</div>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-col"><div class="step-dot w"></div><div class="step-line w"></div></div>
+        <div class="step-body">
+          <div class="step-title">Walk to boarding stop</div>
+          <div class="step-sub">${m.board.name}</div>
+          ${m.walkToBoard>50?`<span class="step-tag g">${fmtDist(m.walkToBoard)} walk</span>`:`<span class="step-tag g">Stop #${m.board.i+1}</span>`}
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-col"><div class="step-dot b"></div><div class="step-line r"></div></div>
+        <div class="step-body">
+          <div class="step-title">Board the bus</div>
+          <div class="step-sub">${m.board.name} · Route 256-341 · ${m.dLabel}</div>
+          <span class="step-tag c">Look for the bus heading ${m.dLabel}</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-col"><div class="step-dot r"></div><div class="step-line r"></div></div>
+        <div class="step-body">
+          <div class="step-title">Ride ~${fmtMins(m.mins)}</div>
+          <div class="step-sub">${rideCount} stop${rideCount!==1?'s':''} in the ${m.dLabel} direction</div>
+          ${mids.length?`<div class="stop-tog" onclick="this.nextElementSibling.classList.toggle('open')">
+            <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            ${mids.length} intermediate stop${mids.length!==1?'s':''}
+          </div>
+          <div class="stop-list">${midH}</div>`:''}
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-col"><div class="step-dot a"></div><div class="step-line w"></div></div>
+        <div class="step-body">
+          <div class="step-title">Get off the bus</div>
+          <div class="step-sub">${m.alight.name} · Stop #${m.alight.i+1}</div>
+          <span class="step-tag o">Watch for this stop!</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-col"><div class="step-dot d"></div></div>
+        <div class="step-body">
+          <div class="step-title">You've arrived</div>
+          <div class="step-sub">${toPlace?.name||m.alight.name}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="live-section-title">Live buses on this route</div>
+    ${busCardsH}`;
+}
+
+// ── Journey on map ────────────────────────────────────────────────────
+function clearJourneyLayers(){
+  journeyLayers.forEach(l=>mainMap.removeLayer(l));
+  journeyLayers=[];
+}
+
+function drawJourneyOnMap(m){
+  clearJourneyLayers();
+  const stops=m.stops;
+
+  // Dim full route
+  const rl=L.polyline(stops.map(s=>[s.lat,s.lng]),{color:'rgba(56,189,248,.12)',weight:3,dashArray:'6 6'}).addTo(mainMap);
+  journeyLayers.push(rl);
+
+  // Ride segment bright
+  const ride=L.polyline(m.rideStops.map(s=>[s.lat,s.lng]),{color:'rgba(56,189,248,.65)',weight:4}).addTo(mainMap);
+  journeyLayers.push(ride);
+
+  // Walk lines
+  if(fromPlace&&m.walkToBoard>50){
+    const wl=L.polyline([[fromPlace.lat,fromPlace.lng],[m.board.lat,m.board.lng]],{color:'#7ee85a',weight:2.5,dashArray:'5 7',opacity:.75}).addTo(mainMap);
+    journeyLayers.push(wl);
+    fetchWalkPath({lat:fromPlace.lat,lng:fromPlace.lng},{lat:m.board.lat,lng:m.board.lng}).then(p=>{
+      if(p){mainMap.removeLayer(wl);const wl2=L.polyline(p,{color:'#7ee85a',weight:3,dashArray:'5 7',opacity:.85}).addTo(mainMap);journeyLayers.push(wl2);}
+    });
+  }
+  if(toPlace&&m.walkFromAlight>50){
+    const wl=L.polyline([[m.alight.lat,m.alight.lng],[toPlace.lat,toPlace.lng]],{color:'#a855f7',weight:2.5,dashArray:'5 7',opacity:.75}).addTo(mainMap);
+    journeyLayers.push(wl);
+    fetchWalkPath({lat:m.alight.lat,lng:m.alight.lng},{lat:toPlace.lat,lng:toPlace.lng}).then(p=>{
+      if(p){mainMap.removeLayer(wl);const wl2=L.polyline(p,{color:'#a855f7',weight:3,dashArray:'5 7',opacity:.85}).addTo(mainMap);journeyLayers.push(wl2);}
+    });
+  }
+
+  // Stop markers
+  stops.forEach((stop,i)=>{
+    const isBoard=stop.name===m.board.name;
+    const isAlight=stop.name===m.alight.name;
+    const inRide=i>=m.board.i&&i<=m.alight.i;
+    const color=isBoard?'#7ee85a':isAlight?'#a855f7':'#38bdf8';
+    const size=isBoard||isAlight?30:16;
+    const opacity=inRide?1:0.25;
+    const icon=L.divIcon({className:'',iconSize:[size,size],iconAnchor:[size/2,size/2],
+      html:`<div style="width:${size}px;height:${size}px;background:rgba(8,8,8,.9);border:${isBoard||isAlight?'2.5':'1.5'}px solid ${color};border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:${opacity};box-shadow:0 0 ${isBoard||isAlight?14:4}px ${color}${isBoard||isAlight?'88':'44'}">
+        <svg width="${size*0.55}" height="${size*0.55}" viewBox="0 0 24 24" fill="${color}"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg>
+      </div>`});
+    const label=isBoard?'🚌 Board here':isAlight?'Get off here':stop.name;
+    const mk=L.marker([stop.lat,stop.lng],{icon}).addTo(mainMap)
+      .bindTooltip(`<div style="font-size:11px;font-weight:600;color:${color};background:rgba(8,8,8,.95);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:5px 9px;white-space:nowrap">${label}</div>`,{permanent:isBoard||isAlight,direction:'top',className:'',offset:[0,-4]});
+    journeyLayers.push(mk);
+  });
+
+  // Origin/dest
+  if(fromPlace){
+    const m1=L.marker([fromPlace.lat,fromPlace.lng],{icon:L.divIcon({className:'',iconSize:[14,14],iconAnchor:[7,7],html:'<div style="width:14px;height:14px;border-radius:50%;background:#7ee85a;border:2.5px solid #fff;box-shadow:0 0 0 4px rgba(126,232,90,.25)"></div>'}),zIndexOffset:200}).addTo(mainMap).bindTooltip(`📍 ${fromPlace.name}`,{direction:'top',className:''});
+    journeyLayers.push(m1);
+  }
+  if(toPlace){
+    const m2=L.marker([toPlace.lat,toPlace.lng],{icon:L.divIcon({className:'',iconSize:[14,14],iconAnchor:[7,7],html:'<div style="width:14px;height:14px;border-radius:50%;background:#a855f7;border:2.5px solid #fff;box-shadow:0 0 0 4px rgba(168,85,247,.25)"></div>'}),zIndexOffset:200}).addTo(mainMap).bindTooltip(`🏁 ${toPlace.name}`,{direction:'top',className:''});
+    journeyLayers.push(m2);
+  }
+
+  // Fit bounds to full journey including walk legs
+  const allPts=[
+    ...(fromPlace?[[fromPlace.lat,fromPlace.lng]]:[]),
+    ...(toPlace?[[toPlace.lat,toPlace.lng]]:[]),
+    ...stops.map(s=>[s.lat,s.lng])
+  ];
+  mainMap.fitBounds(allPts,{padding:[80,80],maxZoom:15,animate:true});
+
+  // Open journey sheet
+  document.getElementById('journey-content').innerHTML='';
+  renderJourneySheet(m);
+  document.getElementById('search-sheet').classList.remove('open');
+  document.getElementById('journey-sheet').classList.add('open');
+  history.pushState({sheet:'journey'},'',location.href);
+}
+
+function renderJourneySheet(m){
+  renderSearchResult(m); // reuse search result HTML inside journey sheet
+  document.getElementById('journey-content').innerHTML=document.getElementById('search-results').innerHTML;
+}
+
+// ── Bus detail sheet ──────────────────────────────────────────────────
+function refreshBusSheet(busId){
+  const bus=liveBuses[busId]||{};
+  const admin=busAdminData[busId]||{};
+  const name=admin.plate||bus.customName||busId;
+  const inT=bus.inTrip===true;
+  const color=inT?'#a855f7':'#eab308';
+  const spd=((bus.speed||0)*3.6).toFixed(0);
+
+  const next=getNextStop(busId,bus);
+  const dir=detectDir(bus,admin);
+  const stops=dir==='R2M'?(admin.stopsR2M||[]):(admin.stopsM2R||[]);
+
+  // ML ETAs from Firebase
+  const mlStops=bus.etas?.stops||[];
+
+  let etaListH='';
+  if(inT&&stops.length){
+    const withDist=stops.map((s,i)=>({...s,i,dist:hav(bus.lat||0,bus.lng||0,s.lat,s.lng)})).sort((a,b)=>a.dist-b.dist);
+    const nextIdx=withDist[0]?.i||0;
+    const upcoming=stops.slice(nextIdx,nextIdx+8);
+    etaListH=`<div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin-bottom:8px">${mlStops.length?'ML ETAs':'Upcoming stops'}</div>
+    <div class="eta-stop-list">
+      ${upcoming.map((s,i)=>{
+        const isNext=i===0;
+        const ml=mlStops.find(e=>e.stopName===s.name||e.stopIdx===s.i);
+        const eta=ml?`${Math.round(ml.etaMins)} min`:estimateETA(bus,s)!==null?`~${estimateETA(bus,s)} min`:'';
+        const etaColor=ml?(ml.etaMins<=5?'var(--green)':ml.etaMins<=15?'var(--yellow)':'var(--cyan)'):'var(--cyan)';
+        return `<div class="eta-stop-item${isNext?' next-stop':''}">
+          <div class="eta-stop-name${isNext?' next':''}">${isNext?'▸ ':''}${s.name}</div>
+          <div class="eta-time" style="color:${etaColor}">${eta}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    ${mlStops.length?'<div style="font-size:9px;color:rgba(126,232,90,.5);text-align:right;margin-top:5px">Powered by ML model</div>':''}`;
+  }
+
+  document.getElementById('bus-content').innerHTML=`
+    <div class="bus-sheet-head">
+      <div class="bus-icon-big" style="background:${inT?'rgba(168,85,247,.12)':'rgba(234,179,8,.12)'};border:1px solid ${inT?'rgba(168,85,247,.3)':'rgba(234,179,8,.3)'}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="${color}"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg>
+      </div>
+      <div>
+        <div class="bus-name-big">${name}</div>
+        <div class="bus-route-big">Route ${admin.routeNo||'256-341'} · <span style="color:${color}">${inT?'In Trip':'Online'}</span></div>
+      </div>
+    </div>
+    <div class="bus-stats" style="grid-template-columns:1fr">
+      <div class="stat-box">
+        <div class="stat-val" style="color:${color};font-size:14px">${next?next.name:'--'}</div>
+        <div class="stat-lbl">next stop</div>
+      </div>
+    </div>
+    ${etaListH}
+    <button class="close-sheet-btn" onclick="closeBusSheet()">Close</button>`;
+
+// ── HISTORY / BACK BUTTON ─────────────────────────────────────────────
+history.replaceState({sheet:null},'',location.href);
+
+const _SHEETS = ['search-sheet','journey-sheet','bus-sheet'];
+function _getOpen(){ return _SHEETS.find(id=>document.getElementById(id)?.classList.contains('open'))||null; }
+
+window.addEventListener('popstate', function(){
+  var open = _getOpen();
+  if(open){
+    document.getElementById(open).classList.remove('open');
+    if(open==='bus-sheet') activeBusSheetId=null;
+  }
 });
 
-// Push initial state so first back press doesn't leave the app
-history.replaceState({ screen: 'home' }, '', '#home');
-
-// ══════════════════════════════════════════════
-//  HOME ACTIONS
-// ══════════════════════════════════════════════
-function selectQuickRoute(routeId) {
-    selectedRoute = PILOT_ROUTE;
-    selectedStop = null;
-    document.getElementById('stop-selector-text').textContent = 'Select your stop for ETA';
-    document.getElementById('stop-selector-text').classList.add('placeholder');
-    document.getElementById('route-screen-title').textContent = `Route ${PILOT_ROUTE.number}`;
-    document.getElementById('route-screen-sub').textContent = PILOT_ROUTE.name;
-    showScreen('route');
-    renderRouteContent();
-    if (userLocation) autoDetectStop();
-}
-
-function openSearch(field) {
-    showScreen('search');
-    setTimeout(() => {
-        document.getElementById(field === 'from' ? 'search-from-input' : 'search-to-input').focus();
-    }, 400);
-    renderSearchResults('');
-}
-
-function searchBuses() {
-    showScreen('search');
-    renderSearchResults('');
-}
-
-// ══════════════════════════════════════════════
-//  SEARCH SCREEN
-// ══════════════════════════════════════════════
-function filterResults() {
-    const q = (document.getElementById('search-to-input').value || document.getElementById('search-from-input').value || '').toLowerCase();
-    renderSearchResults(q);
-}
-
-function renderSearchResults(query) {
-    const el = document.getElementById('search-results');
-    const routes = [PILOT_ROUTE];
-    const filtered = query ? routes.filter(r =>
-        r.number.toLowerCase().includes(query) ||
-        r.name.toLowerCase().includes(query)
-    ) : routes;
-
-    if (!filtered.length) {
-        el.innerHTML = `<div class="no-buses" style="margin-top:40px;">
-            <svg width="40" height="40" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 12px;display:block;"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
-            No routes found
-        </div>`;
-        return;
-    }
-
-    el.innerHTML = `<div class="search-section-label">Routes</div>` +
-        filtered.map(r => {
-            const busCount = getBusesOnRoute(r.id).length;
-            return `<div class="route-result-item" onclick="selectRoute('${r.id}')">
-                <div class="route-badge"><span>${r.number}</span></div>
-                <div class="route-info">
-                    <div class="route-name">Route ${r.number}</div>
-                    <div class="route-sub">${r.name}</div>
-                </div>
-                ${busCount > 0 ? `<div class="route-live-dot"></div>` : ''}
-            </div>`;
-        }).join('');
-}
-
-function selectRoute(routeId) {
-    selectedRoute = PILOT_ROUTE;
-    selectedStop = null;
-    document.getElementById('stop-selector-text').textContent = 'Select your stop for ETA';
-    document.getElementById('stop-selector-text').classList.add('placeholder');
-    document.getElementById('route-screen-title').textContent = `Route ${PILOT_ROUTE.number}`;
-    document.getElementById('route-screen-sub').textContent = PILOT_ROUTE.name;
-    showScreen('route');
-    renderRouteContent();
-    if (userLocation) autoDetectStop();
-}
-
-// ══════════════════════════════════════════════
-//  ROUTE SCREEN
-// ══════════════════════════════════════════════
-function getRouteAdmin() {
-    // Find a bus with admin data for this route
-    for (const [busId, admin] of Object.entries(busAdminData)) {
-        if (admin.routeNo && PILOT_ROUTE.number.includes(admin.routeNo)) return admin;
-        if (admin.stopsR2M || admin.stopsM2R || admin.schedule) return admin;
-    }
-    return null;
-}
-
-function getBusesOnRoute(routeId) {
-    return Object.entries(liveBuses).filter(([busId, bus]) => {
-        const admin = busAdminData[busId] || {};
-        return admin.active !== false && (admin.stopsR2M || admin.stopsM2R);
-    });
-}
-
-function renderRouteContent() {
-    const el = document.getElementById('route-content');
-    const admin = getRouteAdmin();
-    const buses = getBusesOnRoute(selectedRoute?.id);
-
-    let html = '';
-
-    // ── Timetable ──
-    if (admin?.schedule) {
-        const now = new Date();
-        const nowMins = now.getHours() * 60 + now.getMinutes();
-
-        const nextTime = (times) => {
-            if (!times) return null;
-            return times.find(t => {
-                const [h, m] = t.split(':').map(Number);
-                return (h * 60 + m) > nowMins;
-            });
-        };
-
-        const nextR2M = nextTime(admin.schedule.ratmalana);
-        const nextM2R = nextTime(admin.schedule.maharagama);
-
-        const sheetNames = admin.stopsSheetNames || {};
-        const label1 = sheetNames.outbound || 'Outbound';
-        const label2 = sheetNames.return || 'Return';
-
-        html += `<div class="section-header">
-            <span class="section-title">Today's Timetable</span>
-            <span class="section-sub">${new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>
-        </div>
-        <div class="timetable-grid">
-            <div class="timetable-col">
-                <div class="timetable-col-label">↑ ${label1}</div>
-                ${(admin.schedule.ratmalana || []).map(t => `<span class="time-chip${t === nextR2M ? ' next' : ''}">${t}</span>`).join('')}
-            </div>
-            <div class="timetable-col">
-                <div class="timetable-col-label">↓ ${label2}</div>
-                ${(admin.schedule.maharagama || []).map(t => `<span class="time-chip${t === nextM2R ? ' next' : ''}">${t}</span>`).join('')}
-            </div>
-        </div>
-        <div class="divider"></div>`;
-    }
-
-    // ── Live Buses ──
-    html += `<div class="section-header">
-        <span class="section-title">Live Buses</span>
-        <span class="section-sub">${buses.length} on route</span>
-    </div>`;
-
-    if (!buses.length) {
-        html += `<div class="no-buses">
-            <svg width="36" height="36" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 10px;display:block;"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10z"/></svg>
-            No buses currently on this route
-        </div>`;
-    } else {
-        buses.forEach(([busId, bus]) => {
-            const admin = busAdminData[busId] || {};
-            const name = admin.plate || bus.customName || busId;
-            const speed = ((bus.speed || 0) * 3.6).toFixed(0);
-            const isInTrip = bus.inTrip === true;
-            const isOffline = !bus.online;
-
-            let color, statusText;
-            if (isInTrip) {
-                color = '#a855f7'; statusText = 'In Trip';
-            } else if (isOffline) {
-                color = '#6b7280'; statusText = 'Offline';
-            } else {
-                color = '#6b7280'; statusText = 'Trip not started';
-            }
-
-            // ETA — only show when in trip
-            let etaHTML = '';
-            if (isInTrip && selectedStop) {
-                const busDir = detectDir(bus, admin);
-                if (busDir === selectedStop.direction) {
-                    const eta = estimateETA(busId, bus, selectedStop);
-                    if (eta !== null) {
-                        const etaColor = eta <= 5 ? '#7ee85a' : eta <= 15 ? '#eab308' : '#38bdf8';
-                        etaHTML = `<div class="eta-badge">
-                            <div class="eta-mins" style="color:${etaColor};">${eta}</div>
-                            <div class="eta-label">mins</div>
-                        </div>`;
-                    }
-                } else {
-                    etaHTML = `<div class="eta-badge" style="opacity:0.35;">
-                        <div style="font-size:10px;color:var(--text-dim);text-align:right;line-height:1.3;">Wrong<br>direction</div>
-                    </div>`;
-                }
-            } else if (isInTrip && !selectedStop) {
-                etaHTML = `<div class="eta-badge" style="opacity:0.4;">
-                    <div style="font-size:11px;color:var(--text-dim);text-align:right;">Pick<br>stop</div>
-                </div>`;
-            }
-
-            const progress = isInTrip ? getRouteProgress(busId, bus) : null;
-
-            // Next departure time
-            let nextDepartureHTML = '';
-            if (!isInTrip && admin.schedule) {
-                const now = new Date();
-                const nowMins = now.getHours() * 60 + now.getMinutes();
-                const allTrips = [
-                    ...(admin.schedule.ratmalana || []).map(t => ({ time: t, dir: 'R2M' })),
-                    ...(admin.schedule.maharagama || []).map(t => ({ time: t, dir: 'M2R' }))
-                ].map(t => { const [h, m] = t.time.split(':').map(Number); return { ...t, mins: h*60+m }; })
-                 .sort((a, b) => a.mins - b.mins);
-                const next = allTrips.find(t => t.mins > nowMins);
-                if (next) {
-                    nextDepartureHTML = `<span style="color:var(--cyan);">Next at ${next.time}</span>`;
-                }
-            }
-
-            html += `<div class="live-bus-card" style="opacity:${isInTrip ? '1' : '0.65'};" ${isInTrip ? `onclick="openTracking('${busId}')"` : ''}>
-                <div class="live-bus-card-top">
-                    <div class="live-bus-icon" style="background:${color}22;border:1px solid ${color}44;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="${color}">
-                            <path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
-                        </svg>
-                    </div>
-                    <div class="live-bus-info">
-                        <div class="live-bus-name">${name}</div>
-                        <div class="live-bus-status" style="color:${color};">● ${statusText}${isInTrip ? ` · ${speed} km/h` : ''}</div>
-                    </div>
-                    ${etaHTML}
-                </div>
-                ${progress !== null ? `
-                <div class="live-bus-progress">
-                    <div class="live-bus-progress-bar" style="width:${progress}%;background:${color};"></div>
-                </div>` : ''}
-                <div class="live-bus-footer">
-                    <span>${isInTrip ? (getNextStopName(busId, bus) || 'Calculating...') : (nextDepartureHTML || 'No upcoming trips today')}</span>
-                    ${isInTrip ? `<span style="color:var(--cyan);">Tap to track →</span>` : ''}
-                </div>
-            </div>`;
-        });
-    }
-
-    el.innerHTML = html;
-}
-
-function getRouteProgress(busId, bus) {
-    const admin = busAdminData[busId] || {};
-    const dir = detectDir(bus, admin);
-    if (!dir) return null;
-    const stops = dir === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
-    if (!stops.length) return null;
-    const dists = stops.map(s => haversine(bus.lat, bus.lng, s.lat, s.lng));
-    const minIdx = dists.indexOf(Math.min(...dists));
-    return Math.round((minIdx / (stops.length - 1)) * 100);
-}
-
-function getNextStopName(busId, bus) {
-    const admin = busAdminData[busId] || {};
-    const dir = detectDir(bus, admin);
-    if (!dir) return null;
-    const stops = dir === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
-    if (!stops.length) return null;
-    const withDist = stops.map((s, i) => ({ ...s, i, dist: haversine(bus.lat, bus.lng, s.lat, s.lng) }));
-    withDist.sort((a, b) => a.dist - b.dist);
-    const next = withDist[0];
-    return next ? `→ ${next.name}` : null;
-}
-
-function estimateETA(busId, bus, targetStop) {
-    if (!bus.lat || !bus.lng) return null;
-    const admin = busAdminData[busId] || {};
-    const dir = detectDir(bus, admin);
-    if (!dir) return null;
-    const stops = dir === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
-    if (!stops.length) return null;
-
-    // Distance from bus to target stop (straight line as approximation)
-    const distToStop = haversine(bus.lat, bus.lng, targetStop.lat, targetStop.lng);
-    const speedMs = (bus.speed || 0);
-    const avgSpeedMs = speedMs > 0.5 ? speedMs : 5; // assume 5 m/s if stopped
-    const etaSecs = distToStop / avgSpeedMs;
-    return Math.max(1, Math.round(etaSecs / 60));
-}
-
-// ══════════════════════════════════════════════
-//  STOP PICKER
-// ══════════════════════════════════════════════
-function openStopPicker() {
-    const admin = getRouteAdmin();
-    if (!admin) return;
-
-    const sheetNames = admin.stopsSheetNames || {};
-    const label1 = sheetNames.outbound || 'Outbound';
-    const label2 = sheetNames.return || 'Return';
-
-    document.getElementById('dir-btn-r2m').textContent = `↑ ${label1}`;
-    document.getElementById('dir-btn-m2r').textContent = `↓ ${label2}`;
-
-    if (!admin.stopsR2M?.length && admin.stopsM2R?.length) selectedDirection = 'M2R';
-    else selectedDirection = selectedStop?.direction || 'R2M';
-
-    // Clear search
-    document.getElementById('stop-search-input').value = '';
-    document.getElementById('stop-search-clear').style.display = 'none';
-
-    updateDirectionButtons();
-    renderSheetStops('');
-    document.getElementById('stop-sheet').classList.add('open');
-    setTimeout(() => document.getElementById('stop-search-input').focus(), 350);
-}
-
-function setPickerDirection(dir) {
-    selectedDirection = dir;
-    updateDirectionButtons();
-    renderSheetStops(document.getElementById('stop-search-input').value || '');
-}
-
-function updateDirectionButtons() {
-    const active = 'flex:1;padding:9px;border-radius:10px;border:1px solid rgba(5,152,177,0.5);background:rgba(5,152,177,0.15);color:#38bdf8;font-family:Sora,sans-serif;font-size:12px;font-weight:700;cursor:pointer;';
-    const inactive = 'flex:1;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,0.07);background:transparent;color:rgba(255,255,255,0.45);font-family:Sora,sans-serif;font-size:12px;font-weight:600;cursor:pointer;';
-    document.getElementById('dir-btn-r2m').style.cssText = selectedDirection === 'R2M' ? active : inactive;
-    document.getElementById('dir-btn-m2r').style.cssText = selectedDirection === 'M2R' ? active : inactive;
-}
-
-function filterSheetStops() {
-    const q = document.getElementById('stop-search-input').value || '';
-    document.getElementById('stop-search-clear').style.display = q ? 'block' : 'none';
-    renderSheetStops(q);
-}
-
-function clearStopSearch() {
-    document.getElementById('stop-search-input').value = '';
-    document.getElementById('stop-search-clear').style.display = 'none';
-    renderSheetStops('');
-}
-
-function renderSheetStops(query) {
-    const admin = getRouteAdmin();
-    if (!admin) return;
-    const stops = selectedDirection === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
-    const list = document.getElementById('sheet-list');
-    const q = (query || '').toLowerCase().trim();
-
-    const filtered = q ? stops.filter(s => s.name.toLowerCase().includes(q)) : stops;
-
-    if (!filtered.length) {
-        list.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-dim);font-size:13px;">${q ? `No stops matching "${query}"` : 'No stops uploaded for this direction'}</div>`;
-        return;
-    }
-
-    list.innerHTML = filtered.map((s, fi) => {
-        // Get original index for selection
-        const origIdx = stops.indexOf(s);
-        const isFirst = origIdx === 0, isLast = origIdx === stops.length - 1;
-        const dotColor = isFirst ? '#7ee85a' : isLast ? '#a855f7' : '#38bdf8';
-        const isSelected = selectedStop?.name === s.name && selectedStop?.direction === selectedDirection;
-        // Highlight matched text
-        const displayName = q ? s.name.replace(new RegExp(`(${q})`, 'gi'), '<span style="color:#38bdf8;font-weight:700;">$1</span>') : s.name;
-        return `<div class="sheet-item${isSelected ? ' selected' : ''}" onclick="selectStop(${origIdx})">
-            <div class="sheet-item-dot" style="background:${dotColor};"></div>
-            <div class="sheet-item-name">${displayName}</div>
-            <div class="sheet-item-num">${origIdx + 1}</div>
-        </div>`;
-    }).join('');
-}
-
-function selectStop(idx) {
-    const admin = getRouteAdmin();
-    if (!admin) return;
-    const stops = selectedDirection === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
-    selectedStop = { ...stops[idx], direction: selectedDirection, index: idx };
-    const sheetNames = admin.stopsSheetNames || {};
-    const dirLabel = selectedDirection === 'R2M' ? (sheetNames.outbound || 'Outbound') : (sheetNames.return || 'Return');
-    document.getElementById('stop-selector-text').textContent = `${selectedStop.name} · ${dirLabel}`;
-    document.getElementById('stop-selector-text').classList.remove('placeholder');
-    closeStopPicker();
-    renderRouteContent();
-}
-
-function closeStopPicker(e) {
-    if (e && e.target !== document.getElementById('stop-sheet')) return;
-    document.getElementById('stop-sheet').classList.remove('open');
-}
-
-// ══════════════════════════════════════════════
-//  TRACKING SCREEN
-// ══════════════════════════════════════════════
-function openTracking(busId) {
-    trackBusId = busId;
-    showScreen('track');
-
-    const bus = liveBuses[busId] || {};
-    const admin = busAdminData[busId] || {};
-    const name = admin.plate || bus.customName || busId;
-
-    document.getElementById('track-bus-name').textContent = name;
-    document.getElementById('track-bus-route').textContent = `Route ${admin.routeNo || PILOT_ROUTE.number}`;
-
-    setTimeout(() => initTrackMap(busId), 450);
-}
-
-function initTrackMap(busId) {
-    if (trackMap) {
-        trackMap.remove();
-        trackMap = null;
-        trackBusMarker = null;
-        trackRouteStopLayers = [];
-    }
-
-    const bus = liveBuses[busId] || {};
-    const center = bus.lat && bus.lng ? [bus.lat, bus.lng] : [6.83, 79.90];
-
-    trackMap = L.map('track-map', { zoomControl: false, attributionControl: false }).setView(center, 15);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(trackMap);
-    // Multiple invalidateSize to handle transition timing edge cases
-    setTimeout(() => trackMap?.invalidateSize(), 100);
-    setTimeout(() => trackMap?.invalidateSize(), 300);
-    setTimeout(() => trackMap?.invalidateSize(), 600);
-
-    // User location
-    if (userLocation) {
-        const userIcon = L.divIcon({
-            className: '', iconSize: [14, 14], iconAnchor: [7, 7],
-            html: '<div class="user-location-dot"></div>'
-        });
-        trackUserMarker = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon }).addTo(trackMap);
-    }
-
-    updateTrackingView();
-}
-
-function updateTrackingView() {
-    if (!trackMap || !trackBusId) return;
-    const bus = liveBuses[trackBusId];
-    if (!bus?.lat || !bus?.lng) return;
-
-    const admin = busAdminData[trackBusId] || {};
-    const speed = ((bus.speed || 0) * 3.6).toFixed(0);
-
-    // Update/create bus marker
-    const color = bus.inTrip ? '#a855f7' : '#eab308';
-    const busIcon = L.divIcon({
-        className: '', iconSize: [38, 38], iconAnchor: [19, 19],
-        html: `<div style="width:38px;height:38px;border-radius:50%;background:rgba(8,8,8,0.9);border:2.5px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px ${color}55;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="${color}">
-                <path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
-            </svg>
-        </div>`
-    });
-
-    if (trackBusMarker) {
-        trackBusMarker.setLatLng([bus.lat, bus.lng]).setIcon(busIcon);
-    } else {
-        trackBusMarker = L.marker([bus.lat, bus.lng], { icon: busIcon }).addTo(trackMap);
-    }
-
-    trackMap.setView([bus.lat, bus.lng], trackMap.getZoom(), { animate: true, duration: 0.5 });
-
-    // Draw route stops
-    drawTrackStops(trackBusId, bus);
-
-    // Update stats
-    const dir = detectDir(bus, admin);
-    const stops = dir === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
-
-    if (stops.length) {
-        const withDist = stops.map((s, i) => ({ ...s, i, dist: haversine(bus.lat, bus.lng, s.lat, s.lng) }));
-        withDist.sort((a, b) => a.dist - b.dist);
-        const nextStop = withDist[0];
-        const nextIdx = nextStop.i;
-
-        document.getElementById('track-next-stop').textContent = nextStop.name;
-        document.getElementById('track-speed').textContent = speed;
-
-        // Stops remaining
-        const stopsLeft = stops.length - nextIdx - 1;
-        document.getElementById('track-stops-away').textContent = stopsLeft >= 0 ? stopsLeft : '--';
-
-        // ETA
-        if (selectedStop) {
-            const eta = estimateETA(trackBusId, bus, selectedStop);
-            document.getElementById('track-eta').textContent = eta !== null ? eta : '--';
-        } else {
-            const distM = nextStop.dist;
-            const speedMs = bus.speed > 0.5 ? bus.speed : 5;
-            document.getElementById('track-eta').textContent = Math.max(1, Math.round(distM / speedMs / 60));
-        }
-    }
-}
-
-function drawTrackStops(busId, bus) {
-    // Clear old layers
-    trackRouteStopLayers.forEach(l => trackMap.removeLayer(l));
-    trackRouteStopLayers = [];
-
-    const admin = busAdminData[busId] || {};
-    const dir = detectDir(bus, admin);
-    if (!dir) return;
-
-    const stops = dir === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
-    if (!stops.length) return;
-
-    const withDist = stops.map((s, i) => ({ ...s, i, dist: haversine(bus.lat, bus.lng, s.lat, s.lng) }));
-    withDist.sort((a, b) => a.dist - b.dist);
-    const nextIdx = withDist[0].i;
-
-    // Route line
-    const line = L.polyline(stops.map(s => [s.lat, s.lng]), {
-        color: 'rgba(255,255,255,0.07)', weight: 3, dashArray: '6 6'
-    }).addTo(trackMap);
-    trackRouteStopLayers.push(line);
-
-    // Stop markers
-    stops.forEach((stop, i) => {
-        const isPassed = i < nextIdx;
-        const isNext = i === nextIdx;
-        const isTerminal = i === 0 || i === stops.length - 1;
-        const color = isPassed ? '#f97316' : '#38bdf8';
-        const size = (isTerminal || isNext) ? 30 : 22;
-        const opacity = isPassed ? (isTerminal ? 1 : 0.75) : (isNext ? 1 : isTerminal ? 0.7 : 0.4);
-
-        const icon = L.divIcon({
-            className: '', iconSize: [size, size], iconAnchor: [size/2, size/2],
-            html: `<div style="width:${size}px;height:${size}px;background:rgba(8,8,8,0.85);border:1.5px solid ${color};border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:${opacity};box-shadow:0 0 ${isNext?'10px':'4px'} ${color}66;">
-                <svg width="${size*0.55}" height="${size*0.55}" viewBox="0 0 24 24" fill="${color}">
-                    <path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
-                </svg>
-            </div>`
-        });
-
-        // Highlight selected stop
-        const isSelected = selectedStop?.name === stop.name;
-        const marker = L.marker([stop.lat, stop.lng], { icon }).addTo(trackMap);
-
-        if (isSelected) {
-            const pulse = L.circleMarker([stop.lat, stop.lng], {
-                radius: size/2 + 6, color: '#38bdf8', weight: 2,
-                fillOpacity: 0, opacity: 0.5
-            }).addTo(trackMap);
-            trackRouteStopLayers.push(pulse);
-        }
-
-        marker.bindTooltip(`<div style="font-family:'Sora',sans-serif;font-size:11px;font-weight:600;color:#fff;background:rgba(8,8,8,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 9px;white-space:nowrap;">${isNext ? '▸ ' : ''}${stop.name}<span style="font-size:10px;font-weight:400;color:${color};margin-left:5px;">${isPassed?'Passed':isNext?'Next':'Upcoming'}</span></div>`,
-            { permanent: false, direction: 'top', className: 'route-stop-tooltip', offset: [0, -4] });
-
-        trackRouteStopLayers.push(marker);
-    });
-}
-
-function stopTracking() {
-    goBack();
-    if (trackMap) { trackMap.remove(); trackMap = null; }
-    trackBusMarker = null;
-    trackRouteStopLayers = [];
-    trackBusId = null;
-}
-
-// ══════════════════════════════════════════════
-//  HELPERS
-// ══════════════════════════════════════════════
-function haversine(lat1, lng1, lat2, lng2) {
-    const R = 6371000;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-function toMins(t) { const [h, m] = t.split(':').map(Number); return h*60+m; }
-
-function detectDir(bus, admin) {
-    const schedule = admin.schedule;
-    if (schedule?.ratmalana?.length || schedule?.maharagama?.length) {
-        const now = new Date();
-        const nowMins = now.getHours() * 60 + now.getMinutes();
-        const all = [
-            ...(schedule.ratmalana||[]).map(t=>({dir:'R2M',mins:toMins(t)})),
-            ...(schedule.maharagama||[]).map(t=>({dir:'M2R',mins:toMins(t)}))
-        ].sort((a,b)=>a.mins-b.mins);
-        let cur = null;
-        for (const t of all) { if (t.mins <= nowMins) cur = t; }
-        if (cur) return cur.dir;
-        if (all.length) return all[0].dir;
-    }
-    return admin.stopsR2M?.length ? 'R2M' : admin.stopsM2R?.length ? 'M2R' : null;
-}
-
-// ══════════════════════════════════════════════
-//  GOOGLE PLACES SEARCH
-// ══════════════════════════════════════════════
-let autocompleteService = null;
-let placesService = null;
-let placesMap = null;
-let placesMapLayers = [];
-let placesMapBusMarkers = {};
-
-// Place state
-let fromPlace = null; // { name, lat, lng }
-let toPlace = null;
-
-const SRI_LANKA_BOUNDS = {
-    north: 9.9, south: 5.9, east: 81.9, west: 79.7
-};
-
-function onGoogleMapsReady() {
-    autocompleteService = new google.maps.places.AutocompleteService();
-    window._gmapsReady = true;
-}
-
-function openPlacesSearch(focusField) {
-    showScreen('places');
-    // Pre-fill from with user location name if available
-    if (userLocation && !fromPlace) {
-        document.getElementById('from-place-input').value = 'Your location';
-        fromPlace = { name: 'Your location', lat: userLocation.lat, lng: userLocation.lng, isUserLoc: true };
-        document.getElementById('from-clear-btn').classList.add('visible');
-    }
-    setTimeout(() => {
-        document.getElementById(focusField === 'to' ? 'to-place-input' : 'from-place-input').focus();
-    }, 400);
-}
-
-function onPlacesInputFocus(field) {
-    document.getElementById(`${field}-input-row`).classList.add('focused');
-    const val = document.getElementById(`${field}-place-input`).value;
-    if (val && val !== 'Your location') showSuggestions(field, val);
-}
-
-function onPlacesInputBlur(field) {
-    document.getElementById(`${field}-input-row`).classList.remove('focused');
-    // Delay hide so click on suggestion registers
-    setTimeout(() => hideSuggestions(field), 200);
-}
-
-function onPlacesInput(field) {
-    const val = document.getElementById(`${field}-place-input`).value;
-    document.getElementById(`${field}-clear-btn`).classList.toggle('visible', val.length > 0);
-    if (val.length < 2) { hideSuggestions(field); return; }
-    showSuggestions(field, val);
-}
-
-function showSuggestions(field, query) {
-    const el = document.getElementById(`${field}-suggestions`);
-
-    // First: match against route stops locally (instant, no API)
-    const localMatches = getLocalStopMatches(query);
-
-    el.style.display = 'block';
-    el.innerHTML = localMatches.length
-        ? localMatches.map(s => `
-            <div class="suggestion-item" onmousedown="selectSuggestion('${field}', ${JSON.stringify(s).replace(/"/g, '&quot;')})">
-                <div class="suggestion-icon">
-                    <svg width="14" height="14" fill="none" stroke="var(--cyan)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
-                </div>
-                <div>
-                    <div class="suggestion-main">${s.name}</div>
-                    <div class="suggestion-sub">Bus stop · Route ${PILOT_ROUTE.number}</div>
-                </div>
-            </div>`).join('')
-        : `<div style="padding:14px;text-align:center;color:var(--text-dim);font-size:12px;"><span class="spinner"></span></div>`;
-
-    // Then fetch Google Places suggestions
-    if (!autocompleteService) return;
-    autocompleteService.getPlacePredictions({
-        input: query,
-        locationBias: new google.maps.LatLngBounds(
-            new google.maps.LatLng(SRI_LANKA_BOUNDS.south, SRI_LANKA_BOUNDS.west),
-            new google.maps.LatLng(SRI_LANKA_BOUNDS.north, SRI_LANKA_BOUNDS.east)
-        ),
-        componentRestrictions: { country: 'lk' }
-    }, (predictions, status) => {
-        if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) return;
-        const combined = [
-            ...localMatches.map(s => `
-                <div class="suggestion-item" onmousedown="selectSuggestion('${field}', ${JSON.stringify(s).replace(/"/g, '&quot;')})">
-                    <div class="suggestion-icon">
-                        <svg width="14" height="14" fill="none" stroke="var(--cyan)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
-                    </div>
-                    <div>
-                        <div class="suggestion-main">${s.name}</div>
-                        <div class="suggestion-sub">Bus stop · Route ${PILOT_ROUTE.number}</div>
-                    </div>
-                </div>`),
-            ...predictions.slice(0, 4).map(p => `
-                <div class="suggestion-item" onmousedown="selectGooglePlace('${field}', '${p.place_id}', '${p.structured_formatting.main_text.replace(/'/g, "\\'")}')">
-                    <div class="suggestion-icon">
-                        <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
-                    </div>
-                    <div>
-                        <div class="suggestion-main">${p.structured_formatting.main_text}</div>
-                        <div class="suggestion-sub">${p.structured_formatting.secondary_text || ''}</div>
-                    </div>
-                </div>`)
-        ];
-        el.innerHTML = combined.join('') || `<div style="padding:14px;text-align:center;color:var(--text-dim);font-size:12px;">No results found</div>`;
-    });
-}
-
-function hideSuggestions(field) {
-    document.getElementById(`${field}-suggestions`).style.display = 'none';
-}
-
-function getLocalStopMatches(query) {
-    const q = query.toLowerCase();
-    const results = [];
-    const seen = new Set();
-    for (const admin of Object.values(busAdminData)) {
-        [...(admin.stopsR2M || []), ...(admin.stopsM2R || [])].forEach(s => {
-            if (!seen.has(s.name) && s.name.toLowerCase().includes(q)) {
-                seen.add(s.name);
-                results.push({ name: s.name, lat: s.lat, lng: s.lng, isStop: true });
-            }
-        });
-    }
-    return results.slice(0, 3);
-}
-
-function selectSuggestion(field, place) {
-    document.getElementById(`${field}-place-input`).value = place.name;
-    document.getElementById(`${field}-clear-btn`).classList.add('visible');
-    hideSuggestions(field);
-    if (field === 'from') fromPlace = place;
-    else toPlace = place;
-    checkAndSearchRoute();
-}
-
-function selectGooglePlace(field, placeId, name) {
-    document.getElementById(`${field}-place-input`).value = name;
-    document.getElementById(`${field}-clear-btn`).classList.add('visible');
-    hideSuggestions(field);
-
-    // Resolve place_id to lat/lng
-    if (!placesService) {
-        const dummy = document.createElement('div');
-        placesService = new google.maps.places.PlacesService(dummy);
-    }
-    placesService.getDetails({ placeId, fields: ['geometry', 'name'] }, (result, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && result.geometry) {
-            const place = {
-                name,
-                lat: result.geometry.location.lat(),
-                lng: result.geometry.location.lng()
-            };
-            if (field === 'from') fromPlace = place;
-            else toPlace = place;
-            checkAndSearchRoute();
-        }
-    });
-}
-
-function clearPlacesInput(field) {
-    document.getElementById(`${field}-place-input`).value = '';
-    document.getElementById(`${field}-clear-btn`).classList.remove('visible');
-    hideSuggestions(field);
-    if (field === 'from') fromPlace = null;
-    else toPlace = null;
-    document.getElementById('places-search-results').innerHTML =
-        `<p style="color:var(--text-dim);font-size:13px;text-align:center;margin-top:40px;">Enter your origin and destination<br>to find matching bus routes</p>`;
-}
-
-function swapPlaces() {
-    const fromVal = document.getElementById('from-place-input').value;
-    const toVal = document.getElementById('to-place-input').value;
-    document.getElementById('from-place-input').value = toVal;
-    document.getElementById('to-place-input').value = fromVal;
-    [fromPlace, toPlace] = [toPlace, fromPlace];
-    document.getElementById('from-clear-btn').classList.toggle('visible', !!toVal);
-    document.getElementById('to-clear-btn').classList.toggle('visible', !!fromVal);
-    if (fromPlace && toPlace) checkAndSearchRoute();
-}
-
-function checkAndSearchRoute() {
-    if (!fromPlace || !toPlace) return;
-    // Update home display values
-    document.getElementById('from-display').textContent = fromPlace.name;
-    document.getElementById('to-display').textContent = toPlace.name;
-    document.getElementById('from-display').classList.add('has-value');
-    document.getElementById('to-display').classList.add('has-value');
-    findMatchingRoutes();
-}
-
-function findMatchingRoutes() {
-    const results = document.getElementById('places-search-results');
-    results.innerHTML = `<div style="text-align:center;padding:40px;"><span class="spinner"></span></div>`;
-
-    const WALK_MAX = 2000; // 2km max walk
-
-    const matches = [];
-
-    for (const [busId, admin] of Object.entries(busAdminData)) {
-        if (!admin.stopsR2M?.length && !admin.stopsM2R?.length) continue;
-
-        // Check both directions independently
-        for (const dir of ['R2M', 'M2R']) {
-            const stops = dir === 'R2M' ? (admin.stopsR2M || []) : (admin.stopsM2R || []);
-            if (!stops.length) continue;
-
-            // Find nearest stop to origin
-            const fromCandidates = stops
-                .map((s, i) => ({ ...s, i, dist: haversine(fromPlace.lat, fromPlace.lng, s.lat, s.lng) }))
-                .filter(s => s.dist <= WALK_MAX)
-                .sort((a, b) => a.dist - b.dist);
-
-            // Find nearest stop to destination
-            const toCandidates = stops
-                .map((s, i) => ({ ...s, i, dist: haversine(toPlace.lat, toPlace.lng, s.lat, s.lng) }))
-                .filter(s => s.dist <= WALK_MAX)
-                .sort((a, b) => a.dist - b.dist);
-
-            if (!fromCandidates.length || !toCandidates.length) continue;
-
-            const boardStop = fromCandidates[0];
-            const alightStop = toCandidates[0];
-
-            // Direction check: boarding stop must come before alighting stop in sequence
-            if (boardStop.i >= alightStop.i) continue;
-
-            // Avoid duplicate route matches
-            if (matches.find(m => m.adminKey === busId && m.dir === dir)) continue;
-
-            matches.push({
-                adminKey: busId, admin, dir,
-                boardStop, alightStop,
-                walkToBoard: Math.round(boardStop.dist),
-                walkFromAlight: Math.round(alightStop.dist),
-                // For backward compat
-                nearFrom: [boardStop], nearTo: [alightStop]
-            });
-        }
-    }
-
-    if (!matches.length) {
-        results.innerHTML = `<div class="no-buses" style="margin-top:40px;">
-            <svg width="36" height="36" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 12px;display:block;"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
-            No bus routes found within 2km of these locations.<br>
-            <span style="font-size:12px;color:var(--text-muted);">Try a location closer to the route.</span>
-        </div>`;
-        return;
-    }
-
-    // Sort by total walk distance
-    matches.sort((a, b) => (a.walkToBoard + a.walkFromAlight) - (b.walkToBoard + b.walkFromAlight));
-    openPlacesMap(matches[0]);
-}
-
-function openPlacesMap(match) {
-    showScreen('places-map');
-
-    const sheetNames = match.admin.stopsSheetNames || {};
-    const dirLabel = match.dir === 'R2M' ? (sheetNames.outbound || 'Outbound') : (sheetNames.return || 'Return');
-    const stops = match.dir === 'R2M' ? (match.admin.stopsR2M || []) : (match.admin.stopsM2R || []);
-
-    document.getElementById('places-map-title').textContent = `Route ${match.admin.routeNo || PILOT_ROUTE.number}`;
-
-    // Build subtitle with walk info
-    const walkParts = [];
-    if (match.walkToBoard > 50) walkParts.push(`🚶 ${formatDist(match.walkToBoard)} to board`);
-    if (match.walkFromAlight > 50) walkParts.push(`🚶 ${formatDist(match.walkFromAlight)} after alighting`);
-    document.getElementById('places-map-sub').textContent = walkParts.length
-        ? walkParts.join(' · ')
-        : `${fromPlace.name} → ${toPlace.name}`;
-
-    document.getElementById('places-route-label').textContent = dirLabel;
-    document.getElementById('places-route-summary').style.display = 'flex';
-
-    setTimeout(() => initPlacesMap(match, stops), 450);
-    renderBusesForRoute(match);
-
-    document.addEventListener('liveBusesUpdated', () => {
-        if (currentScreen === 'places-map') {
-            renderBusesForRoute(match);
-            updatePlacesMapBusMarkers(match);
-        }
-    });
-}
-
-function initPlacesMap(match, stops) {
-    if (placesMap) { placesMap.remove(); placesMap = null; }
-    placesMapLayers = []; placesMapBusMarkers = {};
-
-    const center = stops.length ? [stops[Math.floor(stops.length/2)].lat, stops[Math.floor(stops.length/2)].lng] : [6.83, 79.90];
-    placesMap = L.map('places-map', { zoomControl: false, attributionControl: false }).setView(center, 14);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(placesMap);
-    setTimeout(() => placesMap?.invalidateSize(), 100);
-    setTimeout(() => placesMap?.invalidateSize(), 300);
-    setTimeout(() => placesMap?.invalidateSize(), 600);
-
-    // Draw bus route line (only the segment the user will ride)
-    if (stops.length && match.boardStop && match.alightStop) {
-        const rideStops = stops.slice(match.boardStop.i, match.alightStop.i + 1);
-        // Full route in dim
-        L.polyline(stops.map(s => [s.lat, s.lng]), {
-            color: 'rgba(56,189,248,0.15)', weight: 3, dashArray: '6 6'
-        }).addTo(placesMap);
-        // Ride segment highlighted
-        L.polyline(rideStops.map(s => [s.lat, s.lng]), {
-            color: 'rgba(56,189,248,0.6)', weight: 4
-        }).addTo(placesMap);
-    } else if (stops.length) {
-        L.polyline(stops.map(s => [s.lat, s.lng]), {
-            color: 'rgba(56,189,248,0.4)', weight: 4, dashArray: '8 6'
-        }).addTo(placesMap);
-    }
-
-    // Walk line: origin → board stop (green dashed)
-    if (match.walkToBoard > 50) {
-        L.polyline([[fromPlace.lat, fromPlace.lng], [match.boardStop.lat, match.boardStop.lng]], {
-            color: '#7ee85a', weight: 2.5, dashArray: '5 7', opacity: 0.8
-        }).addTo(placesMap);
-    }
-
-    // Walk line: alight stop → destination (purple dashed)
-    if (match.walkFromAlight > 50) {
-        L.polyline([[match.alightStop.lat, match.alightStop.lng], [toPlace.lat, toPlace.lng]], {
-            color: '#a855f7', weight: 2.5, dashArray: '5 7', opacity: 0.8
-        }).addTo(placesMap);
-    }
-
-    // Origin marker (green)
-    const fromIcon = L.divIcon({ className: '', iconSize: [14, 14], iconAnchor: [7, 7],
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:#7ee85a;border:2px solid #fff;box-shadow:0 0 0 4px rgba(126,232,90,0.25);"></div>` });
-    L.marker([fromPlace.lat, fromPlace.lng], { icon: fromIcon }).addTo(placesMap)
-        .bindTooltip(`<div style="font-family:'Sora',sans-serif;font-size:11px;font-weight:600;padding:4px 8px;background:rgba(8,8,8,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:8px;">📍 ${fromPlace.name}</div>`,
-        { permanent: false, className: 'route-stop-tooltip' });
-
-    // Destination marker (purple)
-    const toIcon = L.divIcon({ className: '', iconSize: [14, 14], iconAnchor: [7, 7],
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:#a855f7;border:2px solid #fff;box-shadow:0 0 0 4px rgba(168,85,247,0.25);"></div>` });
-    L.marker([toPlace.lat, toPlace.lng], { icon: toIcon }).addTo(placesMap)
-        .bindTooltip(`<div style="font-family:'Sora',sans-serif;font-size:11px;font-weight:600;padding:4px 8px;background:rgba(8,8,8,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:8px;">🏁 ${toPlace.name}</div>`,
-        { permanent: false, className: 'route-stop-tooltip' });
-
-    // Draw stops
-    stops.forEach((stop, i) => {
-        const isBoard = match.boardStop && stop.name === match.boardStop.name;
-        const isAlight = match.alightStop && stop.name === match.alightStop.name;
-        const isTerminal = i === 0 || i === stops.length - 1;
-        const inRideSegment = match.boardStop && match.alightStop && i >= match.boardStop.i && i <= match.alightStop.i;
-
-        const color = isBoard ? '#7ee85a' : isAlight ? '#a855f7' : '#38bdf8';
-        const size = isBoard || isAlight ? 30 : isTerminal ? 22 : 18;
-        const opacity = inRideSegment ? 1 : 0.35;
-        const glow = isBoard || isAlight ? `0 0 14px ${color}88` : `0 0 4px ${color}44`;
-
-        const label = isBoard ? '🚌 Board here' : isAlight ? '🚶 Get off here' : stop.name;
-
-        const icon = L.divIcon({ className: '', iconSize: [size, size], iconAnchor: [size/2, size/2],
-            html: `<div style="width:${size}px;height:${size}px;background:rgba(8,8,8,0.9);border:${isBoard||isAlight?'2.5':'1.5'}px solid ${color};border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:${opacity};box-shadow:${glow};">
-                <svg width="${size*0.55}" height="${size*0.55}" viewBox="0 0 24 24" fill="${color}"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg>
-            </div>` });
-
-        L.marker([stop.lat, stop.lng], { icon }).addTo(placesMap)
-            .bindTooltip(`<div style="font-family:'Sora',sans-serif;font-size:11px;font-weight:600;color:#fff;background:rgba(8,8,8,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 9px;white-space:nowrap;color:${color};">${label}<br><span style="font-size:10px;font-weight:400;color:rgba(255,255,255,0.4);">${stop.name}</span></div>`,
-            { permanent: isBoard || isAlight, direction: 'top', className: 'route-stop-tooltip', offset: [0, -4] });
-    });
-
-    // Fit to full journey including walk legs
-    const bounds = [
-        [fromPlace.lat, fromPlace.lng],
-        [toPlace.lat, toPlace.lng],
-        ...stops.map(s => [s.lat, s.lng])
-    ];
-    placesMap.fitBounds(bounds, { padding: [80, 100], maxZoom: 15 });
-
-    updatePlacesMapBusMarkers(match);
-}
-
-function updatePlacesMapBusMarkers(match) {
-    if (!placesMap) return;
-    const buses = getBusesOnRoute(PILOT_ROUTE.id);
-    buses.forEach(([busId, bus]) => {
-        if (!bus.lat || !bus.lng) return;
-        const color = bus.inTrip ? '#a855f7' : '#6b7280';
-        const icon = L.divIcon({ className: '', iconSize: [34, 34], iconAnchor: [17, 17],
-            html: `<div style="width:34px;height:34px;border-radius:50%;background:rgba(8,8,8,0.9);border:2px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px ${color}55;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="${color}"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg>
-            </div>` });
-        if (placesMapBusMarkers[busId]) {
-            placesMapBusMarkers[busId].setLatLng([bus.lat, bus.lng]).setIcon(icon);
-        } else {
-            placesMapBusMarkers[busId] = L.marker([bus.lat, bus.lng], { icon })
-                .addTo(placesMap)
-                .on('click', () => openTracking(busId));
-        }
-    });
-}
-
-function renderBusesForRoute(match) {
-    const el = document.getElementById('buses-for-route');
-    const buses = getBusesOnRoute(PILOT_ROUTE.id);
-
-    // Walk summary banner
-    const walkHTML = (match.walkToBoard > 50 || match.walkFromAlight > 50) ? `
-        <div style="display:flex;gap:8px;margin-bottom:10px;">
-            ${match.walkToBoard > 50 ? `<div style="flex:1;padding:8px 10px;border-radius:10px;background:rgba(126,232,90,0.08);border:1px solid rgba(126,232,90,0.2);font-size:11px;">
-                <span style="color:#7ee85a;font-weight:700;">🚶 Walk ${formatDist(match.walkToBoard)}</span><br>
-                <span style="color:rgba(255,255,255,0.4);">to ${match.boardStop.name}</span>
-            </div>` : ''}
-            ${match.walkFromAlight > 50 ? `<div style="flex:1;padding:8px 10px;border-radius:10px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);font-size:11px;">
-                <span style="color:#a855f7;font-weight:700;">🚶 Walk ${formatDist(match.walkFromAlight)}</span><br>
-                <span style="color:rgba(255,255,255,0.4);">from ${match.alightStop.name}</span>
-            </div>` : ''}
-        </div>` : '';
-
-    if (!buses.length) {
-        el.innerHTML = walkHTML + `<div style="text-align:center;padding:16px;color:var(--text-dim);font-size:13px;">No buses currently on this route</div>`;
-        return;
-    }
-
-    el.innerHTML = walkHTML + buses.map(([busId, bus]) => {
-        const admin = busAdminData[busId] || {};
-        const name = admin.plate || bus.customName || busId;
-        const isInTrip = bus.inTrip === true;
-        const color = isInTrip ? '#a855f7' : '#6b7280';
-        const speed = ((bus.speed || 0) * 3.6).toFixed(0);
-
-        let etaText = '';
-        if (isInTrip && match.boardStop) {
-            const eta = estimateETA(busId, bus, match.boardStop);
-            if (eta !== null) {
-                const etaColor = eta <= 5 ? '#7ee85a' : eta <= 15 ? '#eab308' : '#38bdf8';
-                etaText = `<span style="font-size:20px;font-weight:800;color:${etaColor};">${eta}</span><span style="font-size:10px;color:var(--text-dim);"> min</span>`;
-            }
-        }
-
-        return `<div class="route-bus-card ${isInTrip ? '' : 'not-started'}" ${isInTrip ? `onclick="openTracking('${busId}')"` : ''}>
-            <div style="width:38px;height:38px;border-radius:12px;background:${color}22;border:1px solid ${color}44;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="${color}"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg>
-            </div>
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:14px;font-weight:700;">${name}</div>
-                <div style="font-size:11px;color:${color};font-weight:600;margin-top:2px;">● ${isInTrip ? `In Trip · ${speed} km/h` : 'Trip not started'}</div>
-                ${isInTrip && match.boardStop ? `<div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;">ETA to ${match.boardStop.name}</div>` : ''}
-            </div>
-            <div style="text-align:right;flex-shrink:0;">
-                ${etaText || (isInTrip ? '' : `<span style="font-size:11px;color:var(--text-dim);">Not<br>active</span>`)}
-                ${isInTrip ? `<div style="font-size:10px;color:var(--cyan);margin-top:2px;">Track →</div>` : ''}
-            </div>
-        </div>`;
-    }).join('');
-}
-</script>
+// ── SWIPE DOWN TO DISMISS SHEETS ──────────────────────────────────────
+(function(){
+  var sY=0, sX=0, drag=false, sel=null, lY=0, lT=0, vel=0;
+  var THR=90, VEL=0.4;
+  _SHEETS.forEach(function(id){
+    var el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('touchstart', function(e){
+      var fromH=e.target.closest('.sheet-handle');
+      var scr=el.querySelector('.sheet-scroll');
+      if(!fromH && scr && scr.scrollTop>4) return;
+      sY=e.touches[0].clientY; sX=e.touches[0].clientX;
+      lY=sY; lT=Date.now(); vel=0; drag=true; sel=el;
+      el.style.transition='none';
+    },{passive:true});
+    el.addEventListener('touchmove', function(e){
+      if(!drag||sel!==el) return;
+      var dy=e.touches[0].clientY-sY;
+      var dx=Math.abs(e.touches[0].clientX-sX);
+      if(dx>Math.abs(dy)&&Math.abs(dy)<10){drag=false;el.style.transition='';return;}
+      if(dy<=0) return;
+      var now=Date.now(); vel=(e.touches[0].clientY-lY)/(now-lT||1); lY=e.touches[0].clientY; lT=now;
+      el.style.transform='translateY('+dy+'px)';
+      e.preventDefault();
+    },{passive:false});
+    el.addEventListener('touchend', function(e){
+      if(!drag||sel!==el){drag=false;return;}
+      var dy=e.changedTouches[0].clientY-sY;
+      el.style.transition=''; el.style.transform='';
+      if(dy>THR||vel>VEL){
+        el.classList.remove('open');
+        if(id==='bus-sheet') activeBusSheetId=null;
+        if(history.state&&history.state.sheet) history.back();
+      }
+      drag=false; sel=null;
+    },{passive:true});
+  });
+})();
+
+// ── PREVENT MAP TOUCH BLEED ───────────────────────────────────────────
+document.querySelectorAll('.sheet').forEach(function(el){
+  el.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
+});
+
+}</script>
 </body>
 </html>
