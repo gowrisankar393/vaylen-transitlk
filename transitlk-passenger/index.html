@@ -172,7 +172,21 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Sora",
 
 /* ── BUS DETAIL SHEET ── */
 #bus-sheet .sheet-scroll{padding:16px 16px 32px}
+#bus-sheet.open.collapsed{transform:translateY(calc(100% - 88px))}
 .bus-sheet-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+/* Collapsed peek bar — always visible when sheet is collapsed */
+.bus-peek{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px 14px;flex-shrink:0;
+}
+.bus-peek-left{display:flex;align-items:center;gap:10px}
+.bus-peek-badge{background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);border-radius:8px;padding:4px 10px;font-size:13px;font-weight:800;color:var(--purple);flex-shrink:0}
+.bus-peek-badge.online{background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.3);color:var(--yellow)}
+.bus-peek-stop{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.bus-peek-sub{font-size:11px;color:var(--dim);margin-top:1px}
+.bus-peek-eta{text-align:right;flex-shrink:0}
+.bus-peek-eta-num{font-size:22px;font-weight:800}
+.bus-peek-eta-lbl{font-size:10px;color:var(--dim)}
 .bus-icon-big{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .bus-name-big{font-size:17px;font-weight:800}
 .bus-route-big{font-size:12px;color:var(--dim);margin-top:2px}
@@ -223,7 +237,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Sora",
 
 /* ── TOUCH SHEET DRAG ── */
 .sheet{touch-action:pan-y}
-.sheet-handle{cursor:grab;padding:6px 0;margin-bottom:4px}
+.sheet-handle{cursor:grab;padding:10px 0 6px;margin-bottom:0}
 .sheet-handle:active{cursor:grabbing}
 
 /* ── SAFE AREAS ── */
@@ -261,7 +275,7 @@ html,body{overscroll-behavior:none}
       <span class="search-pill-ico">
         <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35"/></svg>
       </span>
-      <span class="search-pill-text" id="pill-text">Where are you going?</span>
+      <span class="search-pill-text" id="pill-text">Search your bus or a place...</span>
       <span class="search-pill-dest" id="pill-dest" style="display:none"></span>
     </div>
   </div>
@@ -322,9 +336,23 @@ html,body{overscroll-behavior:none}
 </div>
 
 <!-- BUS DETAIL SHEET -->
-<div class="sheet" id="bus-sheet">
+<div class="sheet" id="bus-sheet" style="display:none">
   <div class="sheet-handle"></div>
-  <div class="sheet-scroll" id="bus-content"></div>
+  <!-- Peek bar — visible when collapsed -->
+  <div class="bus-peek" id="bus-peek" onclick="expandBusSheet()">
+    <div class="bus-peek-left">
+      <div class="bus-peek-badge" id="peek-badge">256-341</div>
+      <div>
+        <div class="bus-peek-stop" id="peek-stop">—</div>
+        <div class="bus-peek-sub" id="peek-sub">Next stop</div>
+      </div>
+    </div>
+    <div class="bus-peek-eta" id="peek-eta" style="display:none">
+      <div class="bus-peek-eta-num" id="peek-eta-num">—</div>
+      <div class="bus-peek-eta-lbl">min away</div>
+    </div>
+  </div>
+  <div class="sheet-scroll" id="bus-content" style="display:none"></div>
 </div>
 
 <script>
@@ -443,19 +471,76 @@ function closeAllSheets() {
   activeBusSheetId = null;
 }
 
+function expandBusSheet() {
+  var sheet = document.getElementById('bus-sheet');
+  var content = document.getElementById('bus-content');
+  sheet.classList.remove('collapsed');
+  content.style.display = '';
+}
+
+function collapseBusSheet() {
+  var sheet = document.getElementById('bus-sheet');
+  var content = document.getElementById('bus-content');
+  sheet.classList.add('collapsed');
+  content.style.display = 'none';
+}
+
 function openBusSheet(busId) {
   activeBusSheetId = busId;
   document.getElementById('search-sheet').classList.remove('open');
   document.getElementById('journey-sheet').classList.remove('open');
   refreshBusSheet(busId);
-  document.getElementById('bus-sheet').classList.add('open');
+  updatePeekBar(busId);
+  var sheet = document.getElementById('bus-sheet');
+  sheet.style.display = '';
+  sheet.classList.add('open');
+  expandBusSheet(); // open fully expanded
   history.pushState({sheet:'bus',busId:busId},'',location.href);
 }
 
 function closeBusSheet() {
-  document.getElementById('bus-sheet').classList.remove('open');
+  var sheet = document.getElementById('bus-sheet');
+  sheet.classList.remove('open');
+  sheet.style.display = 'none';
+  collapseBusSheet();
   activeBusSheetId = null;
 }
+
+function updatePeekBar(busId) {
+  var bus = liveBuses[busId] || {};
+  var admin = busAdminData[busId] || {};
+  var inT = bus.inTrip === true;
+  var next = getNextStop(busId, bus);
+  var badge = document.getElementById('peek-badge');
+  var stopEl = document.getElementById('peek-stop');
+  var subEl = document.getElementById('peek-sub');
+  var etaWrap = document.getElementById('peek-eta');
+  var etaNum = document.getElementById('peek-eta-num');
+
+  badge.textContent = admin.routeNo || '256-341';
+  badge.className = 'bus-peek-badge' + (inT ? '' : ' online');
+  stopEl.textContent = next ? next.name : (inT ? 'In trip' : 'Online');
+  subEl.textContent = inT ? 'Next stop' : (admin.plate || bus.customName || busId);
+
+  // ML ETA if available
+  var mlStops = bus.etas && bus.etas.stops || [];
+  if (inT && next) {
+    var ml = mlStops.find(function(s){ return s.stopName===next.name||s.stopIdx===next.i; });
+    var eta = ml ? Math.round(ml.etaMins) : estimateETA(bus, next);
+    if (eta !== null) {
+      var ec = eta<=5?'var(--green)':eta<=15?'var(--yellow)':'var(--cyan)';
+      etaWrap.style.display = '';
+      etaNum.textContent = eta;
+      etaNum.style.color = ec;
+    } else {
+      etaWrap.style.display = 'none';
+    }
+  } else {
+    etaWrap.style.display = 'none';
+  }
+}
+
+
 
 // ── Utilities ─────────────────────────────────────────────────────────
 function hav(la1,ln1,la2,ln2){
@@ -879,6 +964,7 @@ function refreshBusSheet(busId){
     ${mlStops.length?'<div style="font-size:9px;color:rgba(126,232,90,.5);text-align:right;margin-top:5px">Powered by ML model</div>':''}`;
   }
 
+  if(activeBusSheetId===busId) updatePeekBar(busId);
   document.getElementById('bus-content').innerHTML=`
     <div class="bus-sheet-head">
       <div class="bus-icon-big" style="background:${inT?'rgba(168,85,247,.12)':'rgba(234,179,8,.12)'};border:1px solid ${inT?'rgba(168,85,247,.3)':'rgba(234,179,8,.3)'}">
@@ -912,49 +998,74 @@ window.addEventListener('popstate', function(){
   }
 });
 
-// ── SWIPE DOWN TO DISMISS SHEETS ──────────────────────────────────────
+// ── SWIPE TO DISMISS / COLLAPSE SHEETS ────────────────────────────────
 (function(){
-  var sY=0, sX=0, drag=false, sel=null, lY=0, lT=0, vel=0;
-  var THR=90, VEL=0.4;
+  var sY=0, sX=0, drag=false, sel=null, selId=null, lY=0, lT=0, vel=0;
+  var THR=80, VEL=0.35;
+
+  function canStartDrag(el, id, e) {
+    var fromHandle = e.target.closest('.sheet-handle') || e.target.closest('.bus-peek');
+    if (fromHandle) return true;
+    var scr = el.querySelector('.sheet-scroll');
+    // Collapsed bus sheet - always draggable
+    if (id === 'bus-sheet' && el.classList.contains('collapsed')) return true;
+    // Any sheet at scroll top - draggable
+    if (scr && scr.scrollTop <= 2) return true;
+    return false;
+  }
+
   _SHEETS.forEach(function(id){
-    var el=document.getElementById(id);
-    if(!el) return;
+    var el = document.getElementById(id);
+    if (!el) return;
+
     el.addEventListener('touchstart', function(e){
-      var fromH=e.target.closest('.sheet-handle');
-      var scr=el.querySelector('.sheet-scroll');
-      if(!fromH && scr && scr.scrollTop>4) return;
-      sY=e.touches[0].clientY; sX=e.touches[0].clientX;
-      lY=sY; lT=Date.now(); vel=0; drag=true; sel=el;
-      el.style.transition='none';
-    },{passive:true});
+      if (!canStartDrag(el, id, e)) return;
+      sY = e.touches[0].clientY; sX = e.touches[0].clientX;
+      lY = sY; lT = Date.now(); vel = 0;
+      drag = true; sel = el; selId = id;
+      el.style.transition = 'none';
+    }, {passive:true});
+
     el.addEventListener('touchmove', function(e){
-      if(!drag||sel!==el) return;
-      var dy=e.touches[0].clientY-sY;
-      var dx=Math.abs(e.touches[0].clientX-sX);
-      if(dx>Math.abs(dy)&&Math.abs(dy)<10){drag=false;el.style.transition='';return;}
-      if(dy<=0) return;
-      var now=Date.now(); vel=(e.touches[0].clientY-lY)/(now-lT||1); lY=e.touches[0].clientY; lT=now;
-      el.style.transform='translateY('+dy+'px)';
+      if (!drag || sel !== el) return;
+      var dy = e.touches[0].clientY - sY;
+      var dx = Math.abs(e.touches[0].clientX - sX);
+      // Cancel if horizontal swipe
+      if (dx > Math.abs(dy) && Math.abs(dy) < 12) { drag=false; el.style.transition=''; return; }
+      if (dy <= 0) return; // don't allow upward drag
+      var now = Date.now();
+      vel = (e.touches[0].clientY - lY) / (now - lT || 1);
+      lY = e.touches[0].clientY; lT = now;
+      el.style.transform = 'translateY(' + dy + 'px)';
       e.preventDefault();
-    },{passive:false});
+    }, {passive:false});
+
     el.addEventListener('touchend', function(e){
-      if(!drag||sel!==el){drag=false;return;}
-      var dy=e.changedTouches[0].clientY-sY;
-      el.style.transition=''; el.style.transform='';
-      if(dy>THR||vel>VEL){
-        el.classList.remove('open');
-        if(id==='bus-sheet') activeBusSheetId=null;
-        if(history.state&&history.state.sheet) history.back();
+      if (!drag || sel !== el) { drag=false; return; }
+      var dy = e.changedTouches[0].clientY - sY;
+      el.style.transition = '';
+      el.style.transform = '';
+
+      if (dy > THR || vel > VEL) {
+        if (id === 'bus-sheet') {
+          // If expanded → collapse; if already collapsed → close
+          if (!el.classList.contains('collapsed')) {
+            collapseBusSheet();
+          } else {
+            el.classList.remove('open');
+            el.style.display = 'none';
+            activeBusSheetId = null;
+            if (history.state && history.state.sheet) history.back();
+          }
+        } else {
+          el.classList.remove('open');
+          if (history.state && history.state.sheet) history.back();
+        }
       }
-      drag=false; sel=null;
-    },{passive:true});
+      drag=false; sel=null; selId=null;
+    }, {passive:true});
   });
 })();
-
-// ── PREVENT MAP TOUCH BLEED ───────────────────────────────────────────
-document.querySelectorAll('.sheet').forEach(function(el){
-  el.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
-});
 
 }</script>
 </body>
