@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.transitlk.transitlkbeta.app-mergeDebugResources-33:/values-v25/values-v25.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\uamus\\.gradle\\caches\\8.13\\transforms\\cc7a6ac71f9de0dc4ea8078d2ec5570e\\transformed\\appcompat-1.6.1\\res\\values-v25\\values-v25.xml",
+                    "from": {
+                        "startLines": "2,3,4,6",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,126,209,308",
+                        "endLines": "2,3,5,7",
+                        "endColumns": "70,82,12,12",
+                        "endOffsets": "121,204,303,414"
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent_green">#96d46c</color>
+    <color name="accent_orange">#f97316</color>
+    <color name="black">#FF000000</color>
+    <color name="ic_launcher_background">#000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <string name="app_name">TransitLK Driver</string>
+    <string name="gcm_defaultSenderId" translatable="false">756408321316</string>
+    <string name="google_api_key" translatable="false">AIzaSyAqoBhfXXNJYUdOD5oCq8oJWF3NJFuP8XI</string>
+    <string name="google_app_id" translatable="false">1:756408321316:android:021155a80ae829d80f5fb1</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyAqoBhfXXNJYUdOD5oCq8oJWF3NJFuP8XI</string>
+    <string name="google_storage_bucket" translatable="false">transitlk-79740.firebasestorage.app</string>
+    <string name="project_id" translatable="false">transitlk-79740</string>
+    <style name="Theme.TransitLK" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/black</item>
+        <item name="android:statusBarColor">@color/black</item>
+        <item name="android:navigationBarColor">@color/black</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

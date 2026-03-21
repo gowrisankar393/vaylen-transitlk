@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TransitLK</title>
+<link rel="icon" type="image/png" href="logo2.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+const app = initializeApp({
+    apiKey:"AIzaSyAqoBhfXXNJYUdOD5oCq8oJWF3NJFuP8XI",
+    authDomain:"transitlk-79740.firebaseapp.com",
+    projectId:"transitlk-79740",
+    storageBucket:"transitlk-79740.firebasestorage.app",
+    messagingSenderId:"756408321316",
+    appId:"1:756408321316:web:admin-dashboard"
+});
+const db = getDatabase(app);
+window._db=db; window._dbRef=ref; window._onValue=onValue;
+window._firebaseReady=true;
+document.dispatchEvent(new Event('firebaseReady'));
+</script>
+
+<script>
+window.GMAPS_KEY='AIzaSyDSSAoB1lo6WslQZrVYY83r77nr9uyP4DI';
+(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await(a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a);d[q]=f}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({key:window.GMAPS_KEY,v:"weekly"});
+async function initGMaps(){
+    try {
+        const [{AutocompleteSuggestion},{Geocoder},{DirectionsService,TravelMode}] = await Promise.all([
+            google.maps.importLibrary('places'),
+            google.maps.importLibrary('geocoding'),
+            google.maps.importLibrary('routes')
+        ]);
+        window._ACS=AutocompleteSuggestion;
+        window._GEO=Geocoder;
+        window._DS=DirectionsService;
+        window._TM=TravelMode;
+        window._gmapsReady=true;
+    } catch(e){ console.warn('GMaps init:',e); }
+}
+initGMaps();
+</script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+    --bg:#080808;--surface:rgba(12,12,12,0.98);--glass:rgba(16,16,16,0.94);
+    --b1:rgba(255,255,255,0.07);--b2:rgba(255,255,255,0.13);
+    --txt:#fff;--dim:rgba(255,255,255,0.45);--muted:rgba(255,255,255,0.22);
+    --grad:linear-gradient(135deg,#0598B1,#26A38C,#96d46c);
+    --cyan:#38bdf8;--green:#7ee85a;--purple:#a855f7;
+    --orange:#f97316;--red:#ef4444;--yellow:#eab308;--grey:#6b7280;
+    --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);
+}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Sora',sans-serif;overflow:hidden;}
+
+/* MAP */
+#map{position:fixed;inset:0;z-index:0;}
+
+/* TOP */
+/* TOP LOGO (small, stays visible) */
+#topbar{
+    position:fixed;top:0;left:0;right:0;z-index:100;
+    padding:calc(var(--st) + 12px) 16px 0;
+    display:flex;align-items:center;justify-content:space-between;
+    pointer-events:none;
+}
+#topbar>*{pointer-events:all;}
+.logo-img{height:24px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(0,0,0,.6));}
+
+/* HOME CARD (floating bottom) */
+#homecard{
+    position:fixed;left:0;right:0;bottom:0;z-index:100;
+    padding:0 16px calc(var(--sb) + 16px);
+    pointer-events:none;
+    transition:transform .4s cubic-bezier(.4,0,.2,1),opacity .4s;
+}
+#homecard>*{pointer-events:all;}
+#homecard.hidden{transform:translateY(100%);opacity:0;}
+.hcard{
+    background:var(--surface);border:1px solid var(--b2);
+    border-radius:24px;padding:16px;
+    box-shadow:0 -4px 40px rgba(0,0,0,.6);
+}
+.hcard-title{font-size:22px;font-weight:800;letter-spacing:-.4px;margin-bottom:4px;}
+.hcard-sub{font-size:13px;color:var(--dim);margin-bottom:14px;}
+.hpill{
+    display:flex;align-items:center;gap:10px;
+    background:rgba(255,255,255,.06);border:1px solid var(--b2);
+    border-radius:14px;padding:13px 16px;cursor:pointer;
+    transition:background .15s;margin-bottom:8px;
+}
+.hpill:active{background:rgba(255,255,255,.1);}
+.hpill-txt{font-size:14px;font-weight:500;color:var(--dim);flex:1;}
+.hpill-txt.on{color:var(--txt);}
+.hpill-divider{height:1px;background:var(--b1);margin:0 4px 8px;}
+.hcard-btn{
+    width:100%;padding:14px;border-radius:14px;
+    background:var(--grad);color:#000;border:none;cursor:pointer;
+    font-family:'Sora',sans-serif;font-size:14px;font-weight:700;
+    transition:opacity .15s,transform .1s;
+}
+.hcard-btn:active{opacity:.9;transform:scale(.99);}
+.proute-row{display:flex;align-items:center;gap:10px;padding:10px 0;}
+.proute-badge{width:38px;height:38px;border-radius:10px;flex-shrink:0;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.3);display:flex;align-items:center;justify-content:center;}
+.proute-num{font-size:11px;font-weight:800;color:var(--cyan);}
+
+/* RECENTER */
+#recbtn{
+    position:fixed;right:16px;z-index:99;
+    width:46px;height:46px;border-radius:14px;
+    background:var(--surface);border:1px solid var(--b2);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    box-shadow:0 4px 20px rgba(0,0,0,.5);
+    transition:bottom .4s cubic-bezier(.4,0,.2,1),background .15s;
+    bottom:200px;
+}
+#recbtn:active{background:rgba(255,255,255,.06);}
+#sovl{
+    position:fixed;inset:0;z-index:200;background:var(--bg);
+    transform:translateY(100%);opacity:0;pointer-events:none;
+    transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .35s;
+    display:flex;flex-direction:column;
+}
+#sovl.open{transform:translateY(0);opacity:1;pointer-events:all;}
+.shdr{padding:calc(var(--st)+12px) 16px 10px;border-bottom:1px solid var(--b1);flex-shrink:0;}
+.shdr-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.back{width:38px;height:38px;border-radius:12px;flex-shrink:0;background:rgba(255,255,255,.06);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.back:active{background:rgba(255,255,255,.1);}
+.inp-wrap{display:flex;flex-direction:column;gap:6px;}
+.inp-row{
+    display:flex;align-items:center;gap:10px;
+    padding:11px 14px;background:rgba(255,255,255,.04);
+    border:1px solid var(--b1);border-radius:13px;transition:border-color .2s;position:relative;
+}
+.inp-row.focus{border-color:rgba(56,189,248,.45);background:rgba(56,189,248,.04);}
+.inp-row input{flex:1;background:none;border:none;outline:none;font-family:'Sora',sans-serif;font-size:14px;font-weight:500;color:var(--txt);}
+.inp-row input::placeholder{color:var(--dim);}
+.idot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.xclear{font-size:15px;color:var(--muted);cursor:pointer;padding:2px 4px;display:none;line-height:1;}
+.xclear.show{display:block;}
+.sugs{
+    position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:10;
+    background:#141414;border:1px solid var(--b2);border-radius:14px;
+    overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.7);
+    max-height:260px;overflow-y:auto;display:none;
+}
+.sug{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);transition:background .1s;}
+.sug:last-child{border-bottom:none;}
+.sug:active{background:rgba(255,255,255,.06);}
+.sug-ic{width:32px;height:32px;border-radius:10px;flex-shrink:0;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;}
+.sug-m{font-size:13px;font-weight:600;}
+.sug-s{font-size:11px;color:var(--dim);margin-top:1px;}
+.srl{flex:1;overflow-y:auto;padding:16px;}
+
+/* BOTTOM SHEET */
+#bsheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:100;
+    background:var(--surface);border:1px solid var(--b2);
+    border-radius:24px 24px 0 0;
+    padding-bottom:calc(var(--sb)+16px);
+    transform:translateY(100%);
+    transition:transform .38s cubic-bezier(.4,0,.2,1);
+    max-height:75vh;display:flex;flex-direction:column;
+    box-shadow:0 -8px 48px rgba(0,0,0,.65);
+}
+#bsheet.peek{transform:translateY(calc(100% - 130px));}
+#bsheet.half{transform:translateY(calc(100% - 56vh));}
+#bsheet.full{transform:translateY(0);}
+.shandle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.18);margin:12px auto 0;flex-shrink:0;cursor:grab;}
+.sdrag{padding:6px 16px 10px;flex-shrink:0;cursor:grab;}
+.scontent{flex:1;overflow-y:auto;padding:0 16px 12px;}
+.scontent::-webkit-scrollbar{display:none;}
+
+/* ROUTE HEADER */
+.rhdr{display:flex;align-items:flex-start;gap:12px;padding:0 0 14px;border-bottom:1px solid var(--b1);margin-bottom:14px;}
+.rbadge{width:50px;height:50px;border-radius:14px;flex-shrink:0;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.3);display:flex;align-items:center;justify-content:center;}
+.rnum{font-size:13px;font-weight:800;color:var(--cyan);text-align:center;line-height:1.2;}
+.rname{font-size:15px;font-weight:700;line-height:1.3;}
+.rsub{font-size:11px;color:var(--dim);margin-top:3px;}
+
+/* WALK CHIPS */
+.wrow{display:flex;gap:8px;margin-bottom:14px;}
+.wchip{flex:1;padding:10px 12px;border-radius:12px;font-size:11px;font-weight:600;line-height:1.5;}
+
+/* STOP SELECTOR */
+.stsel{display:flex;align-items:center;gap:8px;padding:11px 14px;background:rgba(255,255,255,.04);border:1px solid var(--b1);border-radius:13px;cursor:pointer;margin-bottom:14px;transition:border-color .2s;}
+.stsel:active{border-color:rgba(56,189,248,.3);}
+.stsel-txt{flex:1;font-size:13px;font-weight:500;}
+
+/* BUS CARD */
+.bcard{background:rgba(255,255,255,.04);border:1px solid var(--b1);border-radius:16px;padding:14px;margin-bottom:8px;transition:background .15s,border-color .15s;}
+.bcard.tappable{cursor:pointer;}
+.bcard.tappable:active{background:rgba(255,255,255,.07);}
+.bcard-top{display:flex;align-items:center;gap:12px;}
+.bic{width:42px;height:42px;border-radius:13px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.binfo{flex:1;min-width:0;}
+.bname{font-size:14px;font-weight:700;}
+.bstat{font-size:11px;font-weight:600;margin-top:2px;}
+.beta{text-align:right;flex-shrink:0;}
+.etanum{font-size:26px;font-weight:800;letter-spacing:-1.5px;line-height:1;}
+.etaunit{font-size:10px;color:var(--dim);margin-top:1px;}
+.bfoot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--b1);font-size:11px;color:var(--dim);}
+.trk{color:var(--cyan);font-weight:700;}
+.bprog{height:3px;background:rgba(255,255,255,.06);border-radius:2px;margin:8px 0 0;overflow:hidden;}
+.bprogf{height:100%;border-radius:2px;transition:width .6s;}
+
+/* TIMES */
+.tmsec{margin-top:14px;}
+.tmlbl{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.tmgrid{display:flex;flex-wrap:wrap;gap:6px;}
+.tpill{padding:6px 11px;border-radius:8px;font-size:12px;font-weight:600;background:rgba(255,255,255,.05);border:1px solid var(--b1);color:var(--dim);font-family:monospace;}
+.tpill.next{background:rgba(56,189,248,.12);border-color:rgba(56,189,248,.35);color:var(--cyan);}
+.tpill.past{opacity:.3;}
+
+/* SECTION LABEL */
+.slbl{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+
+/* TRACKING STATS */
+.tstat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;}
+.tstat{background:rgba(255,255,255,.04);border:1px solid var(--b1);border-radius:12px;padding:12px;text-align:center;}
+.tstat-v{font-size:22px;font-weight:800;letter-spacing:-1px;}
+.tstat-l{font-size:10px;color:var(--dim);margin-top:3px;}
+
+/* STOP SHEET */
+#ssheet{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .3s;display:flex;align-items:flex-end;}
+#ssheet.open{opacity:1;pointer-events:all;}
+.ssi{width:100%;background:#111;border-radius:24px 24px 0 0;border:1px solid var(--b2);padding-bottom:calc(var(--sb)+16px);max-height:76vh;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);}
+#ssheet.open .ssi{transform:translateY(0);}
+.ssh{width:36px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin:12px auto 0;}
+.sshdr{padding:12px 16px 10px;border-bottom:1px solid var(--b1);flex-shrink:0;}
+.sstitle{font-size:16px;font-weight:700;margin-bottom:8px;}
+.ssearch{display:flex;align-items:center;gap:8px;padding:9px 12px;background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:12px;}
+.ssearch input{flex:1;background:none;border:none;outline:none;font-family:'Sora',sans-serif;font-size:13px;font-weight:500;color:var(--txt);}
+.ssearch input::placeholder{color:var(--dim);}
+.dtog{display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid var(--b1);flex-shrink:0;}
+.dbtn{flex:1;padding:9px;border-radius:10px;font-family:'Sora',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;border:1px solid var(--b1);background:transparent;color:var(--dim);}
+.dbtn.on{border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.12);color:var(--cyan);font-weight:700;}
+.slist{flex:1;overflow-y:auto;padding:6px 0;}
+.si{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;transition:background .1s;}
+.si:active{background:rgba(255,255,255,.04);}
+.si.sel .siname{color:var(--cyan);font-weight:700;}
+.sdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.siname{font-size:14px;font-weight:500;flex:1;}
+.sinum{font-size:11px;color:var(--muted);}
+
+/* LEAFLET */
+.leaflet-container{background:#0a0a0a!important;}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip-container{display:none!important;}
+.leaflet-control-zoom,.leaflet-control-attribution{display:none!important;}
+.rtip{background:transparent!important;border:none!important;box-shadow:none!important;padding:0!important;}
+.rtip::before{display:none!important;}
+
+/* USER DOT */
+.udot{width:14px;height:14px;border-radius:50%;background:#4287f5;border:2.5px solid #fff;box-shadow:0 0 0 4px rgba(66,135,245,.3);}
+
+/* MISC */
+.spin{width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.1);border-top-color:var(--cyan);animation:sp .8s linear infinite;display:inline-block;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.empty{text-align:center;padding:40px 20px;color:var(--dim);font-size:13px;line-height:1.7;}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- Logo top left -->
+<div id="topbar">
+    <img src="logo1.png" class="logo-img" alt="TransitLK">
+    <div class="icon-btn" onclick="myLoc()" style="box-shadow:0 4px 20px rgba(0,0,0,.5);">
+        <svg width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+    </div>
+</div>
+
+<!-- Recenter -->
+<div id="recbtn" onclick="recenter()">
+    <svg width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+</div>
+
+<!-- Home card (floating bottom) -->
+<div id="homecard">
+    <div class="hcard">
+        <div class="hcard-title">Where to?</div>
+        <div class="hcard-sub">Find your next bus</div>
+        <div class="hpill" onclick="openSearch('from')">
+            <div class="idot" style="background:var(--green);box-shadow:0 0 8px rgba(126,232,90,.4);flex-shrink:0;"></div>
+            <span class="hpill-txt" id="from-pill">Your location</span>
+        </div>
+        <div class="hpill-divider"></div>
+        <div class="hpill" onclick="openSearch('to')">
+            <div class="idot" style="background:var(--cyan);box-shadow:0 0 8px rgba(56,189,248,.25);flex-shrink:0;"></div>
+            <span class="hpill-txt" id="to-pill">Destination</span>
+        </div>
+        <div id="proutes" style="margin-top:4px;"></div>
+    </div>
+</div>
+
+<!-- Search overlay -->
+<div id="sovl">
+    <div class="shdr">
+        <div class="shdr-row">
+            <div class="back" onclick="closeSearch()">
+                <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            </div>
+            <span style="font-size:16px;font-weight:700;">Find a Bus</span>
+        </div>
+        <div class="inp-wrap">
+            <div class="inp-row" id="from-row">
+                <div class="idot" style="background:var(--green);box-shadow:0 0 8px rgba(126,232,90,.4);"></div>
+                <input id="from-inp" placeholder="Your location" autocomplete="off"
+                    onfocus="ifocus('from')" oninput="ichange('from')" onblur="iblur('from')">
+                <span class="xclear" id="from-x" onclick="xclear('from')">✕</span>
+                <div class="sugs" id="from-sugs"></div>
+            </div>
+            <div style="display:flex;align-items:center;padding:0 4px;gap:8px;">
+                <div style="width:1px;height:16px;background:var(--b1);margin-left:4px;"></div>
+                <div style="flex:1;"></div>
+                <button onclick="swp()" style="background:rgba(255,255,255,.06);border:1px solid var(--b1);border-radius:8px;padding:4px 12px;cursor:pointer;color:var(--dim);font-size:11px;font-family:'Sora',sans-serif;font-weight:600;">⇅ Swap</button>
+            </div>
+            <div class="inp-row" id="to-row">
+                <div class="idot" style="background:var(--cyan);box-shadow:0 0 8px rgba(56,189,248,.25);"></div>
+                <input id="to-inp" placeholder="Where to?" autocomplete="off"
+                    onfocus="ifocus('to')" oninput="ichange('to')" onblur="iblur('to')">
+                <span class="xclear" id="to-x" onclick="xclear('to')">✕</span>
+                <div class="sugs" id="to-sugs"></div>
+            </div>
+        </div>
+    </div>
+    <div class="srl" id="srl">
+        <div class="slbl">Popular Routes</div>
+        <div id="proutes"></div>
+    </div>
+</div>
+
+<!-- Bottom sheet -->
+<div id="bsheet">
+    <div class="shandle"></div>
+    <div class="sdrag" id="sdrag"></div>
+    <div class="scontent" id="sc"></div>
+</div>
+
+<!-- Stop picker -->
+
+<script>
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+const PILOT={id:'256-341-1',number:'256-341',name:'Ratmalana Railway Station → Maharagama'};
+const SL={n:9.9,s:5.9,e:81.9,w:79.7};
+const WALK=2000;
+
+let map=null,umarker=null;
+let bmarkers={},rlayers=[],tlayers=[];
+let uloc=null;
+let admins={},buses={};
+let fp=null,tp=null;
+let match=null;
+let sstate='hidden';
+let tBusId=null;
+
+// ═══════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════
+function wf(flag,ev,cb){if(window[flag]){cb();return;}document.addEventListener(ev,cb,{once:true});}
+
+wf('_firebaseReady','firebaseReady',()=>{
+    window._onValue(window._dbRef(window._db,'busAdmin'),s=>{
+        admins=s.val()||{};
+        renderPRoutes();
+    });
+    window._onValue(window._dbRef(window._db,'buses'),s=>{
+        buses=s.val()||{};
+        updBMarkers();
+        if(match) renderSheet();
+        if(tBusId) renderTrack();
+        document.dispatchEvent(new Event('busesUpdated'));
+    });
+});
+
+// Init map immediately — doesn't need Firebase
+document.addEventListener('DOMContentLoaded', () => {
+    initMap();
+    getULoc();
+});
+
+function initMap(){
+    map=L.map('map',{zoomControl:false,attributionControl:false}).setView([6.85,79.90],12);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
+    [100,300,600,1200].forEach(t=>setTimeout(()=>map?.invalidateSize(),t));
+    window.addEventListener('load',()=>map?.invalidateSize());
+}
+
+function getULoc(){
+    if(!navigator.geolocation)return;
+    navigator.geolocation.getCurrentPosition(p=>{
+        uloc={lat:p.coords.latitude,lng:p.coords.longitude};
+        const ic=L.divIcon({className:'',iconSize:[14,14],iconAnchor:[7,7],html:'<div class="udot"></div>'});
+        if(umarker)umarker.setLatLng([uloc.lat,uloc.lng]);
+        else umarker=L.marker([uloc.lat,uloc.lng],{icon:ic,zIndexOffset:1000}).addTo(map);
+        map.setView([uloc.lat,uloc.lng],14,{animate:true});
+        if(!fp){fp={name:'My location',lat:uloc.lat,lng:uloc.lng,isMe:true};document.getElementById('from-inp').value='My location';}
+    },null,{enableHighAccuracy:true,timeout:8000});
+}
+
+function myLoc(){if(uloc)map.setView([uloc.lat,uloc.lng],15,{animate:true});else getULoc();}
+
+function recenter(){
+    if(match){fitMatch();}
+    else if(uloc){map.setView([uloc.lat,uloc.lng],14,{animate:true});}
+}
+
+// ═══════════════════════════════════════════════
+// LIVE MARKERS
+// ═══════════════════════════════════════════════
+function updBMarkers(){
+    Object.entries(buses).forEach(([id,b])=>{
+        if(!b.lat||!b.lng)return;
+        const a=admins[id]||{};
+        if(a.active===false)return;
+        const c=b.inTrip?'#a855f7':b.online?'#eab308':'#6b7280';
+        const ic=L.divIcon({className:'',iconSize:[30,30],iconAnchor:[15,15],
+            html:`<div style="width:30px;height:30px;border-radius:50%;background:rgba(8,8,8,.9);border:2px solid ${c};display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px ${c}55;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="${c}"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg>
+            </div>`});
+        if(bmarkers[id])bmarkers[id].setLatLng([b.lat,b.lng]).setIcon(ic);
+        else{bmarkers[id]=L.marker([b.lat,b.lng],{icon:ic}).addTo(map);bmarkers[id].on('click',()=>{if(match)startTrack(id);});}
+    });
+    Object.keys(bmarkers).forEach(id=>{if(!buses[id]){map.removeLayer(bmarkers[id]);delete bmarkers[id];}});
+}
+
+// ═══════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════
+
+function renderPRoutes(){
+    const live=Object.values(buses).some(b=>b.online);
+    document.getElementById('proutes').innerHTML=`
+    <div class="hpill-divider"></div>
+    <div onclick="qroute()" style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:4px 0;" onmousedown="this.style.opacity='.7'" onmouseup="this.style.opacity='1'">
+        <div class="proute-badge">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--cyan)"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg>
+        </div>
+        <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:700;">Route ${PILOT.number}</div>
+            <div style="font-size:11px;color:var(--dim);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${PILOT.name}</div>
+        </div>
+        ${live?'<div style="width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);flex-shrink:0;"></div>':'<svg width="14" height="14" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>'}
+    </div>`;
+}
+
+
+// ═══════════════════════════════════════════════
+// INPUTS
+// ═══════════════════════════════════════════════
+function ifocus(f){document.getElementById(`${f}-row`).classList.add('focus');const v=document.getElementById(`${f}-inp`).value;if(v.length>=2)showsugs(f,v);}
+function iblur(f){document.getElementById(`${f}-row`).classList.remove('focus');setTimeout(()=>hsugs(f),250);}
+function ichange(f){const v=document.getElementById(`${f}-inp`).value;document.getElementById(`${f}-x`).classList.toggle('show',v.length>0);if(v.length<2){hsugs(f);return;}showsugs(f,v);}
+function xclear(f){document.getElementById(`${f}-inp`).value='';document.getElementById(`${f}-x`).classList.remove('show');hsugs(f);if(f==='from')fp=null;else tp=null;}
+function hsugs(f){document.getElementById(`${f}-sugs`).style.display='none';}
+function swp(){
+    const fv=document.getElementById('from-inp').value,tv=document.getElementById('to-inp').value;
+    document.getElementById('from-inp').value=tv;document.getElementById('to-inp').value=fv;
+    document.getElementById('from-x').classList.toggle('show',!!tv);
+    document.getElementById('to-x').classList.toggle('show',!!fv);
+    [fp,tp]=[tp,fp];
+    if(fp&&tp)doSearch();
+}
+
+async function showsugs(f,q){
+    const el=document.getElementById(`${f}-sugs`);
+    el.style.display='block';
+    const loc=lstops(q);
+    const sh=s=>`<div class="sug" onmousedown="pickLocal('${f}',${JSON.stringify(s).replace(/"/g,'&quot;')})">
+        <div class="sug-ic"><svg width="13" height="13" fill="none" stroke="var(--cyan)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg></div>
+        <div><div class="sug-m">${s.name}</div><div class="sug-s">Bus stop · ${PILOT.number}</div></div>
+    </div>`;
+    el.innerHTML=loc.length?loc.map(sh).join(''):'<div style="padding:14px;text-align:center;color:var(--dim);font-size:12px;"><span class="spin"></span></div>';
+    if(!window._ACS)return;
+    try{
+        const {suggestions}=await window._ACS.fetchAutocompleteSuggestions({input:q,locationBias:{west:SL.w,south:SL.s,east:SL.e,north:SL.n},includedRegionCodes:['lk']});
+        const gh=suggestions.filter(s=>s.placePrediction).slice(0,4).map(s=>{
+            const p=s.placePrediction,m=p.mainText?.toString()||'',sec=p.secondaryText?.toString()||'',pid=p.placeId;
+            return `<div class="sug" onmousedown="pickGoogle('${f}','${pid}','${m.replace(/'/g,"\\'")}')">
+                <div class="sug-ic"><svg width="13" height="13" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg></div>
+                <div><div class="sug-m">${m}</div><div class="sug-s">${sec}</div></div>
+            </div>`;
+        }).join('');
+        el.innerHTML=loc.map(sh).join('')+gh||'<div style="padding:14px;text-align:center;color:var(--dim);font-size:12px;">No results</div>';
+    }catch(e){if(loc.length)el.innerHTML=loc.map(sh).join('');}
+}
+
+function lstops(q){const lq=q.toLowerCase();const seen=new Set();const r=[];for(const a of Object.values(admins)){[...(a.stopsR2M||[]),...(a.stopsM2R||[])].forEach(s=>{if(!seen.has(s.name)&&s.name.toLowerCase().includes(lq)){seen.add(s.name);r.push({name:s.name,lat:s.lat,lng:s.lng,isStop:true});}});}return r.slice(0,3);}
+
+function pickLocal(f,pl){document.getElementById(`${f}-inp`).value=pl.name;document.getElementById(`${f}-x`).classList.add('show');hsugs(f);if(f==='from')fp=pl;else tp=pl;trySearch();}
+
+async function pickGoogle(f,pid,name){
+    document.getElementById(`${f}-inp`).value=name;document.getElementById(`${f}-x`).classList.add('show');hsugs(f);
+    try{
+        const {Place}=await google.maps.importLibrary('places');
+        const pl=new Place({id:pid});
+        await pl.fetchFields({fields:['location']});
+        if(pl.location){const p={name,lat:pl.location.lat(),lng:pl.location.lng()};if(f==='from')fp=p;else tp=p;trySearch();}
+    }catch(e){
+        try{
+            const g=new window._GEO();const r=await g.geocode({placeId:pid});
+            if(r.results[0]?.geometry){const p={name,lat:r.results[0].geometry.location.lat(),lng:r.results[0].geometry.location.lng()};if(f==='from')fp=p;else tp=p;trySearch();}
+        }catch(e2){console.error(e2);}
+    }
+}
+
+function trySearch(){
+    if(tp){setPill(tp.name);}
+    if(fp&&tp)doSearch();
+}
+
+
+// ═══════════════════════════════════════════════
+// ROUTE FINDING
+// ═══════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════
+// MAP DRAWING
+// ═══════════════════════════════════════════════
+function clrRoute(){rlayers.forEach(l=>map.removeLayer(l));rlayers=[];}
+
+function drawRoute(){
+    clrRoute();
+    const {admin:a,dir,boardStop:bo,alightStop:al}=match;
+    const stops=dir==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);
+    if(!stops.length)return;
+    const ride=bo&&al?stops.slice(bo.i,al.i+1):stops;
+
+    rlayers.push(L.polyline(stops.map(s=>[s.lat,s.lng]),{color:'rgba(56,189,248,.13)',weight:3,dashArray:'6 6'}).addTo(map));
+    rlayers.push(L.polyline(ride.map(s=>[s.lat,s.lng]),{color:'rgba(56,189,248,.72)',weight:5}).addTo(map));
+
+    stops.forEach((s,i)=>{
+        const isB=bo&&s.name===bo.name,isA=al&&s.name===al.name,isTm=i===0||i===stops.length-1;
+        const inSeg=bo&&al&&i>=bo.i&&i<=al.i;
+        const c=isB?'#7ee85a':isA?'#a855f7':'#38bdf8';
+        const sz=isB||isA?28:isTm?22:16,op=inSeg?1:0.28;
+        const ic=L.divIcon({className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],
+            html:`<div style="width:${sz}px;height:${sz}px;background:rgba(8,8,8,.9);border:${isB||isA?'2.5':'1.5'}px solid ${c};border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:${op};box-shadow:0 0 ${isB||isA?'12':'3'}px ${c}66;">
+                <svg width="${sz*.56}" height="${sz*.56}" viewBox="0 0 24 24" fill="${c}"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg>
+            </div>`});
+        const m=L.marker([s.lat,s.lng],{icon:ic}).addTo(map);
+        m.bindTooltip(`<div style="font-family:'Sora',sans-serif;font-size:11px;font-weight:600;color:${c};background:rgba(8,8,8,.95);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:5px 9px;white-space:nowrap;">${isB?'🚌 Board here':isA?'🚶 Get off here':s.name}</div>`,
+            {permanent:isB||isA,direction:'top',className:'rtip',offset:[0,-4]});
+        rlayers.push(m);
+    });
+
+    if(fp&&bo&&match.walkToBoard>50){
+        rpath({lat:fp.lat,lng:fp.lng},{lat:bo.lat,lng:bo.lng}).then(p=>{
+            rlayers.push(L.polyline(p||[[fp.lat,fp.lng],[bo.lat,bo.lng]],{color:'#7ee85a',weight:3,dashArray:'5 8',opacity:.85}).addTo(map));
+        });
+    }
+    if(tp&&al&&match.walkFromAlight>50){
+        rpath({lat:al.lat,lng:al.lng},{lat:tp.lat,lng:tp.lng}).then(p=>{
+            rlayers.push(L.polyline(p||[[al.lat,al.lng],[tp.lat,tp.lng]],{color:'#a855f7',weight:3,dashArray:'5 8',opacity:.85}).addTo(map));
+        });
+    }
+
+    // from/to pins
+    const pin=(lat,lng,c)=>{const ic=L.divIcon({className:'',iconSize:[14,14],iconAnchor:[7,14],html:`<div style="width:14px;height:14px;border-radius:50%;background:${c};border:2px solid #fff;box-shadow:0 0 0 3px ${c}44;"></div>`});rlayers.push(L.marker([lat,lng],{icon:ic}).addTo(map));};
+    if(fp&&!fp.isMe)pin(fp.lat,fp.lng,'#7ee85a');
+    if(tp)pin(tp.lat,tp.lng,'#a855f7');
+
+    fitMatch();
+}
+
+function fitMatch(){
+    const {admin:a,dir}=match;
+    const stops=dir==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);
+    const pts=stops.map(s=>[s.lat,s.lng]);
+    if(fp)pts.push([fp.lat,fp.lng]);
+    if(tp)pts.push([tp.lat,tp.lng]);
+    if(pts.length){
+        const sh=sstate==='half'?window.innerHeight*.52:sstate==='peek'?130:60;
+        map.fitBounds(pts,{paddingTopLeft:[20,80],paddingBottomRight:[20,sh+20],maxZoom:15,animate:true});
+    }
+}
+
+async function rpath(o,d){
+    return new Promise(res=>{
+        if(!window._DS){res(null);return;}
+        const svc=new window._DS();
+        svc.route({
+            origin:new google.maps.LatLng(o.lat,o.lng),
+            destination:new google.maps.LatLng(d.lat,d.lng),
+            travelMode:google.maps.TravelMode.WALKING
+        },(r,s)=>{
+            if(s==='OK'&&r.routes[0])res(r.routes[0].overview_path.map(p=>[p.lat(),p.lng()]));
+            else{console.warn('[Dir]',s);res(null);}
+        });
+    });
+}
+
+// ═══════════════════════════════════════════════
+// SHEET
+// ═══════════════════════════════════════════════
+
+function renderSheet(){
+    if(!match)return;
+    const {admin:a,dir,boardStop:bo,alightStop:al,walkToBoard:wtb,walkFromAlight:wfa}=match;
+    const stops=dir==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);
+    const dl=getDirLabel(a,dir);
+    const rbs=getRouteBuses();
+    const now=new Date(),nm=now.getHours()*60+now.getMinutes();
+
+    let h=`<div class="rhdr">
+        <div class="rbadge"><svg width="22" height="22" viewBox="0 0 24 24" fill="var(--cyan)"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg></div>
+        <div><div class="rname">Route ${a.routeNo||PILOT.number} · ${dl}</div>
+        <div class="rsub">${stops[0]?.name||''} → ${stops[stops.length-1]?.name||''}</div></div>
+    </div>`;
+
+    if(wtb>50||wfa>50){
+        h+=`<div class="wrow">
+            ${wtb>50?`<div class="wchip" style="background:rgba(126,232,90,.08);border:1px solid rgba(126,232,90,.2);"><div style="color:var(--green);font-size:12px;">🚶 ${fd(wtb)}</div><div style="color:var(--dim);font-size:10px;margin-top:2px;">Walk to ${bo?.name||''}</div></div>`:''}
+            ${wfa>50?`<div class="wchip" style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);"><div style="color:var(--purple);font-size:12px;">🚶 ${fd(wfa)}</div><div style="color:var(--dim);font-size:10px;margin-top:2px;">Walk from ${al?.name||''}</div></div>`:''}
+        </div>`;
+    }
+
+    h+=`<div class="slbl">Live Buses</div>`;
+
+    if(rbs.length){
+        rbs.forEach(([bid,b])=>{
+            const ba=admins[bid]||{};
+            const nm2=ba.plate||b.customName||bid;
+            const iT=b.inTrip===true,iO=!b.online;
+            const c=iT?'#a855f7':'#6b7280';
+            const st2=iT?'In Trip':iO?'Offline':'Trip not started';
+            const sp=((b.speed||0)*3.6).toFixed(0);
+            let etaH='';
+            if(iT){
+                // Auto-ETA to board stop or next stop in route
+                const target=match.boardStop||gnxtStop(b,ba);
+                if(target){const eta=eta2(b,target);const ec=eta<=5?'#7ee85a':eta<=15?'#eab308':'#38bdf8';etaH=`<div class="beta"><div class="etanum" style="color:${ec};">${eta}</div><div class="etaunit">min</div></div>`;}
+            }
+            const prog=iT?gprog(b,ba):null;
+            const nxt=iT?gnxt(b,ba):null;
+            let fl=nxt?`→ ${nxt}`:(iT?'Calculating…':ndep(ba,nm)||'No trips today');
+            h+=`<div class="bcard${iT?' tappable':''}" style="opacity:${iT?1:.6};" ${iT?`onclick="startTrack('${bid}')"`:''}> 
+                <div class="bcard-top">
+                    <div class="bic" style="background:${c}22;border:1px solid ${c}44;"><svg width="20" height="20" viewBox="0 0 24 24" fill="${c}"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg></div>
+                    <div class="binfo"><div class="bname">${nm2}</div><div class="bstat" style="color:${c};">● ${st2}${iT?` · ${sp} km/h`:''}</div></div>
+                    ${etaH}
+                </div>
+                ${prog!==null?`<div class="bprog"><div class="bprogf" style="width:${prog}%;background:${c};"></div></div>`:''}
+                <div class="bfoot"><span>${fl}</span>${iT?'<span class="trk">Track →</span>':''}</div>
+            </div>`;
+        });
+    } else {
+        h+=`<div style="text-align:center;padding:20px 0;color:var(--dim);font-size:13px;">No buses currently active</div>`;
+    }
+
+    if(a.schedule){
+        const t1=a.schedule.ratmalana||[],t2=a.schedule.maharagama||[];
+        const l1=`From ${getOriginName(a,'R2M')}`,l2=`From ${getOriginName(a,'M2R')}`;
+        const trow=(ts,lbl)=>{
+            if(!ts.length)return'';
+            const chips=ts.map(t=>{
+                const[hh,mm]=t.split(':').map(Number);
+                const mins=hh*60+mm;
+                const past=mins<nm;
+                const isN=!past&&ts.find(tt=>{const[a2,b2]=tt.split(':').map(Number);return a2*60+b2>nm;})=== t;
+                return`<span class="tpill${isN?' next':past?' past':''}">${t}</span>`;
+            }).join('');
+            return`<div style="margin-bottom:12px;"><div class="tmlbl">${lbl}</div><div class="tmgrid">${chips}</div></div>`;
+        };
+        h+=`<div class="tmsec">${trow(t1,l1)}${trow(t2,l2)}</div>`;
+    }
+
+    document.getElementById('sc').innerHTML=h;
+}
+
+// ═══════════════════════════════════════════════
+// TRACKING
+// ═══════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+function getDirLabel(a, dir) {
+    const stops = dir === 'R2M' ? (a.stopsR2M||[]) : (a.stopsM2R||[]);
+    if (stops.length >= 2) return `${stops[0].name} → ${stops[stops.length-1].name}`;
+    if (stops.length === 1) return stops[0].name;
+    return dir === 'R2M' ? 'Outbound' : 'Return';
+}
+function getOriginName(a, dir) {
+    const stops = dir === 'R2M' ? (a.stopsR2M||[]) : (a.stopsM2R||[]);
+    return stops[0]?.name || (dir === 'R2M' ? 'Outbound' : 'Return');
+}
+function getDestName(a, dir) {
+    const stops = dir === 'R2M' ? (a.stopsR2M||[]) : (a.stopsM2R||[]);
+    return stops[stops.length-1]?.name || '';
+}
+function getRouteBuses(){return Object.entries(buses).filter(([id,b])=>{const a=admins[id]||{};return a.active!==false&&(a.stopsR2M||a.stopsM2R);});}
+function gprog(b,a){const d=ddir(b,a);const s=d==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);if(!s.length||!b.lat)return null;const ds=s.map(st=>hav(b.lat,b.lng,st.lat,st.lng));return Math.round((ds.indexOf(Math.min(...ds))/(s.length-1))*100);}
+function gnxt(b,a){const d=ddir(b,a);const s=d==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);if(!s.length||!b.lat)return null;return s.map(st=>({...st,dist:hav(b.lat,b.lng,st.lat,st.lng)})).sort((a2,b2)=>a2.dist-b2.dist)[0]?.name||null;}
+function gnxtStop(b,a){const d=ddir(b,a);const s=d==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);if(!s.length||!b.lat)return null;return s.map(st=>({...st,dist:hav(b.lat,b.lng,st.lat,st.lng)})).sort((a2,b2)=>a2.dist-b2.dist)[0]||null;}
+function eta2(b,t){if(!b.lat||!b.lng)return null;return Math.max(1,Math.round(hav(b.lat,b.lng,t.lat,t.lng)/(b.speed>0.5?b.speed:5)/60));}
+function ndep(a,nm){if(!a.schedule)return null;const all=[...(a.schedule.ratmalana||[]),...(a.schedule.maharagama||[])].map(t=>{const[hh,mm]=t.split(':').map(Number);return{t,m:hh*60+mm};}).sort((a2,b2)=>a2.m-b2.m);const n=all.find(t=>t.m>nm);return n?`Next at ${n.t}`:null;}
+function ddir(b,a){const sc=a.schedule;if(sc?.ratmalana?.length||sc?.maharagama?.length){const now=new Date(),nm=now.getHours()*60+now.getMinutes();const all=[...(sc.ratmalana||[]).map(t=>({d:'R2M',m:tm(t)})),...(sc.maharagama||[]).map(t=>({d:'M2R',m:tm(t)}))].sort((a2,b2)=>a2.m-b2.m);let c=null;for(const t of all)if(t.m<=nm)c=t;if(c)return c.d;if(all.length)return all[0].d;}return a.stopsR2M?.length?'R2M':'M2R';}
+function hav(a,b,c,d){const R=6371000,dL=(c-a)*Math.PI/180,dG=(d-b)*Math.PI/180,x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dG/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+function tm(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+function fd(m){return m>=1000?`${(m/1000).toFixed(1)} km`:`${Math.round(m)} m`;}
+
+// ═══════════════════════════════════════════════
+// NAVIGATION STACK — single source of truth
+// ═══════════════════════════════════════════════
+// States (in order): home → search → route → track → stops
+// We manage our own stack and push ONE history entry per "page"
+// so back always does the right thing
+
+const NAV = {
+    stack: ['home'], // current stack of states
+
+    push(state) {
+        this.stack.push(state);
+        history.pushState({ nav: state, depth: this.stack.length }, '');
+    },
+
+    // Called by popstate — go back one level
+    pop() {
+        if (this.stack.length <= 1) return;
+        this.stack.pop();
+        const prev = this.stack[this.stack.length - 1];
+        this._apply(prev);
+    },
+
+    // Apply a state visually without touching history
+    _apply(state) {
+        // Close everything, then open what's needed
+        _closeStopSheet(false);
+        _closeSearch(false);
+        if (state === 'home') {
+            if (tBusId) { tBusId = null; tlayers.forEach(l=>map.removeLayer(l)); tlayers = []; }
+            if (match) { clrRoute(); match = null; }
+            setSheet('hidden', false);
+            showHomeCard();
+        } else if (state === 'route') {
+            if (tBusId) { tBusId = null; tlayers.forEach(l=>map.removeLayer(l)); tlayers = []; }
+            if (match) { drawRoute(); renderSheet(); }
+            setSheet('half', false);
+        } else if (state === 'track') {
+            if (match) { renderSheet(); }
+            setSheet('peek', false);
+        }
+    }
+};
+
+// Intercept all back button presses
+history.replaceState({ nav: 'home', depth: 1 }, '');
+
+window.addEventListener('popstate', (e) => {
+    // If stop sheet open, close it and re-push so we stay on same nav state
+    if (document.getElementById('ssheet').classList.contains('open')) {
+        _closeStopSheet(false);
+        history.pushState({ nav: NAV.stack[NAV.stack.length-1], depth: NAV.stack.length }, '');
+        return;
+    }
+    NAV.pop();
+});
+
+// ═══════════════════════════════════════════════
+// SHEET SNAP — real-time drag + snap
+// ═══════════════════════════════════════════════
+(()=>{
+    const sheet = document.getElementById('bsheet');
+    const handle = document.getElementById('sdrag');
+    let startY = 0, startTranslate = 0, isDragging = false, currentTranslate = 0;
+
+    function getSnapTranslate(st) {
+        const h = window.innerHeight;
+        if (st === 'peek') return h * 0.87;
+        if (st === 'half') return h * 0.44;
+        if (st === 'full') return 0;
+        return h; // hidden
+    }
+
+    function applyTranslate(y, animated) {
+        sheet.style.transition = animated ? 'transform .38s cubic-bezier(.4,0,.2,1)' : 'none';
+        sheet.style.transform = `translateY(${y}px)`;
+        currentTranslate = y;
+    }
+
+    function onStart(clientY) {
+        isDragging = true;
+        startY = clientY;
+        // Parse current transform
+        const style = window.getComputedStyle(sheet);
+        const matrix = new DOMMatrix(style.transform);
+        startTranslate = matrix.m42;
+        sheet.style.transition = 'none';
+    }
+
+    function onMove(clientY) {
+        if (!isDragging) return;
+        const dy = clientY - startY;
+        let next = startTranslate + dy;
+        // Rubber band if trying to go above full
+        if (next < 0) next = next * 0.15;
+        // Don't drag below peek
+        const maxTranslate = getSnapTranslate('peek') + 60;
+        if (next > maxTranslate) next = maxTranslate + (next - maxTranslate) * 0.2;
+        applyTranslate(next, false);
+    }
+
+    function onEnd(clientY) {
+        if (!isDragging) return;
+        isDragging = false;
+        const dy = clientY - startY;
+        const velocity = dy; // positive = down, negative = up
+
+        const h = window.innerHeight;
+        const snapPeek = getSnapTranslate('peek');
+        const snapHalf = getSnapTranslate('half');
+        const snapFull = getSnapTranslate('full');
+
+        // Snap logic based on position + velocity
+        let target;
+        if (velocity < -60) {
+            // Fast swipe up
+            if (sstate === 'peek') target = 'half';
+            else if (sstate === 'half') target = 'full';
+            else target = 'full';
+        } else if (velocity > 60) {
+            // Fast swipe down
+            if (sstate === 'full') target = 'half';
+            else if (sstate === 'half') target = 'peek';
+            else { // swipe down from peek — go back
+                NAV.pop();
+                history.go(-1);
+                return;
+            }
+        } else {
+            // Snap to closest
+            const dists = [
+                { s: 'peek', d: Math.abs(currentTranslate - snapPeek) },
+                { s: 'half', d: Math.abs(currentTranslate - snapHalf) },
+                { s: 'full', d: Math.abs(currentTranslate - snapFull) },
+            ];
+            target = dists.sort((a,b) => a.d - b.d)[0].s;
+        }
+        setSheet(target, true);
+    }
+
+    // Touch events
+    handle.addEventListener('touchstart', e => onStart(e.touches[0].clientY), { passive:true });
+    handle.addEventListener('touchmove', e => onMove(e.touches[0].clientY), { passive:true });
+    handle.addEventListener('touchend', e => onEnd(e.changedTouches[0].clientY), { passive:true });
+
+    // Mouse events (desktop)
+    handle.addEventListener('mousedown', e => { onStart(e.clientY); e.preventDefault(); });
+    window.addEventListener('mousemove', e => { if (isDragging) onMove(e.clientY); });
+    window.addEventListener('mouseup', e => { if (isDragging) onEnd(e.clientY); });
+})();
+
+// ═══════════════════════════════════════════════
+// UPDATED NAVIGATION FUNCTIONS
+// ═══════════════════════════════════════════════
+
+function showHomeCard() {
+    document.getElementById('homecard').classList.remove('hidden');
+}
+function hideHomeCard() {
+    document.getElementById('homecard').classList.add('hidden');
+}
+
+function openSearch(field) {
+    hideHomeCard();
+    document.getElementById('sovl').classList.add('open');
+    NAV.push('search');
+    setTimeout(() => document.getElementById(`${field||'to'}-inp`).focus(), 350);
+}
+
+function _closeSearch(pushHistory) {
+    document.getElementById('sovl').classList.remove('open');
+    hsugs('from'); hsugs('to');
+}
+
+function closeSearch() {
+    _closeSearch(false);
+    if (!match) showHomeCard();
+    // popstate handles history
+}
+
+function _closeStopSheet() {} // no-op, stop sheet removed
+function closeSS() {}
+function ssclick() {}
+
+function qroute() {
+    _closeSearch(false);
+    hideHomeCard();
+    const a = getAdmin(); if (!a) return;
+    match = { admin:a, dir:'R2M', boardStop:a.stopsR2M?.[0], alightStop:a.stopsR2M?.[a.stopsR2M.length-1], walkToBoard:0, walkFromAlight:0 };
+    drawRoute();
+    setSheet('half', true);
+    renderSheet();
+    NAV.stack = ['home', 'route'];
+    history.replaceState({ nav:'route', depth:2 }, '');
+}
+
+function doSearch() {
+    _closeSearch(false);
+    hideHomeCard();
+    setSheet('half', true);
+    document.getElementById('sc').innerHTML = '<div style="padding:40px;text-align:center;"><span class="spin"></span></div>';
+
+    const ms = [];
+    for (const [bid,a] of Object.entries(admins)) {
+        if (!a.stopsR2M?.length && !a.stopsM2R?.length) continue;
+        for (const dir of ['R2M','M2R']) {
+            const stops = dir==='R2M'?(a.stopsR2M||[]):(a.stopsM2R||[]);
+            if (!stops.length) continue;
+            const fc = stops.map((s,i)=>({...s,i,dist:hav(fp.lat,fp.lng,s.lat,s.lng)})).filter(s=>s.dist<=WALK).sort((a,b)=>a.dist-b.dist);
+            const tc = stops.map((s,i)=>({...s,i,dist:hav(tp.lat,tp.lng,s.lat,s.lng)})).filter(s=>s.dist<=WALK).sort((a,b)=>a.dist-b.dist);
+            if (!fc.length||!tc.length) continue;
+            const bo=fc[0],al=tc[0];
+            if (bo.i>=al.i) continue;
+            ms.push({ admin:a, dir, boardStop:bo, alightStop:al, walkToBoard:Math.round(bo.dist), walkFromAlight:Math.round(al.dist) });
+        }
+    }
+
+    if (!ms.length) {
+        document.getElementById('sc').innerHTML = `<div class="empty"><svg width="40" height="40" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 12px;display:block;"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>No routes found within 2km of your locations.<br>Try a location closer to the route.</div>`;
+        NAV.stack = ['home', 'route'];
+        history.replaceState({ nav:'route', depth:2 }, '');
+        return;
+    }
+
+    ms.sort((a,b) => (a.walkToBoard+a.walkFromAlight)-(b.walkToBoard+b.walkFromAlight));
+    match = ms[0];
+    drawRoute();
+    renderSheet();
+    NAV.stack = ['home', 'route'];
+    history.replaceState({ nav:'route', depth:2 }, '');
+}
+
+function startTrack(bid) {
+    tBusId = bid;
+    const b = buses[bid]||{}, a = admins[bid]||{};
+    drawTrack(b, a);
+    renderTrack();
+    setSheet('peek', true);
+    NAV.push('track');
+}
+
+function stopTrack() {
+    tBusId = null;
+    tlayers.forEach(l => map.removeLayer(l)); tlayers = [];
+    if (match) { drawRoute(); renderSheet(); setSheet('half', true); }
+    else setSheet('hidden', true);
+}
+
+function setSheet(st, animated=true) {
+    sstate = st;
+    const el = document.getElementById('bsheet');
+    const h = window.innerHeight;
+    const translateMap = { hidden: h, peek: h*0.87, half: h*0.44, full: 0 };
+    const y = translateMap[st] ?? h;
+    el.style.transition = animated ? 'transform .38s cubic-bezier(.4,0,.2,1)' : 'none';
+    el.style.transform = `translateY(${y}px)`;
+    // Update recenter button
+    const btnBottom = st==='full' ? 16 : st==='half' ? h*0.56+16 : st==='peek' ? h*0.13+16 : 200;
+    document.getElementById('recbtn').style.bottom = btnBottom + 'px';
+}
+
+function setPill(txt) {
+    document.getElementById('to-pill').textContent = txt;
+    document.getElementById('to-pill').classList.add('on');
+}
+</script>
+</body>
+</html>
