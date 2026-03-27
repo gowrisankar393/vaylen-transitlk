@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<models>
+    <model>
+        <id>drowsiness-foul</id>
+        <name>Driver Drowsiness &amp; Foul Activity Detection</name>
+        <description>Monitors driver state using IR cameras. Extracts EAR, PERCLOS, yawning, and head pose to detect fatigue and phone usage, replacing the legacy EAR function.</description>
+        <dates>Live Deployment</dates>
+        <location>Module 1 - Driver Dashboard</location>
+        <image>assets/bus_drowsiness.png</image>
+    </model>
+    <model>
+        <id>passenger-incident</id>
+        <name>Passenger Incident Detection</name>
+        <description>Utilizes YOLOv9 and 3D semantic tracking paired with multimodal audio-visual data to accurately detect falls, fights, and medical emergencies.</description>
+        <dates>Beta Testing: February 2026</dates>
+        <location>Module 2 - Passenger Cabin</location>
+        <image>assets/bus_incident.png</image>
+    </model>
+    <model>
+        <id>crash-detection</id>
+        <name>Multi-Sensor Crash Detection</name>
+        <description>Fuses IMU, GPS, and pressure sensors with a lightweight Naïve Bayes classifier to detect impacts with sub-50ms latency.</description>
+        <dates>Beta Testing: February 2026</dates>
+        <location>Module 3 - Vehicle Core</location>
+        <image>assets/bus_crash.png</image>
+    </model>
+</models>
