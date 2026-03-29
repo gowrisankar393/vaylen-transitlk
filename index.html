@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransitLK - The Future of Public Transport</title>
+    <link rel="stylesheet" href="styles.css?v=3">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+        <a href="#" class="logo">
+            <img src="assets/logo.png" alt="TransitLK Logo" style="height: 40px; display: block;">
+        </a>
+        <nav>
+            <ul>
+                <li><a href="#hero">Home</a></li>
+                <li><a href="#models">See Models</a></li>
+                <li><a href="#explore">Explore Models</a></li>
+                <li><a href="#about">About Us</a></li>
+            </ul>
+        </nav>
+        <a href="#explore" class="btn primary">Try Live Demo</a>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="hero" class="hero">
+        <video id="hero-video" class="hero-video" src="assets/Bus_System_Framework_TransitLK.mp4" autoplay loop muted
+            playsinline></video>
+        <div class="hero-content">
+            <img src="assets/logoFull.png" alt="TransitLK" class="hidden"
+                style="max-width: 90%; width: 500px; margin: 0 auto 1.5rem auto; display: block; filter: drop-shadow(0 0 30px rgba(126, 232, 90, 0.4)); animation: pulseGlow 4s infinite alternate;">
+            <p class="hidden"
+                style="color: var(--text-muted); font-size: 1.2rem; max-width: 600px; margin: 2rem auto; line-height: 1.6;">
+                A Realtime Public Transportation Monitoring and Passenger Engagement Framework empowered by cutting-edge
+                Machine Learning Models.
+            </p>
+            <div class="hidden">
+                <a href="#models" class="btn"><i class="ph ph-robot"></i> Discover AI Models</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- See Models Section -->
+    <section id="models">
+        <h2 class="hidden" style="text-align: center; margin-bottom: 3rem;">Cutting-Edge Capabilities</h2>
+        <!-- Populated via XML & JS -->
+        <div id="models-grid" class="models-grid"></div>
+    </section>
+
+    <!-- Explore Models (Testing UI) -->
+    <section id="explore">
+        <h2 class="hidden">Interactive Model Testing</h2>
+        <div class="testing-container hidden">
+            <p style="text-align: center; margin-bottom: 2rem; color: var(--text-muted);">
+                Select an AI model and upload a sample feed to witness real-time inference.
+            </p>
+
+            <div class="test-controls">
+                <select id="model-selector">
+                    <option value="" disabled selected>Select Model to Test</option>
+                    <!-- Populated via JS -->
+                </select>
+                <button id="start-test-btn" class="btn primary"><i class="ph ph-camera"></i> Start Camera</button>
+                <button id="upload-video-btn" class="btn"><i class="ph ph-upload-simple"></i> Upload Video</button>
+                <input type="file" id="video-upload" accept="video/*" style="display: none;">
+            </div>
+
+            <div class="video-frame" style="position: relative;">
+                <div id="video-placeholder" class="frame-overlay">
+                    <i class="ph-duotone ph-webcam" style="font-size: 4rem; color: rgba(126, 232, 90, 0.3);"></i>
+                    <p style="margin-top: 1rem;">Waiting for video feed...</p>
+                </div>
+                <video id="test-video" autoplay muted playsinline></video>
+                <canvas id="bounding-box-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; z-index: 10;"></canvas>
+                <div id="overlay-ui" class="overlay-ui" style="z-index: 20;">
+                    <!-- Dynamic HUD from JS -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about">
+        <h2 class="hidden">Visionaries Behind the Framework</h2>
+        <div class="about-grid hidden">
+            <div class="about-img-box"
+                style="display: flex; justify-content: center; align-items: center; padding: 2rem; background: rgba(0,0,0,0.4);">
+                <img src="assets/logoFull.png" alt="TransitLK Ecosystem"
+                    style="width: 100%; max-width: 400px; object-fit: contain; background: transparent;">
+            </div>
+
+            <div class="about-content">
+                <h3>DSGP: Group 42</h3>
+                <p>
+                    TransitLK is a pioneer research prototype exploring the integration of Artificial Intelligence to
+                    enhance safety and operational efficiency within Sri Lanka's public bus transport ecosystem.
+                    Developed as an academic thesis under the supervision of Dr. Prasan Yapa and Ms. Dilini Thamarasee
+                    at the Informatics
+                    Institute of Technology (IIT).
+                </p>
+                <div class="authors-list">
+                    <div class="author">
+                        <strong>Gowrisankar Sivakumar</strong>
+                        <span>AI & DS Undergraduate</span>
+                        <span>Project Leader</span>
+                    </div>
+                    <div class="author">
+                        <strong>Isira Sanjan Withana</strong>
+                        <span>AI & DS Undergraduate</span>
+                        <span>Project Member</span>
+                    </div>
+                    <div class="author">
+                        <strong>Vihanga Kukulevithana</strong>
+                        <span>AI & DS Undergraduate</span>
+                        <span>Project Member</span>
+                    </div>
+                    <div class="author">
+                        <strong>Tariq Ramzeen</strong>
+                        <span>AI & DS Undergraduate</span>
+                        <span>Project Member</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-nav">
+            <a href="#hero">Home</a>
+            <a href="#models">Models</a>
+            <a href="#explore">Test Run</a>
+            <a href="#about">About Framework</a>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">
+            &copy; 2026 Informatics Institute of Technology. All Rights Reserved. Group 42 Thesis Prototype.
+        </p>
+    </footer>
+
+    <script src="script.js?v=3"></script>
+</body>
+
+</html>
