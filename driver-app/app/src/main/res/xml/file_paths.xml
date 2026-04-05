@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- For TransitLK CSV files in Downloads -->
+    <external-path
+        name="transitlk_downloads"
+        path="Download/TransitLK Test/" />
+
+    <!-- General external storage -->
+    <external-path
+        name="external_files"
+        path="." />
+
+    <!-- For camera/intruder photos -->
+    <external-files-path
+        name="app_photos"
+        path="Pictures/" />
+
+    <!-- Cache directory -->
+    <cache-path
+        name="cache"
+        path="." />
+</paths>
